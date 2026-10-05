@@ -91,6 +91,12 @@ export interface LearningAction {
   gameTitle?: string;
   examBlueprintId?: string;
   lessonId?: string;
+  /**
+   * Optional learning track this action belongs to, e.g. the Kid's Box
+   * Companion track. Used purely for routing — the Learning OS keeps a single
+   * action list for every track (§1, §26).
+   */
+  trackId?: string;
   title: string;
   description: string;
   reason: string; // Parent & diagnostic explanation
@@ -152,4 +158,10 @@ export interface LearningOSStore {
     reason: string;
     completed: boolean;
   }[];
+  /**
+   * Ids of evidences already folded into `knowledgeStates`.
+   * Guarantees idempotency: replaying an event (double click, refresh,
+   * retry, back/forward navigation) can never double-count evidence.
+   */
+  processedEvidenceIds: string[];
 }

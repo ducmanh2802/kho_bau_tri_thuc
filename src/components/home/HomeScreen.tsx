@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { ActiveScreen, ChildProfile, DailyQuest, SubjectType } from '../../types';
+import { ActiveScreen, ChildProfile, DailyQuest, ReadingProfile, SubjectType } from '../../types';
 import { sound } from '../../services/sound';
 import { fireCelebrationConfetti } from '../../services/confetti';
 import { StorageService } from '../../services/storage';
-import { Star, Sparkles, Gift, Check, ArrowRight } from 'lucide-react';
+import { NextBestActionCard } from '../learning/NextBestActionCard';
+import { Star, Sparkles, Gift, Check, ArrowRight, BookOpen } from 'lucide-react';
 
 interface HomeScreenProps {
   profile: ChildProfile;
@@ -25,6 +26,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   onProfileUpdate,
 }) => {
   const [quests, setQuests] = useState<DailyQuest[]>(StorageService.getDailyQuests());
+  const [reading, setReading] = useState<ReadingProfile>(() => StorageService.getReadingProfile());
   const [chestClaimed, setChestClaimed] = useState(
     profile.dailyChestClaimedDate === new Date().toISOString().split('T')[0]
   );
@@ -80,7 +82,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                 </h1>
                 <button
                   onClick={playWelcomeVoice}
-                  className="p-1.5 bg-white/20 hover:bg-white/30 rounded-full text-white active:scale-95 transition-transform"
+                  aria-label="Nghe lời chào"
+                  className="min-w-[44px] min-h-[44px] flex items-center justify-center bg-white/20 hover:bg-white/30 rounded-full text-white active:scale-95 transition-transform"
                   title="Nghe lời chào"
                 >
                   🔊
@@ -117,6 +120,29 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             <span>Bản Đồ Học Tập</span>
             <ArrowRight className="w-5 h-5" />
           </button>
+        </div>
+      </div>
+
+      {/* Reading fluency headline — supportive, never negative (§8) */}
+      <div className="bg-gradient-to-r from-sky-50 to-cyan-50 border-2 border-sky-200 rounded-3xl p-4 md:p-5 flex flex-col sm:flex-row sm:items-center gap-3">
+        <span className="text-3xl shrink-0" aria-hidden="true">
+          <BookOpen className="w-8 h-8 text-sky-600" />
+        </span>
+        <div className="flex-1">
+          <p className="text-sm md:text-base font-black text-sky-950">{reading.headline}</p>
+          <p className="text-xs text-sky-900 font-medium">{reading.encouragement}</p>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <div className="text-center px-3 py-1.5 bg-white rounded-xl border border-sky-200">
+            <span className="block text-[10px] font-black text-sky-700">CHÍNH XÁC</span>
+            <span className="text-base font-black text-sky-950 tabular-nums">{reading.accuracyIndex}%</span>
+          </div>
+          <div className="text-center px-3 py-1.5 bg-white rounded-xl border border-sky-200">
+            <span className="block text-[10px] font-black text-sky-700">HIỂU BÀI</span>
+            <span className="text-base font-black text-sky-950 tabular-nums">
+              {reading.comprehensionIndex}%
+            </span>
+          </div>
         </div>
       </div>
 
@@ -215,6 +241,26 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
 
       {/* Secondary Fast Action Row (Games, Daily Smart Review, Competition Arena, Weekly Challenge) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+        {/* Reading Fluency */}
+        <button
+          onClick={() => {
+            sound.playClick();
+            onNavigate('reading_fluency');
+          }}
+          className="p-4 bg-gradient-to-br from-sky-500 to-cyan-600 text-white rounded-3xl shadow-lg flex items-center justify-between transition-all hover:scale-[1.02] active:scale-95 cursor-pointer border-[3px] border-sky-300 text-left"
+        >
+          <div className="flex items-center gap-3">
+            <span className="text-3xl">📖</span>
+            <div className="text-left">
+              <h4 className="font-black text-sm md:text-base font-display">Luyện Đọc</h4>
+              <p className="text-[11px] text-sky-100 font-semibold">
+                Chỉ số đọc: {reading.readingIndex}/100
+              </p>
+            </div>
+          </div>
+          <span className="text-xs font-black bg-white/20 px-2.5 py-1 rounded-xl shrink-0">Luyện</span>
+        </button>
+
         {/* Competition Hub */}
         <button
           onClick={() => {
@@ -288,6 +334,9 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         </button>
       </div>
 
+      {/* Evidence-driven "next best action" from the Learning OS */}
+      <NextBestActionCard onNavigate={onNavigate} />
+
       {/* Daily Quests & Treasure Chest */}
       <div className="bg-white rounded-3xl p-6 shadow-xl border-3 border-amber-200 space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-amber-100 pb-3">
@@ -304,7 +353,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           <button
             onClick={handleClaimChest}
             disabled={!canClaimChest && chestClaimed}
-            className={`px-4 py-2.5 rounded-2xl font-black text-xs md:text-sm flex items-center gap-2 transition-all ${
+            className={`min-h-[44px] px-4 py-2.5 rounded-2xl font-black text-xs md:text-sm flex items-center justify-center gap-2 transition-all ${
               chestClaimed
                 ? 'bg-slate-100 text-slate-400 cursor-default'
                 : canClaimChest

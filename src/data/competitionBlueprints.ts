@@ -1,5 +1,15 @@
 import { ExamBlueprint } from '../types/competition';
 
+/**
+ * EXAM BLUEPRINTS (P27.5 §11)
+ *
+ * These presets are ORIGINAL and exam-like. The app deliberately does NOT claim
+ * to be an "official replica" of any Vietnamese primary-school competition paper
+ * and contains no copied or scraped questions. Every preset states this.
+ */
+const ORIGINAL_SOURCE_NOTE =
+  'Bộ đề luyện tập do ứng dụng tự soạn theo cấu trúc thi tiểu học — không phải đề thi chính thức.';
+
 export const EXAM_BLUEPRINTS: ExamBlueprint[] = [
   // --- TIẾNG VIỆT ---
   {
@@ -9,11 +19,14 @@ export const EXAM_BLUEPRINTS: ExamBlueprint[] = [
     subject: 'tieng-viet',
     mode: 'mini_test',
     difficulty: 'EASY',
-    durationSeconds: 300, // 5 minutes
+    durationSeconds: 300,
     questionCount: 6,
     badgeEmoji: '🌱',
     rewardXp: 50,
     rewardStars: 4,
+    maxScore: 10,
+    sourceNote: ORIGINAL_SOURCE_NOTE,
+    version: 2,
   },
   {
     id: 'bp-vn-mini-02',
@@ -22,24 +35,65 @@ export const EXAM_BLUEPRINTS: ExamBlueprint[] = [
     subject: 'tieng-viet',
     mode: 'mini_test',
     difficulty: 'MEDIUM',
-    durationSeconds: 360, // 6 minutes
+    durationSeconds: 360,
     questionCount: 8,
     badgeEmoji: '🌿',
     rewardXp: 70,
     rewardStars: 5,
+    maxScore: 10,
+    sourceNote: ORIGINAL_SOURCE_NOTE,
+    version: 2,
   },
   {
     id: 'bp-vn-full',
     title: 'Đấu Trường Tiếng Việt Toàn Diện',
-    subtitle: 'Thử thách tổng hợp: Ngữ âm, Chính tả, Đọc hiểu và Đố chữ',
+    subtitle: 'Bài thi thử có phân phối dạng bài như một bài thi thật',
     subject: 'tieng-viet',
     mode: 'full_mock',
     difficulty: 'HARD',
-    durationSeconds: 600, // 10 minutes
+    durationSeconds: 900,
     questionCount: 12,
     badgeEmoji: '🏆',
     rewardXp: 120,
     rewardStars: 8,
+    maxScore: 20,
+    difficultyDistribution: {
+      EASY: 0.25,
+      MEDIUM: 0.5,
+      HARD: 0.25,
+      CHALLENGE: 0,
+    },
+    questionTypeDistribution: {
+      'multiple-choice': 0.5,
+      matching: 0.08,
+      ordering: 0.08,
+      'fill-blank': 0.08,
+      'true-false': 0.08,
+      'drag-drop': 0.09,
+      classify: 0.09,
+    },
+    sections: [
+      {
+        id: 'sec-vn-a',
+        title: 'Phần 1 — Ngữ âm & Chính tả',
+        instruction: 'Đọc kỹ từng câu và chọn hoặc điền đáp án đúng.',
+        skillIds: ['TV-PHONICS', 'TV-TONES', 'TV-SYLLABLE', 'TV-SPELLING'],
+      },
+      {
+        id: 'sec-vn-b',
+        title: 'Phần 2 — Từ vựng & Câu',
+        instruction: 'Ghép đôi và sắp xếp từ thành câu đúng ngữ pháp.',
+        skillIds: ['TV-WORD', 'TV-SENTENCE', 'TV-RHYME'],
+      },
+      {
+        id: 'sec-vn-c',
+        title: 'Phần 3 — Đọc hiểu & Tư duy',
+        instruction: 'Đọc đoạn văn và suy luận câu trả lời.',
+        skillIds: ['TV-READING', 'TV-LANGUAGE-LOGIC'],
+      },
+    ],
+    sourceNote: ORIGINAL_SOURCE_NOTE,
+    version: 2,
   },
 
   // --- TOÁN HỌC ---
@@ -50,11 +104,14 @@ export const EXAM_BLUEPRINTS: ExamBlueprint[] = [
     subject: 'toan',
     mode: 'mini_test',
     difficulty: 'EASY',
-    durationSeconds: 300, // 5 minutes
+    durationSeconds: 300,
     questionCount: 6,
     badgeEmoji: '🔢',
     rewardXp: 50,
     rewardStars: 4,
+    maxScore: 10,
+    sourceNote: ORIGINAL_SOURCE_NOTE,
+    version: 2,
   },
   {
     id: 'bp-math-mini-02',
@@ -63,24 +120,64 @@ export const EXAM_BLUEPRINTS: ExamBlueprint[] = [
     subject: 'toan',
     mode: 'mini_test',
     difficulty: 'MEDIUM',
-    durationSeconds: 360, // 6 minutes
+    durationSeconds: 360,
     questionCount: 8,
     badgeEmoji: '📐',
     rewardXp: 70,
     rewardStars: 5,
+    maxScore: 10,
+    sourceNote: ORIGINAL_SOURCE_NOTE,
+    version: 2,
   },
   {
     id: 'bp-math-full',
     title: 'Đấu Trường Toán Học Toàn Diện',
-    subtitle: 'Tổng hợp tính nhẩm nhanh, toán có lời văn và tư duy logic',
+    subtitle: 'Bài thi thử có phân phối dạng bài như một bài thi thật',
     subject: 'toan',
     mode: 'full_mock',
     difficulty: 'HARD',
-    durationSeconds: 600, // 10 minutes
+    durationSeconds: 900,
     questionCount: 12,
     badgeEmoji: '👑',
     rewardXp: 120,
     rewardStars: 8,
+    maxScore: 20,
+    difficultyDistribution: {
+      EASY: 0.25,
+      MEDIUM: 0.5,
+      HARD: 0.25,
+      CHALLENGE: 0,
+    },
+    questionTypeDistribution: {
+      'multiple-choice': 0.5,
+      'fill-blank': 0.17,
+      matching: 0.08,
+      'true-false': 0.08,
+      classify: 0.09,
+      'drag-drop': 0.08,
+    },
+    sections: [
+      {
+        id: 'sec-math-a',
+        title: 'Phần 1 — Số học & So sánh',
+        instruction: 'Đếm cẩn thận và so sánh từng cặp số.',
+        skillIds: ['MATH-NUMBER', 'MATH-COMPARISON', 'MATH-SEQUENCE'],
+      },
+      {
+        id: 'sec-math-b',
+        title: 'Phần 2 — Phép tính',
+        instruction: 'Tính nhẩm và điền kết quả vào chỗ trống.',
+        skillIds: ['MATH-ADDITION', 'MATH-SUBTRACTION'],
+      },
+      {
+        id: 'sec-math-c',
+        title: 'Phần 3 — Hình học & Giải toán',
+        instruction: 'Quan sát hình và đọc kỹ đề bài có lời văn.',
+        skillIds: ['MATH-SHAPE', 'MATH-MEASUREMENT', 'MATH-WORD-PROBLEM', 'MATH-PATTERN', 'MATH-LOGIC'],
+      },
+    ],
+    sourceNote: ORIGINAL_SOURCE_NOTE,
+    version: 2,
   },
 
   // --- ENGLISH ---
@@ -91,11 +188,14 @@ export const EXAM_BLUEPRINTS: ExamBlueprint[] = [
     subject: 'english',
     mode: 'mini_test',
     difficulty: 'EASY',
-    durationSeconds: 300, // 5 minutes
+    durationSeconds: 300,
     questionCount: 6,
     badgeEmoji: '🇬🇧',
     rewardXp: 60,
     rewardStars: 5,
+    maxScore: 10,
+    sourceNote: ORIGINAL_SOURCE_NOTE,
+    version: 2,
   },
 
   // --- SPEED TRIALS ---
@@ -106,11 +206,14 @@ export const EXAM_BLUEPRINTS: ExamBlueprint[] = [
     subject: 'toan',
     mode: 'speed_trial',
     difficulty: 'MEDIUM',
-    durationSeconds: 180, // 3 minutes
-    questionCount: 6,
+    durationSeconds: 180,
+    questionCount: 8,
     badgeEmoji: '⚡',
     rewardXp: 60,
     rewardStars: 4,
+    maxScore: 10,
+    sourceNote: ORIGINAL_SOURCE_NOTE,
+    version: 2,
   },
   {
     id: 'bp-speed-viet',
@@ -119,11 +222,36 @@ export const EXAM_BLUEPRINTS: ExamBlueprint[] = [
     subject: 'tieng-viet',
     mode: 'speed_trial',
     difficulty: 'MEDIUM',
-    durationSeconds: 180, // 3 minutes
-    questionCount: 6,
+    durationSeconds: 180,
+    questionCount: 8,
     badgeEmoji: '🚀',
     rewardXp: 60,
     rewardStars: 4,
+    maxScore: 10,
+    sourceNote: ORIGINAL_SOURCE_NOTE,
+    version: 2,
+  },
+
+  // --- READING-HEAVY EXAM (exam-like reading section, §31 golden path) ---
+  {
+    id: 'bp-vn-reading',
+    title: 'Bài Thi Thử Có Phần Đọc Hiểu',
+    subtitle: 'Phần đọc đoạn văn ngắn và trả lời câu hỏi tìm thông tin',
+    subject: 'tieng-viet',
+    mode: 'mini_test',
+    difficulty: 'MEDIUM',
+    durationSeconds: 420,
+    questionCount: 8,
+    badgeEmoji: '📖',
+    rewardXp: 80,
+    rewardStars: 6,
+    maxScore: 10,
+    skillDistribution: {
+      'TV-READING': 4,
+      'TV-SENTENCE': 2,
+    },
+    sourceNote: ORIGINAL_SOURCE_NOTE,
+    version: 2,
   },
 ];
 
@@ -133,4 +261,8 @@ export function getBlueprintById(id: string): ExamBlueprint | undefined {
 
 export function getBlueprintsBySubject(subject: string): ExamBlueprint[] {
   return EXAM_BLUEPRINTS.filter((b) => b.subject === subject);
+}
+
+export function getSpeedTrialBlueprints(): ExamBlueprint[] {
+  return EXAM_BLUEPRINTS.filter((b) => b.mode === 'speed_trial');
 }

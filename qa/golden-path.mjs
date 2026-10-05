@@ -1,0 +1,346 @@
+/**
+ * GOLDEN PATH QA (§31) — driven against the real production build.
+ * NEW CHILD -> HOME -> VIETNAMESE -> READING FLUENCY -> READ + COMPREHENSION
+ * -> COMPETITION -> TIMED TEST -> RESULT -> REVIEW -> PARENT MODE -> RELOAD -> PERSISTENCE
+ */
+
+const state = { steps: [], errors: [] };
+
+function log(name, detail) {
+  state.steps.push({ step: name, ...detail });
+}
+function fail(msg) {
+  state.errors.push(msg);
+}
+
+const CLICK = { timeout: 12000 };
+
+async function answerCurrentItem(page) {
+  const opt = page.locator('[data-testid=answer-option]').first();
+  if (await opt.count()) await opt.click(CLICK);
+}
+
+export default async function run(page, ui) {
+  try {
+    await body(page, ui);
+  } catch (e) {
+    const msg = e && e.message ? String(e.message).split('\n')[0] : String(e);
+    state.errors.push('EXCEPTION: ' + msg);
+    state.failedAt = state.steps.length ? state.steps[state.steps.length - 1].step : 'start';
+  }
+  return state;
+}
+
+async function body(page, ui) {
+  // ---------- 1. NEW CHILD / HOME ----------
+  await page.evaluate(() => localStorage.clear());
+  await page.reload();
+  await page.waitForSelector('text=Xin chào', { timeout: 20000 });
+
+  const homeText = await page.evaluate(() => document.body.innerText);
+  log('home', {
+    readingCard: homeText.includes('Luyện Đọc'),
+    competitionCard: homeText.includes('Đấu Trường'),
+    nextBestAction: homeText.includes('Bé Nên Làm Gì Tiếp Theo'),
+    readingHeadline: /Bé đang|Bé đọc|Mình bắt đầu luyện đọc/.test(homeText),
+  });
+  if (!homeText.includes('Bé Nên Làm Gì Tiếp Theo')) fail('Next Best Action card missing on home');
+
+  const xpBefore = await page.evaluate(
+    () => JSON.parse(localStorage.getItem('kho_bau_child_profile') || '{}').xp
+  );
+  log('newChildIsClean', { xp: xpBefore === undefined ? 0 : xpBefore });
+  if ((xpBefore || 0) !== 0) fail('new child should start at 0 XP, got ' + xpBefore);
+
+  // ---------- 2. VIETNAMESE LESSON ----------
+  await page.getByRole('button', { name: /Tiếng Việt/ }).first().click(CLICK);
+  await page.waitForSelector('text=Vương Quốc Tiếng Việt', { timeout: 20000 });
+  const lessonButtons = await page.getByRole('button', { name: /Vào học|Học lại/ }).count();
+  log('vietnameseSubject', { lessonCount: lessonButtons });
+  if (lessonButtons === 0) fail('no lessons listed for Vietnamese');
+
+  await page.getByRole('button', { name: /Vào học/ }).first().click(CLICK);
+  await page.waitForSelector('text=Câu hỏi 1', { timeout: 20000 });
+  log('lessonOpened', { ok: true });
+
+  let answered = 0;
+  for (let i = 0; i < 12; i += 1) {
+    const checkBtn = page.getByRole('button', { name: /Kiểm tra câu trả lời/ });
+    if (!(await checkBtn.count())) break;
+    await answerCurrentItem(page);
+    await checkBtn.click(CLICK);
+    answered += 1;
+    await page.waitForTimeout(100);
+    const next = page.getByRole('button', { name: /Câu tiếp theo|Xem kết quả bài học/ });
+    if (await next.count()) await next.first().click(CLICK);
+    await page.waitForTimeout(100);
+    if (await page.getByText('CHÚC MỪNG BÉ HOÀN THÀNH!').count()) break;
+  }
+
+  const lessonDone = await page.getByText('CHÚC MỪNG BÉ HOÀN THÀNH!').count();
+  log('lessonCompleted', { questionsAnswered: answered, completed: lessonDone > 0 });
+  if (!lessonDone) fail('lesson did not reach the completion screen');
+
+  const osAfterLesson = await page.evaluate(() => {
+    const raw = JSON.parse(localStorage.getItem('kho_bau_learning_os_store') || 'null');
+    if (!raw) return null;
+    return {
+      schemaVersion: raw.schemaVersion,
+      skillCount: Object.keys(raw.knowledgeStates || {}).length,
+      evidenceCount: (raw.recentEvidences || []).length,
+    };
+  });
+  log('evidenceRecorded', osAfterLesson || { none: true });
+  if (!osAfterLesson || osAfterLesson.skillCount === 0)
+    fail('Learning OS evidence was not persisted after the lesson');
+
+  await page.getByRole('button', { name: 'Về bản đồ' }).click(CLICK);
+  await page.waitForTimeout(300);
+
+  // ---------- 3. READING FLUENCY ----------
+  await page.getByRole('navigation', { name: 'Điều hướng nhanh' }).getByRole('button', { name: 'Luyện Đọc', exact: true }).click(CLICK);
+  await page.waitForSelector('text=Thang Luyện Đọc Của Bé', { timeout: 20000 });
+
+  const ladderText = await page.evaluate(() => document.body.innerText);
+  log('readingLadder', {
+    hasStages: ladderText.includes('Đọc Chính Xác') && ladderText.includes('Đọc Lưu Loát'),
+    allFiveStages:
+      ladderText.includes('Đọc Chính Xác') &&
+      ladderText.includes('Đọc Lưu Loát') &&
+      ladderText.includes('Hiểu Nội Dung') &&
+      ladderText.includes('Hiểu Nhanh') &&
+      ladderText.includes('Tốc Độ Thi'),
+    lockedStages: (ladderText.match(/Đang khóa/g) || []).length,
+  });
+  if (!ladderText.includes('Đọc Chính Xác')) fail('reading ladder stages missing');
+  if (!ladderText.includes('Tốc Độ Thi')) fail('reading ladder is missing the speed stage');
+
+  const lockedDisabled = await page.evaluate(
+    () =>
+      Array.from(document.querySelectorAll('button')).filter((b) =>
+        (b.textContent || '').includes('Hoàn thành bước trước để mở')
+      ).length
+  );
+  log('stageGating', { lockedStageButtons: lockedDisabled });
+  if (lockedDisabled === 0) fail('speed stages should be locked for a new child');
+
+  await page.getByRole('button', { name: /Bắt đầu luyện/ }).first().click(CLICK);
+  await page.waitForSelector('text=Đoạn đọc:', { timeout: 20000 });
+  const passageVisible = await page.getByText('Đoạn đọc:').count();
+  log('readingPassageShown', { passages: passageVisible });
+  if (passageVisible === 0) fail('reading passage panel did not render');
+
+  let readingItems = 0;
+  for (let i = 0; i < 12; i += 1) {
+    const check = page.getByRole('button', { name: /Kiểm tra câu trả lời/ });
+    if (!(await check.count())) break;
+    await answerCurrentItem(page);
+    await check.click(CLICK);
+    readingItems += 1;
+    await page.waitForTimeout(80);
+    const next = page.getByRole('button', { name: /Câu tiếp theo|Xem kết quả/ });
+    if (await next.count()) await next.first().click(CLICK);
+    await page.waitForTimeout(80);
+    if (await page.getByText('Kết quả luyện đọc').count()) break;
+  }
+
+  const readingResult = await page.getByText('Kết quả luyện đọc').count();
+  log('readingSession', { itemsAnswered: readingItems, resultShown: readingResult > 0 });
+  if (!readingResult) fail('reading session did not produce a result screen');
+
+  const readingStore = await page.evaluate(() => {
+    const raw = JSON.parse(localStorage.getItem('kho_bau_reading_store') || 'null');
+    if (!raw) return null;
+    return {
+      sessions: (raw.metrics || []).length,
+      readingIndex: raw.profile && raw.profile.readingIndex,
+      stageAccuracy: raw.profile && raw.profile.stageStates && raw.profile.stageStates.ACCURACY.accuracy,
+    };
+  });
+  log('readingPersisted', readingStore || { none: true });
+  if (!readingStore || readingStore.sessions === 0) fail('reading metrics were not persisted');
+
+  // ---------- 4. COMPETITION ----------
+  await page.goto('http://127.0.0.1:4173/');
+  await page.waitForSelector('text=Xin chào', { timeout: 20000 });
+  await page.getByRole('navigation', { name: 'Điều hướng nhanh' }).getByRole('button', { name: 'Đấu Trường', exact: true }).click(CLICK);
+  await page.waitForSelector('text=Kho Báu Đấu Trường Tri Thức', { timeout: 20000 });
+  log('competitionHub', { ok: true });
+
+  await page.getByRole('button', { name: /Vào Thi Thử/ }).first().click(CLICK);
+  await page.waitForSelector('role=dialog', { timeout: 20000 });
+  await page.waitForTimeout(1200);
+  const dialogRaw = await page.locator('[role=dialog]').innerText();
+  // innerText reflects CSS text-transform, so compare case-insensitively.
+  const dialog = dialogRaw.toLowerCase();
+  log('examDialog', {
+    hasTimer: /\d\d:\d\d/.test(dialog),
+    timerSample: (dialogRaw.match(/\d\d:\d\d/) || ['none'])[0],
+    showsQuestionType:
+      /trắc nghiệm|đúng \/ sai|điền vào chỗ trống|nối hình ghép đôi|sắp xếp thứ tự|kéo thả vào nhóm|phân loại/.test(
+        dialog
+      ),
+    typeLabel: (
+      dialog.match(
+        /trắc nghiệm|đúng \/ sai|điền vào chỗ trống|nối hình ghép đôi|sắp xếp thứ tự|kéo thả vào nhóm|phân loại/
+      ) || ['none']
+    )[0],
+  });
+  if (!/\d\d:\d\d/.test(dialog)) fail('exam timer not visible');
+
+  let examItems = 0;
+  for (let i = 0; i < 24; i += 1) {
+    await answerCurrentItem(page);
+    examItems += 1;
+    const next = page.getByRole('button', { name: /^Câu tiếp$/ });
+    if (await next.count()) {
+      await next.click(CLICK);
+      await page.waitForTimeout(80);
+      continue;
+    }
+    break;
+  }
+  log('examAnswered', { itemsAnswered: examItems });
+
+  await page.getByRole('button', { name: /^Nộp Bài$/ }).click(CLICK);
+  await page.waitForSelector('text=Xác nhận Nộp Bài', { timeout: 12000 });
+  await page.getByRole('button', { name: 'Xác nhận Nộp Bài' }).click(CLICK);
+
+  const resultTitle = await page.getByText('KẾT QUẢ BÀI THI').count({ timeout: 20000 });
+  log('examResult', { shown: resultTitle > 0 });
+  if (!resultTitle) fail('exam result modal did not appear');
+
+  const resultText = (await page.evaluate(() => document.body.innerText)).toLowerCase();
+  log('resultBreakdown', {
+    hasScoreBreakdown: resultText.includes('bảng phân tích điểm'),
+    hasTypeBreakdown: resultText.includes('kết quả theo dạng bài'),
+    hasRemediation: resultText.includes('việc nên làm tiếp'),
+    hasFairnessNote: resultText.includes('không bị trừ vì bé đọc chậm'),
+  });
+  if (!resultText.includes('bảng phân tích điểm')) fail('decomposed scoring panel missing');
+
+  await page.getByRole('button', { name: 'Hoàn Tất' }).click(CLICK);
+  await page.waitForTimeout(400);
+
+  // ---------- 4b. WRONG-ANSWER PASS: prove error analysis + remediation render ----------
+  {
+    const again = page.getByRole('button', { name: /Vào Thi Thử/ }).first();
+    if (await again.count()) {
+      await again.click(CLICK);
+      await page.waitForSelector('role=dialog', { timeout: 20000 });
+      // Deliberately pick the LAST option everywhere to force mistakes.
+      for (let i = 0; i < 24; i += 1) {
+        const opts = page.locator('[data-testid=answer-option]');
+        const n = await opts.count();
+        if (n === 0) break;
+        await opts.nth(n - 1).click(CLICK);
+        const next = page.getByRole('button', { name: /^Câu tiếp$/ });
+        if (await next.count()) {
+          await next.click(CLICK);
+          await page.waitForTimeout(70);
+          continue;
+        }
+        break;
+      }
+      await page.getByRole('button', { name: /^Nộp Bài$/ }).click(CLICK);
+      await page.waitForSelector('text=Xác nhận Nộp Bài', { timeout: 12000 });
+      await page.getByRole('button', { name: 'Xác nhận Nộp Bài' }).click(CLICK);
+      await page.getByText('KẾT QUẢ BÀI THI').count({ timeout: 20000 });
+
+      const wrongText = (await page.evaluate(() => document.body.innerText)).toLowerCase();
+      log('errorAnalysisRendered', {
+        hasMistakesHeading: wrongText.includes('xem lại các câu cần lưu ý'),
+        hasCategoryLabel:
+          wrongText.includes('chọn nhanh quá') ||
+          wrongText.includes('cần suy luận nhiều bước') ||
+          wrongText.includes('cần ôn lại kiến thức') ||
+          wrongText.includes('chưa đọc kỹ câu hỏi'),
+        hasRemediation: wrongText.includes('việc nên làm tiếp'),
+        hasRemediationButton: wrongText.includes('luyện kỹ năng yếu ngay'),
+        showsCorrectAnswer: wrongText.includes('đáp án đúng'),
+      });
+      if (!wrongText.includes('việc nên làm tiếp'))
+        fail('error analysis did not render remediation for wrong answers');
+
+      await page.getByRole('button', { name: 'Hoàn Tất' }).click(CLICK);
+      await page.waitForTimeout(400);
+    } else {
+      log('errorAnalysisRendered', { skipped: 'no second exam button' });
+    }
+  }
+
+  // ---------- 5. PARENT MODE ----------
+  await page.getByRole('button', { name: /Ba Mẹ/ }).first().click(CLICK);
+  await page.waitForSelector('text=Cổng Xác Nhận Phụ Huynh', { timeout: 20000 });
+  log('parentGate', { shown: true });
+
+  const gate = await page.evaluate(() => {
+    const el = document.querySelector('.bg-slate-100.rounded-2xl');
+    return el ? el.textContent.trim() : null;
+  });
+  const m = gate && gate.match(/(\d+)\s*\+\s*(\d+)/);
+  if (!m) fail('could not read the parent gate arithmetic');
+  await page.getByRole('spinbutton').fill(String(Number(m[1]) + Number(m[2])), CLICK);
+  await page.getByRole('button', { name: 'Mở Bảng Phụ Huynh' }).click(CLICK);
+  await page.waitForTimeout(800);
+  log('parentUnlocked', { ok: true });
+
+  // Scope to the parent modal so we never hit the app's own navigation.
+  const parentModal = page.locator('.fixed.inset-0.z-50').last();
+  const readingTabBtn = parentModal.getByRole('button', { name: 'Luyện Đọc', exact: true });
+  await readingTabBtn.click(CLICK);
+  await page.waitForTimeout(600);
+  const readingTab = await page.evaluate(() => document.body.innerText);
+  log('parentReadingTab', {
+    hasIndex: readingTab.includes('Chỉ số đọc'),
+    hasLadder: readingTab.includes('Tiến bộ theo bậc thang'),
+    hasAdvice: readingTab.includes('Gợi ý cho ba mẹ về việc đọc'),
+    hasDemoBanner: readingTab.includes('DỮ LIỆU THỬ NGHIỆM'),
+  });
+  if (!readingTab.includes('Tiến bộ theo bậc thang')) fail('parent reading ladder missing');
+  if (readingTab.includes('DỮ LIỆU THỬ NGHIỆM')) fail('demo banner shown for a real profile');
+
+  await parentModal.getByRole('button', { name: 'Đấu Trường Thi Thử', exact: true }).click(CLICK);
+  await page.waitForTimeout(600);
+  const compTab = await page.evaluate(() => document.body.innerText);
+  log('parentCompetitionTab', {
+    hasExamCount: compTab.includes('Bài thi đã làm'),
+    hasLog: compTab.includes('Nhật Ký Các Lần Thi Thử'),
+  });
+
+  // ---------- 6. RELOAD + PERSISTENCE ----------
+  const read = () =>
+    page.evaluate(() => {
+      const profile = JSON.parse(localStorage.getItem('kho_bau_child_profile') || '{}');
+      const comp = JSON.parse(localStorage.getItem('kho_bau_competition_history') || '{}');
+      const readStore = JSON.parse(localStorage.getItem('kho_bau_reading_store') || '{}');
+      return {
+        xp: profile.xp || 0,
+        lessons: (profile.completedLessons || []).length,
+        exams: (comp.examResults || []).length,
+        readingSessions: (readStore.metrics || []).length,
+      };
+    });
+
+  const before = await read();
+  await page.reload();
+  await page.waitForSelector('text=Xin chào', { timeout: 20000 });
+  const after = await read();
+
+  const persisted =
+    JSON.stringify(before) === JSON.stringify(after) &&
+    after.xp > 0 &&
+    after.lessons > 0 &&
+    after.exams > 0 &&
+    after.readingSessions > 0;
+
+  log('persistenceAfterReload', { before, after, persisted });
+  if (!persisted) fail('progress did not survive a reload');
+
+  await page.reload();
+  await page.waitForSelector('text=Xin chào', { timeout: 20000 });
+  const afterSecond = await read();
+  log('noDuplicateRewards', { xpBefore: after.xp, xpAfter: afterSecond.xp });
+  if (afterSecond.xp !== after.xp) fail('XP changed on reload');
+  if (afterSecond.exams !== after.exams) fail('exam count changed on reload');
+}

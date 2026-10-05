@@ -13,6 +13,7 @@ import {
 import { SubjectType } from '../types';
 import { getAllSkills } from '../data/curriculum';
 import { COMPETITION_SKILLS } from '../data/competitionTaxonomy';
+import { SPEED_POLICY } from '../config/policy';
 
 export const LEARNING_OS_POLICY = {
   POLICY_VERSION: 'P28-v1',
@@ -190,14 +191,26 @@ export class LearningOS {
 
   /**
    * Generates prioritized list of Next Best Actions based on knowledge states, fatigue, and policy.
+   *
+   * `trackActions` lets a learning track (e.g. the Kid's Box Companion) inject
+   * its own evidence-driven recommendations into the same ranked list, instead
+   * of running a second, parallel recommendation engine (§1, §26). A track
+   * still cannot invent mastery: it only proposes actions from its own evidence.
    */
   public static getNextBestActions(
     knowledgeMap: Record<string, KnowledgeState>,
     fatigue?: SessionFatigueState,
-    currentTime: number = Date.now()
+    currentTime: number = Date.now(),
+    trackActions: LearningAction[] = []
   ): LearningAction[] {
     const states = Object.values(knowledgeMap);
     const totalEvidenceCount = states.reduce((sum, s) => sum + s.attemptCount, 0);
+
+    // Track actions lead the list while a track still has work to propose, so
+    // the child sees the track's own next best step first (§19, §22).
+    if (trackActions.length > 0) {
+      return [...trackActions].sort((a, b) => b.priority - a.priority || a.id.localeCompare(b.id));
+    }
 
     // ==========================================
     // 1. COLD START HANDLER (New child with 0 or < 3 total attempts)
@@ -238,9 +251,9 @@ export class LearningOS {
           id: 'action_cold_game',
           type: 'GAME',
           subject: 'tieng-viet',
-          gameId: 'game_letter_catcher',
-          gameTitle: 'Hứng Chữ Thần Tốc',
-          title: 'Trò Chơi: Hứng Chữ Thần Tốc',
+          gameId: 'catch_letters',
+          gameTitle: 'Bắt Chữ Cái Bay',
+          title: 'Trò Chơi: Bắt Chữ Cái Bay',
           description: 'Hứng những chữ cái rơi để làm quen phản xạ',
           reason: 'Tạo cảm xúc vui vẻ, hào hứng và làm quen thao tác trong ứng dụng.',
           childExplanation: 'Chơi một trò chơi hứng chữ cực vui để nhận điểm thưởng nhé!',
@@ -260,9 +273,9 @@ export class LearningOS {
           id: 'action_fatigue_rest',
           type: 'GAME',
           subject: 'toan',
-          gameId: 'game_color_match',
-          gameTitle: 'Vũ Điệu Sắc Màu',
-          title: 'Thư Giãn Cùng Vũ Điệu Sắc Màu',
+          gameId: 'memory_cards',
+          gameTitle: 'Lật Thẻ Trí Nhớ Vàng',
+          title: 'Thư Giãn Cùng Lật Thẻ Trí Nhớ',
           description: 'Trò chơi nhẹ nhàng giúp mắt bé nghỉ ngơi và thư giãn tinh thần',
           reason: 'Bé đã học liên tục trong thời gian dài. Hệ thống chuyển sang hoạt động thư giãn nhẹ nhàng.',
           childExplanation: 'Hôm nay con đã rất chăm chỉ rồi! Chơi một trò chơi nhẹ nhàng rồi nghỉ ngơi nhé.',
@@ -337,7 +350,9 @@ export class LearningOS {
       }
 
       // P3: High accuracy but slow pace -> SPEED_PRACTICE
-      if (k.accuracy >= 85 && k.averageResponseTimeMs && k.averageResponseTimeMs > 25000) {
+      if (k.accuracy >= 85 &&
+        k.averageResponseTimeMs &&
+        k.averageResponseTimeMs > SPEED_POLICY.SPEED_PRACTICE_MIN_SECONDS * 1000) {
         candidateActions.push({
           id: `speed_${k.skillId}`,
           type: 'SPEED_PRACTICE',
@@ -378,16 +393,78 @@ export class LearningOS {
       id: 'action_game_reinforce',
       type: 'GAME',
       subject: 'toan',
-      gameId: 'game_balloon_math',
-      gameTitle: 'Bóng Bay Toán Học',
-      title: 'Trò Chơi: Bóng Bay Phép Tính',
-      description: 'Bắn vỡ bóng bay mang kết quả phép tính đúng',
-      reason: 'Củng cố tính nhẩm thông qua tương tác phản xạ trò chơi giải trí có thưởng.',
-      childExplanation: 'Thử tài nhanh tay tinh mắt bắn bóng bay toán học vui nhộn!',
+      gameId: 'color_balloon',
+      gameTitle: 'Pop The Color Balloons!',
+      title: 'Trò Chơi: Bóng Bay Màu Sắc',
+      description: 'Bận vỡ bóng bay mang đúng màu sắc tiếng Anh',
+      reason: 'Củng cố từ vựng thông qua tương tác phản xạ trò chơi giải trí có thưởng.',
+      childExplanation: 'Thử tài nhanh tay tinh mắt bắn bóng bay màu sắc vui nhộn!',
       estimatedMinutes: 4,
       priority: 60,
       badgeEmoji: '🎈',
     });
+
+    // ==========================================
+    // 4. READING FLUENCY TRACK (P27.5)
+    // ==========================================
+    // Reading fluency is a first-class learning goal, not a side quest.
+    // It is derived from real reading evidence only (never from a single score).
+    const readingStates = states.filter((s) => s.skillId.startsWith('rf_'));
+    if (readingStates.length > 0) {
+      const readingAttempts = readingStates.reduce((sum, s) => sum + s.attemptCount, 0);
+      const readingRecent = Math.round(
+        readingStates.reduce((sum, s) => sum + s.recentAccuracy, 0) / readingStates.length
+      );
+      const weakest = [...readingStates].sort((a, b) => a.recentAccuracy - b.recentAccuracy)[0];
+
+      if (readingRecent < LEARNING_OS_POLICY.MASTERY_HIGH_THRESHOLD && readingAttempts >= 3) {
+        candidateActions.push({
+          id: 'action_reading_fluency',
+          type: 'PRACTICE',
+          subject: 'tieng-viet',
+          skillId: weakest.skillId,
+          skillName: 'Luyện đọc chắc – đọc lưu loát',
+          title: 'Luyện Đọc Chắc & Lưu Loát',
+          description: 'Đọc đoạn văn ngắn rồi trả lời câu hỏi hiểu nội dung',
+          reason: `Độ chính xác đọc hiểu gần đây ${readingRecent}%. Mỗi bài đọc ngắn giúp bé đọc vững hơn.`,
+          childExplanation: 'Mình cùng đọc một đoạn ngắn rồi trả lời mấy câu nhé, bé đọc rất tốt rồi!',
+          estimatedMinutes: 6,
+          priority: 88,
+          badgeEmoji: '📖',
+        });
+      } else if (readingRecent >= LEARNING_OS_POLICY.MASTERY_HIGH_THRESHOLD) {
+        candidateActions.push({
+          id: 'action_reading_speed',
+          type: 'SPEED_PRACTICE',
+          subject: 'tieng-viet',
+          skillId: 'rf_read_aloud_speed',
+          skillName: 'Đọc nhanh mà rõ',
+          title: 'Rèn Đọc Nhanh Mà Vẫn Rõ',
+          description: 'Đọc câu ngắn thật nhanh nhưng không bỏ sót chữ nào',
+          reason: `Bé đọc hiểu đã ở mức ${readingRecent}%. Đã đủ nền để luyện thêm tốc độ đọc.`,
+          childExplanation: 'Bé đọc chắc rồi, giờ mình thử đọc nhanh thêm chút nhé!',
+          estimatedMinutes: 4,
+          priority: 74,
+          badgeEmoji: '⚡',
+        });
+      }
+    } else {
+      // Cold start for reading: introduce the ladder as a low-pressure habit.
+      candidateActions.push({
+        id: 'action_reading_intro',
+        type: 'LEARN',
+        subject: 'tieng-viet',
+        skillId: 'rf_word_recognition',
+        skillName: 'Nhận diện từ khi đọc',
+        title: 'Làm Quen Luyện Đọc',
+        description: 'Đọc đoạn văn thật ngắn và trả lời câu hỏi đơn giản',
+        reason: 'Đọc lưu loát là nền tảng để đọc nhanh và hiểu nhanh sau này.',
+        childExplanation: 'Mình cùng đọc một đoạn ngắn xem nhé, rất dễ!',
+        estimatedMinutes: 5,
+        priority: 76,
+        badgeEmoji: '📖',
+      });
+    }
 
     // Sort deterministically by priority descending, then by id for stability
     candidateActions.sort((a, b) => b.priority - a.priority || a.id.localeCompare(b.id));
@@ -402,9 +479,10 @@ export class LearningOS {
     knowledgeMap: Record<string, KnowledgeState>,
     dateString: string = new Date().toISOString().split('T')[0],
     fatigue?: SessionFatigueState,
-    policyVersion: string = LEARNING_OS_POLICY.POLICY_VERSION
+    policyVersion: string = LEARNING_OS_POLICY.POLICY_VERSION,
+    trackActions: LearningAction[] = []
   ): DailyPlan {
-    const actions = this.getNextBestActions(knowledgeMap, fatigue);
+    const actions = this.getNextBestActions(knowledgeMap, fatigue, Date.now(), trackActions);
 
     const selectedItems: DailyPlanItem[] = [];
     let totalMinutes = 0;

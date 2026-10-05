@@ -10,12 +10,15 @@ interface SubjectScreenProps {
   subject: SubjectType;
   onBack: () => void;
   onProfileUpdate: () => void;
+  /** Opens the Kid's Box Companion track (English only). */
+  onOpenKidBox?: () => void;
 }
 
 export const SubjectScreen: React.FC<SubjectScreenProps> = ({
   subject,
   onBack,
   onProfileUpdate,
+  onOpenKidBox,
 }) => {
   const topics: Topic[] = getTopicsBySubject(subject);
   const [activeLesson, setActiveLesson] = useState<Lesson | null>(null);
@@ -108,6 +111,31 @@ export const SubjectScreen: React.FC<SubjectScreenProps> = ({
 
       {/* Topics & Lessons List */}
       <div className="space-y-6">
+        {/* Kid's Box Companion entry — only inside English (Learning OS → English → Kid's Box). */}
+        {subject === 'english' && onOpenKidBox && (
+          <button
+            onClick={() => {
+              sound.playClick();
+              onOpenKidBox();
+            }}
+            className="w-full text-left bg-gradient-to-r from-emerald-500 to-teal-600 rounded-3xl p-5 md:p-6 text-white shadow-lg border-4 border-white/60 flex items-center gap-4 active:scale-[0.99] cursor-pointer"
+          >
+            <span className="w-14 h-14 md:w-16 md:h-16 bg-white rounded-3xl flex items-center justify-center text-3xl md:text-4xl border-4 border-emerald-200 shrink-0">
+              🐰
+            </span>
+            <span className="flex-1 min-w-0">
+              <span className="block text-[11px] font-black uppercase tracking-wider text-emerald-50">
+                British English · en-GB
+              </span>
+              <span className="block text-base md:text-lg font-black font-display">Kid&apos;s Box Companion</span>
+              <span className="block text-xs font-bold text-emerald-50 mt-0.5">
+                Unit hiện tại · Từ vựng · Nghe · Nói · Âm thanh · Trò chơi
+              </span>
+            </span>
+            <Play className="w-6 h-6 fill-white shrink-0" />
+          </button>
+        )}
+
         {topics.map((topic, topicIdx) => (
           <div
             key={topic.id}

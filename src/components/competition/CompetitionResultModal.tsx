@@ -1,5 +1,6 @@
 import React from 'react';
 import { CompetitionExamResult } from '../../types/competition';
+import { QUESTION_TYPE_LABELS } from '../../services/competitionEngine';
 import { sound } from '../../services/sound';
 import { fireCelebrationConfetti } from '../../services/confetti';
 import {
@@ -14,6 +15,9 @@ import {
   RotateCcw,
   Sparkles,
   X,
+  Timer,
+  Target,
+  ListChecks,
 } from 'lucide-react';
 
 interface CompetitionResultModalProps {
@@ -22,6 +26,15 @@ interface CompetitionResultModalProps {
   onRetake: () => void;
   onStartRemediation: (weakSkills: string[]) => void;
 }
+
+const ERROR_CATEGORY_LABELS: Record<string, string> = {
+  CARELESS_ERROR: 'Chọn nhanh quá — cần đọc kỹ đề',
+  REASONING_ERROR: 'Cần suy luận nhiều bước',
+  KNOWLEDGE_GAP: 'Cần ôn lại kiến thức',
+  MISREAD: 'Chưa đọc kỹ câu hỏi',
+  UNCLASSIFIED: 'Chưa trả lời',
+  SPEED_ERROR: 'Áp lực thời gian',
+};
 
 export const CompetitionResultModal: React.FC<CompetitionResultModalProps> = ({
   result,
@@ -79,7 +92,7 @@ export const CompetitionResultModal: React.FC<CompetitionResultModalProps> = ({
             <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-2xl text-center">
               <span className="text-xs font-bold text-amber-800 block mb-0.5">Điểm Số</span>
               <span className="text-2xl md:text-3xl font-black text-amber-950 font-display">
-                {result.score}/10
+                {result.score}/{result.scoring.maxScore}
               </span>
             </div>
 
@@ -104,6 +117,45 @@ export const CompetitionResultModal: React.FC<CompetitionResultModalProps> = ({
               </span>
             </div>
           </div>
+
+          {/* Decomposed scoring (§13): no single opaque number */}
+          <section className="p-4 bg-slate-50 border border-slate-200 rounded-2xl">
+            <h4 className="text-xs font-black uppercase tracking-wider text-slate-600 flex items-center gap-1.5 mb-2">
+              <ListChecks className="w-4 h-4" />
+              Bảng phân tích điểm
+            </h4>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
+              <ScoreFact icon={<Target className="w-3.5 h-3.5" />} label="Điểm thô" value={`${result.scoring.rawScore}/${result.scoring.maxScore}`} />
+              <ScoreFact icon={<CheckCircle className="w-3.5 h-3.5" />} label="Đã làm" value={`${result.scoring.attemptedCount}/${result.scoring.totalQuestions} câu`} />
+              <ScoreFact icon={<CheckCircle className="w-3.5 h-3.5" />} label="Hoàn thành" value={`${result.scoring.completion}%`} />
+              <ScoreFact icon={<Timer className="w-3.5 h-3.5" />} label="Nhanh/chậm nhất" value={`${result.scoring.fastestQuestionSeconds}s / ${result.scoring.slowestQuestionSeconds}s`} />
+            </div>
+            <p className="text-[11px] text-slate-500 mt-2">
+              Tốc độ chỉ để mô tả nhịp độ làm bài — điểm số không bị trừ vì bé đọc chậm mà chính xác.
+            </p>
+          </section>
+
+          {/* Performance per question type (§13) */}
+          {Object.keys(result.scoring.questionTypePerformance).length > 0 && (
+            <section className="p-4 bg-white border border-slate-200 rounded-2xl">
+              <h4 className="text-xs font-black uppercase tracking-wider text-slate-600 mb-2">
+                Kết quả theo dạng bài
+              </h4>
+              <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {Object.entries(result.scoring.questionTypePerformance).map(([type, stat]) => (
+                  <li
+                    key={type}
+                    className="flex items-center justify-between text-xs font-bold bg-amber-50/70 border border-amber-200 rounded-xl px-3 py-2"
+                  >
+                    <span>{QUESTION_TYPE_LABELS[type as keyof typeof QUESTION_TYPE_LABELS] ?? type}</span>
+                    <span className="tabular-nums">
+                      {stat.correct}/{stat.total}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
 
           {/* Speed & Feedback Banner */}
           <div className="p-4 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-2xl flex items-center gap-3">
@@ -178,16 +230,17 @@ export const CompetitionResultModal: React.FC<CompetitionResultModalProps> = ({
                     key={idx}
                     className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-2 text-xs"
                   >
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
                       <span className="font-black text-amber-800">
                         Câu {idx + 1}: {err.skillName}
                       </span>
-                      <span className="px-2 py-0.5 bg-rose-100 text-rose-700 rounded-md font-bold text-[10px]">
-                        {err.category === 'CARELESS_ERROR'
-                          ? 'Bấm vội'
-                          : err.category === 'REASONING_ERROR'
-                          ? 'Nhầm suy luận'
-                          : 'Cần ôn lại'}
+                      <span className="flex items-center gap-1.5">
+                        <span className="px-2 py-0.5 bg-slate-200 text-slate-700 rounded-md font-bold text-[10px]">
+                          {QUESTION_TYPE_LABELS[err.questionType] ?? err.questionType}
+                        </span>
+                        <span className="px-2 py-0.5 bg-rose-100 text-rose-700 rounded-md font-bold text-[10px]">
+                          {ERROR_CATEGORY_LABELS[err.category] ?? err.category}
+                        </span>
                       </span>
                     </div>
 
@@ -210,6 +263,10 @@ export const CompetitionResultModal: React.FC<CompetitionResultModalProps> = ({
                     </div>
 
                     <p className="text-[11px] text-slate-500 italic">Lời khuyên: {err.advice}</p>
+
+                    <p className="text-[11px] font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2">
+                      👉 Việc nên làm tiếp: {err.remediation.label}
+                    </p>
                   </div>
                 ))}
               </div>
@@ -261,3 +318,17 @@ export const CompetitionResultModal: React.FC<CompetitionResultModalProps> = ({
     </div>
   );
 };
+
+const ScoreFact: React.FC<{ icon: React.ReactNode; label: string; value: string }> = ({
+  icon,
+  label,
+  value,
+}) => (
+  <div className="flex items-center justify-between gap-2 bg-white border border-slate-200 rounded-xl px-3 py-2">
+    <span className="flex items-center gap-1 text-slate-500 font-bold">
+      {icon}
+      {label}
+    </span>
+    <span className="font-black text-slate-800 tabular-nums">{value}</span>
+  </div>
+);

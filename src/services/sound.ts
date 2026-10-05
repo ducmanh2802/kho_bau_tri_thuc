@@ -228,7 +228,7 @@ class SoundService {
   }
 
   // Text to speech (Vietnamese & English)
-  public speak(text: string, lang: 'vi-VN' | 'en-US' = 'vi-VN') {
+  public speak(text: string, lang: 'vi-VN' | 'en-US' | 'en-GB' = 'vi-VN') {
     if (this.isMuted || !this.voiceEnabled) return;
     if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
 
@@ -242,17 +242,9 @@ class SoundService {
       utterance.rate = lang === 'vi-VN' ? 0.9 : 0.85; // Slightly slower, clear for grade 1 kids
       utterance.pitch = 1.1; // Friendly, warm pitch
 
-      const allVoices = this.cachedVoices.length > 0 ? this.cachedVoices : window.speechSynthesis.getVoices();
-      if (allVoices.length > 0) {
-        // Priority 1: Exact locale match (e.g. 'vi-VN' or 'en-US')
-        let matchingVoice = allVoices.find((v) => v.lang === lang || v.lang.replace('_', '-') === lang);
-        // Priority 2: Prefix match (e.g. 'vi' or 'en')
-        if (!matchingVoice) {
-          matchingVoice = allVoices.find((v) => v.lang.startsWith(lang.slice(0, 2)));
-        }
-        if (matchingVoice) {
-          utterance.voice = matchingVoice;
-        }
+      const matchingVoice = this.pickVoice(lang);
+      if (matchingVoice) {
+        utterance.voice = matchingVoice;
       }
 
       window.speechSynthesis.speak(utterance);
@@ -260,6 +252,46 @@ class SoundService {
       // Speech synthesis error handled quietly without crashing
     }
   }
+
+  /**
+   * Voice selection chain (§7):
+   *   1. exact locale match ('en-GB')
+   *   2. regional variant of the same locale ('en-GB-SCT')
+   *   3. any voice sharing the base language ('en-*')
+   * Returns null when the platform offers nothing usable, so the caller can
+   * fall back to text/captions instead of pretending an audio happened.
+   */
+  public pickVoice(lang: 'vi-VN' | 'en-US' | 'en-GB'): SpeechSynthesisVoice | null {
+    const allVoices = this.cachedVoices.length > 0 ? this.cachedVoices : this.getVoices();
+    if (allVoices.length === 0) return null;
+
+    const base = lang.split('-')[0];
+    const exact = allVoices.find((v) => v.lang === lang || v.lang.replace('_', '-') === lang);
+    if (exact) return exact;
+
+    const regional = allVoices.find((v) => v.lang.replace('_', '-').startsWith(`${lang}-`));
+    if (regional) return regional;
+
+    return allVoices.find((v) => v.lang.replace('_', '-').startsWith(base)) ?? null;
+  }
+
+  /** Re-reads the platform voice list (populated asynchronously on load). */
+  public getVoices(): SpeechSynthesisVoice[] {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return [];
+    try {
+      const voices = window.speechSynthesis.getVoices();
+      if (voices.length > 0) this.cachedVoices = voices;
+      return this.cachedVoices;
+    } catch {
+      return this.cachedVoices;
+    }
+  }
+
+  /** True when a voice for this exact locale exists on the device. */
+  public hasVoiceFor(lang: 'vi-VN' | 'en-US' | 'en-GB'): boolean {
+    return this.getVoices().some((v) => v.lang === lang || v.lang.replace('_', '-') === lang);
+  }
+
 
   public stopSpeaking() {
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {

@@ -291,6 +291,7 @@ export const LessonPlayerModal: React.FC<LessonPlayerModalProps> = ({
                     return (
                       <button
                         key={i}
+                        data-testid="answer-option"
                         onClick={() => handleSelectOption(opt)}
                         disabled={isAnswerChecked}
                         className={`p-4 rounded-2xl border-3 font-bold text-base md:text-lg flex items-center justify-center transition-all cursor-pointer text-center ${stateStyle}`}

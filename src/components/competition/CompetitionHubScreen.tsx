@@ -43,6 +43,7 @@ export const CompetitionHubScreen: React.FC<CompetitionHubScreenProps> = ({
   // Active exam session
   const [activeBlueprint, setActiveBlueprint] = useState<ExamBlueprint | null>(null);
   const [activeQuestions, setActiveQuestions] = useState<CompetitionQuestion[]>([]);
+  const [paperShortfall, setPaperShortfall] = useState(0);
   const [isExamModalOpen, setIsExamModalOpen] = useState(false);
 
   // Active result modal
@@ -58,15 +59,25 @@ export const CompetitionHubScreen: React.FC<CompetitionHubScreenProps> = ({
 
   const handleStartExam = (blueprint: ExamBlueprint) => {
     sound.playClick();
-    const questions = CompetitionEngine.assembleExamQuestions(blueprint);
+    // Seeded determinism (§17): the seed is derived from the blueprint version
+    // and the number of attempts so a retake produces a *different but equally
+    // valid* paper, while any given (blueprint, seed) always rebuilds the same
+    // paper. Never random, never "first N of the pool".
+    const attempts = historyStore.examResults.filter(
+      (r) => r.blueprintId === blueprint.id
+    ).length;
+    const seed = CompetitionEngine.hashSeed(`${blueprint.id}:v${blueprint.version}:${attempts}`);
+    const { questions, shortfall } = CompetitionEngine.assembleExam(blueprint, seed);
     setActiveBlueprint(blueprint);
     setActiveQuestions(questions);
+    setPaperShortfall(shortfall);
     setIsExamModalOpen(true);
   };
 
   const handleStartSkillPractice = (skillId: string) => {
     sound.playClick();
-    const questions = CompetitionEngine.assembleSkillPractice(skillId, 5);
+    const seed = CompetitionEngine.hashSeed(`skill:${skillId}:${historyStore.practicedSkills[skillId]?.attempts ?? 0}`);
+    const questions = CompetitionEngine.assembleSkillPractice(skillId, 5, seed);
     const skill = COMPETITION_SKILLS.find((s) => s.skillId === skillId);
 
     const practiceBlueprint: ExamBlueprint = {
@@ -81,10 +92,13 @@ export const CompetitionHubScreen: React.FC<CompetitionHubScreenProps> = ({
       badgeEmoji: '🎯',
       rewardXp: 40,
       rewardStars: 3,
+      maxScore: 10,
+      version: 1,
     };
 
     setActiveBlueprint(practiceBlueprint);
     setActiveQuestions(questions);
+    setPaperShortfall(0);
     setIsExamModalOpen(true);
   };
 
@@ -97,9 +111,11 @@ export const CompetitionHubScreen: React.FC<CompetitionHubScreenProps> = ({
       weakSkills.includes(s.skillName)
     ).map((s) => s.skillId);
 
+    const seed = CompetitionEngine.hashSeed(`remediation:${targetSkillIds.join(',')}:${historyStore.examResults.length}`);
     const questions = CompetitionEngine.assembleAdaptiveRemediation(
       targetSkillIds.length > 0 ? targetSkillIds : ['MATH-SUBTRACTION'],
-      6
+      6,
+      seed
     );
 
     const remediationBlueprint: ExamBlueprint = {
@@ -114,10 +130,13 @@ export const CompetitionHubScreen: React.FC<CompetitionHubScreenProps> = ({
       badgeEmoji: '💡',
       rewardXp: 50,
       rewardStars: 4,
+      maxScore: 10,
+      version: 1,
     };
 
     setActiveBlueprint(remediationBlueprint);
     setActiveQuestions(questions);
+    setPaperShortfall(0);
     setIsExamModalOpen(true);
   };
 
@@ -461,6 +480,7 @@ export const CompetitionHubScreen: React.FC<CompetitionHubScreenProps> = ({
         <CompetitionExamModal
           blueprint={activeBlueprint}
           questions={activeQuestions}
+          shortfall={paperShortfall}
           isOpen={isExamModalOpen}
           onClose={() => setIsExamModalOpen(false)}
           onFinish={handleFinishExam}

@@ -116,6 +116,12 @@ export interface ChildProfile {
   completedLessons: string[];
   completedWeeklyChallenges: string[];
   dailyChestClaimedDate?: string;
+  /**
+   * True when the profile was populated by the parent-only demo seeder.
+   * Demo figures are fabricated for showcasing reports and must never be
+   * presented to the child (or to parents) as real learner progress.
+   */
+  isDemoData?: boolean;
 }
 
 export interface LearningAnalytics {
@@ -149,10 +155,13 @@ export type ActiveScreen =
   | 'subject'
   | 'games'
   | 'daily_review'
+  | 'reading_fluency'
   | 'weekly_challenge'
   | 'competition'
   | 'achievements'
-  | 'avatar_shop';
+  | 'avatar_shop'
+  | 'kidbox_companion';
 
 export * from './competition';
+export * from './reading';
 export * from './learningOS';

@@ -69,7 +69,10 @@ describe('Competition Engine Assembly, Scoring & Error Analysis', () => {
       {
         id: 'q1',
         subject: 'toan',
+        topic: 'Số học',
         skillId: 'MATH-NUMBER',
+        questionType: 'multiple-choice',
+        version: 1,
         difficulty: 'EASY',
         prompt: '1 + 1 = ?',
         options: ['1', '2', '3', '4'],
@@ -80,7 +83,10 @@ describe('Competition Engine Assembly, Scoring & Error Analysis', () => {
       {
         id: 'q2',
         subject: 'toan',
+        topic: 'Tư duy logic',
         skillId: 'MATH-LOGIC',
+        questionType: 'multiple-choice',
+        version: 1,
         difficulty: 'HARD',
         prompt: 'Hard logic puzzle',
         options: ['A', 'B', 'C', 'D'],

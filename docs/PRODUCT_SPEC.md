@@ -19,3 +19,25 @@ Mỗi mini-game sở hữu cơ chế gameplay riêng biệt:
 - **Toán Học**: Hứng số rơi rộn ràng, Đường đua toán học thần tốc, Xây tháp số lên mây, Câu cá đại dương xanh, Phân loại hình học.
 - **Tiếng Anh**: Safari động vật tiếng Anh, Pop The Color Balloons.
 - **Giải trí trí tuệ**: Lật thẻ trí nhớ vàng, Bé tập vẽ và tô màu canvas.
+
+### 5. English Companion Track: Kid's Box New Generation 1 (British English)
+
+Ngoài 10 chủ đề English nền, môn Tiếng Anh có một **learning track riêng** bám theo
+chương trình Kid's Box New Generation 1 mà trung tâm đang dạy:
+
+- **British English `en-GB`**: locale duy nhất của track; fallback có kiểm soát
+  (en-GB → en-GB regional → English → chỉ chữ/phụ đề) và nhãn trung thực khi thiết bị
+  không có giọng en-GB.
+- **Vòng lặp 9 bước**: Nhìn → Nghe → Hiểu → Lặp lại → Luyện tập → Dùng → Ôn tập →
+  Trò chơi → Kiểm tra. Không bước nào bị khoá; bước nào có bằng chứng thì gắn DONE.
+- **Listening là kỹ năng hạng nhất**: nghe lại không giới hạn, có nút nghe chậm, không
+  bao giờ bị trừ điểm.
+- **Speaking không chấm điểm phát âm**: kết quả được ghi là `speech recognition match`
+  hoặc `self-check`; thiếu nhận giọng nói thì bé vẫn nghe – lặp lại – tự đối chiếu.
+- **“English hôm nay”**: kế hoạch 8–12 phút tùy tuổi, dựng từ điểm yếu thật đo
+  được, mục đến hạn ôn tập và mức mệt của bé.
+- **Center ↔ Home**: phụ huynh chọn Unit/Tuần và bấm “Ôn ở nhà” để lấy gói ôn tập
+  (từ vựng · nghe · nói · âm thanh · mini game) mà không phải nhập điểm.
+- **Nội dung giáo trình**: repo chưa có nguồn đã xác minh, nên các ô Unit giáo trình
+  được đánh dấu `CONTENT_SOURCE_REQUIRED` và app liệt kê chính xác 7 nhóm tài liệu cần
+  bổ sung. Không có tên Unit hay từ vựng nào được bịa ra.

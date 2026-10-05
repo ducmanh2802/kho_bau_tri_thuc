@@ -1,6 +1,8 @@
 import { Question, SkillMastery, SubjectType } from '../types';
 import { getAllQuestions, getAllSkills } from '../data/curriculum';
 import { StorageService } from './storage';
+import { READING_SKILLS } from '../data/readingContent';
+import type { ReadingProfile, ReadingStage } from '../types/reading';
 
 export interface SmartReviewSet {
   questions: Question[];
@@ -10,6 +12,24 @@ export interface SmartReviewSet {
   masteredCount: number;
 }
 
+export interface ReadingProgressReport {
+  readingIndex: number;
+  accuracyIndex: number;
+  comprehensionIndex: number;
+  fluencyIndex: number;
+  currentStage: ReadingStage;
+  currentStageLabel: string;
+  totalSessions: number;
+  averageAccuracy: number;
+  wordsPerMinute: number;
+  headline: string;
+  encouragement: string;
+  /** Per-skill reading accuracy, ready for a parent table. */
+  skillRows: { skillId: string; skillName: string; accuracy: number; attempts: number }[];
+  stageRows: { stage: ReadingStage; label: string; accuracy: number; gate: number; unlocked: boolean; completed: boolean }[];
+  adviceList: string[];
+}
+
 export interface ParentDiagnosticReport {
   overallAccuracy: number;
   totalAnswered: number;
@@ -17,6 +37,11 @@ export interface ParentDiagnosticReport {
   weakSkills: SkillMastery[];
   strongSkills: SkillMastery[];
   adviceList: string[];
+  /**
+   * True when the underlying numbers were produced by the demo seeder.
+   * The UI must label them as sample data (§1.2) — never as learner progress.
+   */
+  isDemoData: boolean;
 }
 
 export class AdaptiveService {
@@ -193,6 +218,114 @@ export class AdaptiveService {
       subjectMastery,
       weakSkills,
       strongSkills,
+      adviceList,
+      isDemoData: StorageService.getChildProfile().isDemoData === true,
+    };
+  }
+
+  /**
+   * Reading fluency report for parents (§20): what the child does well, what to
+   * practise next, and the evidence behind each claim.
+   */
+  public static generateReadingReport(): ReadingProgressReport {
+    const profile: ReadingProfile = StorageService.getReadingProfile();
+    const history = StorageService.getReadingMetricsHistory();
+
+    const measured = history.filter((m) => m.itemsProcessed > 0);
+    const averageAccuracy =
+      measured.length > 0
+        ? Math.round(measured.reduce((sum, m) => sum + m.accuracy, 0) / measured.length)
+        : 0;
+    const wpmSamples = measured.filter((m) => m.wordsPerMinute > 0);
+    const wordsPerMinute =
+      wpmSamples.length > 0
+        ? Math.round(wpmSamples.reduce((sum, m) => sum + m.wordsPerMinute, 0) / wpmSamples.length)
+        : 0;
+
+    const STAGE_LABELS: Record<ReadingStage, string> = {
+      ACCURACY: 'Đọc chính xác',
+      FLUENCY: 'Đọc lưu loát',
+      COMPREHENSION: 'Hiểu nội dung',
+      PROCESSING_SPEED: 'Hiểu nhanh',
+      COMPETITION_SPEED: 'Tốc độ thi',
+    };
+
+    const skillRows = Object.values(profile.skillStates)
+      .map((s) => ({
+        skillId: String(s.skillId),
+        skillName:
+          READING_SKILLS.find((d) => d.skillId === s.skillId)?.skillName ?? s.skillName,
+        accuracy: s.accuracy,
+        attempts: s.attempts,
+      }))
+      .sort((a, b) => b.accuracy - a.accuracy);
+
+    const stageRows = (Object.keys(profile.stageStates) as ReadingStage[]).map((stage) => {
+      const st = profile.stageStates[stage];
+      return {
+        stage,
+        label: STAGE_LABELS[stage],
+        accuracy: st.accuracy,
+        gate: st.accuracyGate,
+        unlocked: st.isUnlocked,
+        completed: st.isCompleted,
+      };
+    });
+
+    const adviceList: string[] = [];
+    if (measured.length === 0) {
+      adviceList.push(
+        'Bé chưa có lượt luyện đọc nào. Mời bé thử chuyên đề "Luyện Đọc" với một đoạn văn thật ngắn, khoảng 5 phút.'
+      );
+      adviceList.push(
+        'Ba mẹ có thể đọc cùng bé một câu chuyện ngắn mỗi tối, mỗi câu một lần — quan trọng là đều đặn chứ không phải nhiều.'
+      );
+    } else {
+      const accuracyStage = profile.stageStates.ACCURACY;
+      if (!accuracyStage.isCompleted) {
+        adviceList.push(
+          `Bé đang ở mức ${accuracyStage.accuracy}% về đọc chính xác, cần đạt ${accuracyStage.accuracyGate}% để mở bước đọc lưu loát. Ưu tiên luyện đọc chuẩn trước khi tăng tốc độ.`
+        );
+      } else {
+        adviceList.push(
+          'Bé đã nắm vững phần đọc chính xác. Có thể chuyển dồn thời gian sang luyện đọc lưu loát và hiểu nội dung.'
+        );
+      }
+
+      if (profile.stageStates.COMPREHENSION.attempts > 0) {
+        adviceList.push(
+          `Độ hiểu nội dung hiện tại là ${profile.comprehensionIndex}%. Nếu bé đọc chậm nhưng vẫn hiểu đúng, đó là dấu hiệu tốt — không cần thúc tốc độ.`
+        );
+      }
+
+      if (wordsPerMinute > 0) {
+        adviceList.push(
+          `Tốc độ đọc trung bình ${wordsPerMinute} từ/phút trong các lượt đọc có đo. Hãy so sánh tiến bộ qua từng tuần thay vì so sánh với bạn khác.`
+        );
+      }
+
+      const hesitationHeavy = measured.filter((m) => m.hesitationRatio >= 0.5).length;
+      if (hesitationHeavy > measured.length / 2) {
+        adviceList.push(
+          'Bé dừng lại khá nhiều khi đọc. Điều này thường do đang đọc chậm có chủ ý — hãy khen bé đọc cẩn thận thay vì thúc đọc nhanh.'
+        );
+      }
+    }
+
+    return {
+      readingIndex: profile.readingIndex,
+      accuracyIndex: profile.accuracyIndex,
+      comprehensionIndex: profile.comprehensionIndex,
+      fluencyIndex: profile.fluencyIndex,
+      currentStage: profile.currentStage,
+      currentStageLabel: STAGE_LABELS[profile.currentStage],
+      totalSessions: measured.length,
+      averageAccuracy,
+      wordsPerMinute,
+      headline: profile.headline,
+      encouragement: profile.encouragement,
+      skillRows,
+      stageRows,
       adviceList,
     };
   }

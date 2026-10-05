@@ -19,14 +19,30 @@ describe('Competition Question Bank & Blueprint Quality Gate', () => {
       // Verify skill exists in taxonomy
       expect(validSkillIds.has(q.skillId)).toBe(true);
 
-      // Verify options and unambiguous answer
+      // Verify options are present, non-empty, unique — and that the answer is
+      // reachable from the question's own structure (type-aware, §10).
       expect(Array.isArray(q.options)).toBe(true);
       expect(q.options.length).toBeGreaterThanOrEqual(2);
-      expect(q.options).toContain(q.correctAnswer);
-
-      // Zero duplicate options
+      expect(q.options.every((o) => typeof o === 'string' && o.trim().length > 0)).toBe(true);
       const uniqueOpts = new Set(q.options);
       expect(uniqueOpts.size).toBe(q.options.length);
+
+      if (['multiple-choice', 'true-false', 'fill-blank'].includes(q.questionType)) {
+        expect(q.options).toContain(q.correctAnswer);
+      } else if (q.questionType === 'matching') {
+        expect(q.matchingPairs).toBeDefined();
+        expect(q.matchingPairs!.length).toBeGreaterThanOrEqual(2);
+        const expected = q.matchingPairs!.map((pair) => `${pair.left}=${pair.right}`).join('|');
+        expect(q.correctAnswer).toBe(expected);
+      } else if (q.questionType === 'ordering') {
+        expect(q.orderingItems).toBeDefined();
+        const answerItems = q.correctAnswer.split('|');
+        expect(new Set(answerItems).size).toBe(q.orderingItems!.length);
+        for (const item of answerItems) expect(q.options).toContain(item);
+      } else {
+        expect(q.categoryBuckets).toBeDefined();
+        expect(q.categoryBuckets).toContain(q.correctAnswer);
+      }
     }
   });
 

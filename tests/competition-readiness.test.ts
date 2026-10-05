@@ -25,6 +25,60 @@ import { CompetitionEngine } from '../src/services/competitionEngine';
 import { StorageService } from '../src/services/storage';
 import { CompetitionExamResult, ReadinessAssessment } from '../src/types/competition';
 
+
+/**
+ * Builds a complete, contract-valid exam result for readiness tests.
+ * All scoring fields are derived, never hand-waved.
+ */
+function buildExamResult(overrides: Partial<CompetitionExamResult>): CompetitionExamResult {
+  const base: CompetitionExamResult = {
+    id: 'ex_fixture',
+    blueprintId: 'bp-math-mini-01',
+    examTitle: 'Toán Mini',
+    subject: 'toan',
+    timestamp: new Date().toISOString(),
+    durationSeconds: 300,
+    timeUsedSeconds: 100,
+    totalQuestions: 6,
+    correctCount: 5,
+    accuracy: 83,
+    score: 8,
+    speedRating: 'EXCELLENT',
+    speedLabel: 'Nhanh & Chuẩn xác',
+    averageSecondsPerQuestion: 16,
+    responses: [],
+    skillBreakdown: {
+      'MATH-ADDITION': { total: 3, correct: 3, skillName: 'Phép Cộng' },
+      'MATH-NUMBER': { total: 3, correct: 2, skillName: 'Đếm Số' },
+    },
+    strongSkills: ['Phép Cộng'],
+    weakSkills: [],
+    errorAnalysis: [],
+    readinessSnapshot: {} as ReadinessAssessment,
+    scoring: {
+      rawScore: 8,
+      maxScore: 10,
+      accuracy: 83,
+      completion: 100,
+      attemptedCount: 6,
+      correctCount: 5,
+      totalQuestions: 6,
+      totalSeconds: 100,
+      averageSecondsPerQuestion: 16,
+      fastestQuestionSeconds: 10,
+      slowestQuestionSeconds: 22,
+      skillPerformance: {
+        'MATH-ADDITION': { total: 3, correct: 3, skillName: 'Phép Cộng' },
+        'MATH-NUMBER': { total: 3, correct: 2, skillName: 'Đếm Số' },
+      },
+      questionTypePerformance: { 'multiple-choice': { total: 6, correct: 5 } },
+    },
+    provenance: { blueprintVersion: 2, questionBankVersion: 2, seed: 1 },
+    ...overrides,
+  };
+  return base;
+}
+
 describe('Competition Readiness Model & Persistence Tests', () => {
   beforeEach(() => {
     localStorage.clear();
@@ -40,31 +94,14 @@ describe('Competition Readiness Model & Persistence Tests', () => {
   });
 
   it('evaluates readiness for persona Child-Strong (high consistent performance)', () => {
-    const dummyExam = (acc: number): CompetitionExamResult => ({
-      id: `ex_${Math.random()}`,
-      blueprintId: 'bp-math-mini-01',
-      examTitle: 'Toán Mini',
-      subject: 'toan',
-      timestamp: new Date().toISOString(),
-      durationSeconds: 300,
-      timeUsedSeconds: 100,
-      totalQuestions: 6,
-      correctCount: Math.round((acc / 100) * 6),
-      accuracy: acc,
-      score: Math.round((acc / 100) * 10),
-      speedRating: 'EXCELLENT',
-      speedLabel: 'Nhanh & Chuẩn xác',
-      averageSecondsPerQuestion: 16,
-      responses: [],
-      skillBreakdown: {
-        'MATH-ADDITION': { total: 3, correct: 3, skillName: 'Phép Cộng' },
-        'MATH-NUMBER': { total: 3, correct: 3, skillName: 'Đếm Số' },
-      },
-      strongSkills: ['Phép Cộng', 'Đếm Số'],
-      weakSkills: [],
-      errorAnalysis: [],
-      readinessSnapshot: {} as ReadinessAssessment,
-    });
+    const dummyExam = (acc: number): CompetitionExamResult =>
+      buildExamResult({
+        id: `ex_${acc}`,
+        correctCount: Math.round((acc / 100) * 6),
+        accuracy: acc,
+        score: Math.round((acc / 100) * 10),
+        strongSkills: ['Phép Cộng', 'Đếm Số'],
+      });
 
     const highHistory: CompetitionExamResult[] = [
       dummyExam(90),
@@ -79,31 +116,25 @@ describe('Competition Readiness Model & Persistence Tests', () => {
   });
 
   it('evaluates readiness for persona Child-Struggling and recommends weak skills', () => {
-    const weakExam: CompetitionExamResult = {
+    const weakExam = buildExamResult({
       id: 'ex_weak',
       blueprintId: 'bp-vn-mini-01',
       examTitle: 'Tiếng Việt Mini',
       subject: 'tieng-viet',
-      timestamp: new Date().toISOString(),
-      durationSeconds: 300,
       timeUsedSeconds: 200,
-      totalQuestions: 6,
       correctCount: 2,
       accuracy: 33,
       score: 3,
       speedRating: 'NEEDS_TIME',
       speedLabel: 'Cần thêm thời gian',
       averageSecondsPerQuestion: 33,
-      responses: [],
       skillBreakdown: {
         'TV-SPELLING': { total: 3, correct: 0, skillName: 'Quy Tắc Chính Tả' },
         'TV-PHONICS': { total: 3, correct: 2, skillName: 'Nhận Diện Chữ Cái' },
       },
       strongSkills: [],
       weakSkills: ['Quy Tắc Chính Tả'],
-      errorAnalysis: [],
-      readinessSnapshot: {} as ReadinessAssessment,
-    };
+    });
 
     const readiness = CompetitionEngine.assessReadiness([weakExam]);
     expect(readiness.isSufficientData).toBe(true);
@@ -112,28 +143,14 @@ describe('Competition Readiness Model & Persistence Tests', () => {
   });
 
   it('persists exam result to storage with idempotency protection', () => {
-    const dummyExam: CompetitionExamResult = {
+    const dummyExam = buildExamResult({
       id: 'exam_unique_101',
-      blueprintId: 'bp-math-mini-01',
       examTitle: 'Toán Mini 01',
-      subject: 'toan',
-      timestamp: new Date().toISOString(),
-      durationSeconds: 300,
       timeUsedSeconds: 90,
-      totalQuestions: 6,
-      correctCount: 5,
-      accuracy: 83,
-      score: 8,
-      speedRating: 'EXCELLENT',
-      speedLabel: 'Nhanh & Chuẩn xác',
       averageSecondsPerQuestion: 15,
-      responses: [],
       skillBreakdown: {},
       strongSkills: ['Số học'],
-      weakSkills: [],
-      errorAnalysis: [],
-      readinessSnapshot: {} as ReadinessAssessment,
-    };
+    });
 
     // First recording: awards +50 XP and +4 Stars
     StorageService.recordCompetitionResult(dummyExam, 50, 4);

@@ -2,7 +2,6 @@ import {
   Achievement,
   AvatarItem,
   ChildProfile,
-  CompetitionExamResult,
   CompetitionHistoryStore,
   DailyPlan,
   DailyQuest,
@@ -18,6 +17,16 @@ import {
 } from '../types';
 import { getAllSkills } from '../data/curriculum';
 import { LearningOS, LEARNING_OS_POLICY } from './learningOS';
+import { ReadingEngine } from './readingEngine';
+import { CompetitionEngine } from './competitionEngine';
+import { getBlueprintById } from '../data/competitionBlueprints';
+import { LEGACY_MASTERY_POLICY, READING_POLICY } from '../config/policy';
+import type { EvidenceDifficulty } from '../types/learningOS';
+import type { CompetitionExamResult, ErrorCategory, QuestionResponse } from '../types/competition';
+import type { ReadingMetrics, ReadingProfile, ReadingSkillState, ReadingStage, ReadingStageState } from '../types/reading';
+
+/** Fixed seed so the demo paper is byte-for-byte reproducible. */
+const DEMO_SEED = 20250101;
 
 const STORAGE_KEYS = {
   CHILD_PROFILE: 'kho_bau_child_profile',
@@ -27,7 +36,175 @@ const STORAGE_KEYS = {
   ACHIEVEMENTS: 'kho_bau_achievements',
   COMPETITION_HISTORY: 'kho_bau_competition_history',
   LEARNING_OS_STORE: 'kho_bau_learning_os_store',
+  READING_STORE: 'kho_bau_reading_store',
+  KIDBOX_STORE: 'kho_bau_kidbox_store',
 };
+
+/**
+ * Versioned persistence schema for every localStorage-backed store.
+ * Bumping a version requires a matching migration entry in MIGRATIONS below.
+ *
+ * P30-v1 adds the Kid's Box Companion store. It lives in its own localStorage
+ * key, so P29-v2 payloads keep working untouched — the migration only records
+ * that the child has no Kid's Box course state yet.
+ */
+export const STORAGE_SCHEMA_VERSION = 'P30-v1';
+
+/**
+ * Ordered migration chain. Key = target schema version, value = upgrade function.
+ * Each migration must be pure, defensive and idempotent (safe to re-run).
+ */
+const MIGRATIONS: Record<string, (raw: Record<string, unknown>) => Record<string, unknown>> = {
+  // P28-v1 stores had no `processedEvidenceIds`; rebuild the guard list from
+  // the surviving evidence so historical events stay idempotent after upgrade.
+  'P29-v2': (raw) => {
+    const evidences = Array.isArray(raw.recentEvidences) ? (raw.recentEvidences as LearningEvidence[]) : [];
+    return {
+      ...raw,
+      processedEvidenceIds: Array.isArray(raw.processedEvidenceIds)
+        ? raw.processedEvidenceIds
+        : evidences.map((e) => (e && typeof e.id === 'string' ? e.id : '')).filter(Boolean),
+    };
+  },
+  // Kid's Box Companion state arrives in a separate key, so this step only has
+  // to guarantee the Learning OS payload stays structurally valid.
+  'P30-v1': (raw) => ({ ...raw }),
+};
+
+/**
+ * Ordered migration chain, oldest target version first. A payload stored under
+ * an older (or unknown, or missing) version is replayed through every step it
+ * has not seen yet.
+ */
+const MIGRATION_ORDER = ['P29-v2', 'P30-v1'] as const;
+
+/** Every schema version the app has ever written, oldest first. */
+const SCHEMA_HISTORY = ['P28-v1', 'P29-v2', 'P30-v1'] as const;
+
+const MAX_RECENT_EVIDENCES = 200;
+
+function createDefaultFatigue(now: number): SessionFatigueState {
+  return {
+    sessionStartTime: now,
+    questionsAnsweredThisSession: 0,
+    sessionErrorsCount: 0,
+    consecutiveErrorsInSession: 0,
+    isFatigued: false,
+  };
+}
+
+function createEmptyLearningOSStore(now: number = Date.now()): LearningOSStore {
+  return {
+    schemaVersion: STORAGE_SCHEMA_VERSION,
+    knowledgeStates: {},
+    recentEvidences: [],
+    dailyPlan: null,
+    fatigue: createDefaultFatigue(now),
+    recommendationHistory: [],
+    processedEvidenceIds: [],
+  };
+}
+
+function clampPercent(value: unknown, fallback: number): number {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return fallback;
+  return Math.min(100, Math.max(0, Math.round(value)));
+}
+
+function safeCount(value: unknown): number {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) return 0;
+  return Math.round(value);
+}
+
+/**
+ * Reads an ErrorProfile defensively out of an unknown object.
+ */
+function sanitizeErrorProfile(source: unknown): KnowledgeState['errorProfile'] {
+  const read = (key: string): number => {
+    if (!source || typeof source !== 'object') return 0;
+    const n = (source as Record<string, unknown>)[key];
+    return typeof n === 'number' && Number.isFinite(n) && n > 0 ? Math.round(n) : 0;
+  };
+  return {
+    knowledgeGap: read('knowledgeGap'),
+    careless: read('careless'),
+    speed: read('speed'),
+    misread: read('misread'),
+    reasoning: read('reasoning'),
+    unclassified: read('unclassified'),
+  };
+}
+
+/**
+ * Reads a `{attempts, correct}` bucket defensively out of an unknown object.
+ */
+function countPair(source: unknown, key: string): { attempts: number; correct: number } {
+  if (!source || typeof source !== 'object') return { attempts: 0, correct: 0 };
+  const bucket = (source as Record<string, unknown>)[key];
+  if (!bucket || typeof bucket !== 'object') return { attempts: 0, correct: 0 };
+  const b = bucket as Record<string, unknown>;
+  const safe = (n: unknown) => (typeof n === 'number' && Number.isFinite(n) && n > 0 ? Math.round(n) : 0);
+  return { attempts: safe(b.attempts), correct: Math.min(safe(b.correct), safe(b.attempts)) };
+}
+
+/**
+ * Reads and JSON-parses a key without ever throwing.
+ * Returns `undefined` for missing keys, malformed JSON and non-object payloads.
+ * Exported so sibling stores (Kid's Box Companion) reuse the same hardening
+ * instead of re-implementing it.
+ */
+export function readJSONObject(key: string): Record<string, unknown> | undefined {
+  try {
+    if (typeof localStorage === 'undefined') return undefined;
+    const raw = localStorage.getItem(key);
+    if (!raw) return undefined;
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      return parsed as Record<string, unknown>;
+    }
+    return undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Writes a payload without ever throwing (private mode / quota exhaustion).
+ * Exported for sibling stores that must survive the same hostile environments.
+ */
+export function writeJSON(key: string, value: unknown): void {
+  try {
+    if (typeof localStorage === 'undefined') return;
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    // Storage full or unavailable: the app must keep running from defaults.
+  }
+}
+
+/**
+ * Runs the ordered migration chain until the payload reaches the current schema.
+ * An unknown or missing version is treated as the oldest known schema, so a
+ * payload written by any past build is upgraded rather than discarded.
+ */
+function migrateToCurrentSchema(raw: Record<string, unknown>): Record<string, unknown> {
+  let payload = { ...raw };
+  const from = typeof payload.schemaVersion === 'string' ? payload.schemaVersion : '';
+  if (from === STORAGE_SCHEMA_VERSION) return payload;
+
+  const knownIndex = SCHEMA_HISTORY.indexOf(from as (typeof SCHEMA_HISTORY)[number]);
+  const startIndex = knownIndex >= 0 ? knownIndex : 0;
+  payload.schemaVersion = SCHEMA_HISTORY[startIndex];
+
+  for (let i = startIndex + 1; i < SCHEMA_HISTORY.length; i += 1) {
+    const target = SCHEMA_HISTORY[i];
+    const migrate = MIGRATIONS[target];
+    if (!migrate) continue;
+    payload = migrate(payload);
+    payload.schemaVersion = target;
+  }
+
+  payload.schemaVersion = STORAGE_SCHEMA_VERSION;
+  return payload;
+}
 
 export const AVATAR_SHOP_ITEMS: AvatarItem[] = [
   { id: 'hat_cap', name: 'Mũ Lưỡi Trai Năng Động', type: 'hat', emoji: '🧢', priceStars: 5, unlocked: true },
@@ -200,6 +377,325 @@ function createDefaultQuests(): DailyQuest[] {
 }
 
 export class StorageService {
+  // ==========================================================
+  // Learning OS persistence (versioned, migratable, recoverable)
+  // ==========================================================
+
+  /**
+   * Loads the Learning OS store. Any corruption, partial write or unknown
+   * schema degrades to a pristine, fully usable store instead of crashing.
+   */
+  public static getLearningOSStore(): LearningOSStore {
+    const raw = readJSONObject(STORAGE_KEYS.LEARNING_OS_STORE);
+    if (!raw) return createEmptyLearningOSStore();
+    return StorageService.sanitizeLearningOSStore(migrateToCurrentSchema(raw));
+  }
+
+  public static saveLearningOSStore(store: LearningOSStore) {
+    writeJSON(STORAGE_KEYS.LEARNING_OS_STORE, store);
+  }
+
+  /**
+   * Idempotently folds a LearningEvidence record into the Knowledge State.
+   *
+   * Returns true when the evidence was newly applied, false when it had
+   * already been processed. Callers may therefore retry freely (double click,
+   * refresh, back/forward, reopened session) without inflating mastery.
+   */
+  public static recordLearningEvidence(evidence: LearningEvidence): boolean {
+    if (!evidence || typeof evidence.id !== 'string' || evidence.id.length === 0) return false;
+
+    const store = StorageService.getLearningOSStore();
+    if (store.processedEvidenceIds.includes(evidence.id)) return false;
+
+    const skillMeta = getAllSkills().find((s) => s.skillId === evidence.skillId);
+    const previous =
+      store.knowledgeStates[evidence.skillId] ??
+      LearningOS.createInitialKnowledgeState(
+        evidence.skillId,
+        skillMeta?.skillName || evidence.skillId,
+        evidence.subject
+      );
+
+    store.knowledgeStates[evidence.skillId] = LearningOS.reduceEvidence(previous, evidence);
+
+    store.recentEvidences.unshift(evidence);
+    if (store.recentEvidences.length > MAX_RECENT_EVIDENCES) {
+      store.recentEvidences.length = MAX_RECENT_EVIDENCES;
+    }
+
+    store.processedEvidenceIds.unshift(evidence.id);
+    if (store.processedEvidenceIds.length > MAX_RECENT_EVIDENCES * 2) {
+      store.processedEvidenceIds.length = MAX_RECENT_EVIDENCES * 2;
+    }
+
+    // Session fatigue tracking (drives the Learning OS rest recommendation).
+    store.fatigue.questionsAnsweredThisSession += 1;
+    if (evidence.correct) {
+      store.fatigue.consecutiveErrorsInSession = 0;
+    } else {
+      store.fatigue.sessionErrorsCount += 1;
+      store.fatigue.consecutiveErrorsInSession += 1;
+    }
+    store.fatigue.isFatigued =
+      store.fatigue.questionsAnsweredThisSession >= LEARNING_OS_POLICY.FATIGUE_MAX_QUESTIONS ||
+      store.fatigue.consecutiveErrorsInSession >= LEARNING_OS_POLICY.FATIGUE_MAX_CONSECUTIVE_ERRORS;
+
+    StorageService.saveLearningOSStore(store);
+    return true;
+  }
+
+  /** Convenience accessor used by the UI and parent reports. */
+  public static getKnowledgeStates(): Record<string, KnowledgeState> {
+    return StorageService.getLearningOSStore().knowledgeStates;
+  }
+
+  /** Regenerates and persists today's plan from current evidence. */
+  public static refreshDailyPlan(dateString: string = getTodayString()): DailyPlan {
+    const store = StorageService.getLearningOSStore();
+    const plan = LearningOS.generateDailyPlan(
+      store.knowledgeStates,
+      dateString,
+      store.fatigue,
+      LEARNING_OS_POLICY.POLICY_VERSION
+    );
+    store.dailyPlan = plan;
+    StorageService.saveLearningOSStore(store);
+    return plan;
+  }
+
+  // ==========================================================
+  // Reading fluency persistence
+  // ==========================================================
+
+  /** Loads the reading fluency profile, defaulting to a pristine ladder. */
+  public static getReadingProfile(): ReadingProfile {
+    const raw = readJSONObject(STORAGE_KEYS.READING_STORE);
+    if (!raw) return ReadingEngine.emptyProfile();
+    return StorageService.sanitizeReadingProfile(raw);
+  }
+
+  public static saveReadingProfile(profile: ReadingProfile) {
+    const existing = readJSONObject(STORAGE_KEYS.READING_STORE);
+    writeJSON(STORAGE_KEYS.READING_STORE, {
+      ...(existing ?? {}),
+      schemaVersion: STORAGE_SCHEMA_VERSION,
+      profile,
+    });
+  }
+
+  /**
+   * Returns the retained reading session metrics, newest first.
+   * Sessions already stored are de-duplicated by sessionId.
+   */
+  public static getReadingMetricsHistory(): ReadingMetrics[] {
+    const raw = readJSONObject(STORAGE_KEYS.READING_STORE);
+    const list = raw && Array.isArray(raw.metrics) ? (raw.metrics as ReadingMetrics[]) : [];
+    const seen = new Set<string>();
+    const out: ReadingMetrics[] = [];
+    for (const m of list) {
+      if (!m || typeof m !== 'object' || typeof m.sessionId !== 'string') continue;
+      if (seen.has(m.sessionId)) continue;
+      seen.add(m.sessionId);
+      out.push(m);
+    }
+    return out;
+  }
+
+  /** Idempotently records one reading session's metrics. */
+  public static saveReadingMetrics(metrics: ReadingMetrics) {
+    const raw = readJSONObject(STORAGE_KEYS.READING_STORE);
+    const existing = StorageService.getReadingMetricsHistory().filter(
+      (m) => m.sessionId !== metrics.sessionId
+    );
+    existing.unshift(metrics);
+    writeJSON(STORAGE_KEYS.READING_STORE, {
+      ...(raw ?? {}),
+      schemaVersion: STORAGE_SCHEMA_VERSION,
+      metrics: existing.slice(0, READING_POLICY.MAX_RECENT_SESSIONS),
+    });
+  }
+
+  /**
+   * Rebuilds a valid reading profile from an arbitrary payload.
+   */
+  private static sanitizeReadingProfile(raw: Record<string, unknown>): ReadingProfile {
+    const base = ReadingEngine.emptyProfile();
+    const p = (raw.profile && typeof raw.profile === 'object' ? raw.profile : raw) as Partial<ReadingProfile>;
+
+    const stageStates = { ...base.stageStates };
+    if (p.stageStates && typeof p.stageStates === 'object' && !Array.isArray(p.stageStates)) {
+      for (const [stage, value] of Object.entries(p.stageStates as Record<string, unknown>)) {
+        if (!Object.prototype.hasOwnProperty.call(stageStates, stage)) continue;
+        if (!value || typeof value !== 'object') continue;
+        const v = value as Partial<ReadingStageState>;
+        const safe = stageStates[stage as ReadingStage];
+        stageStates[stage as ReadingStage] = {
+          stage: safe.stage,
+          accuracy: clampPercent(v.accuracy, safe.accuracy),
+          accuracyGate: typeof v.accuracyGate === 'number' ? v.accuracyGate : safe.accuracyGate,
+          isUnlocked: Boolean(v.isUnlocked),
+          isCompleted: Boolean(v.isCompleted),
+          attempts: safeCount(v.attempts),
+        };
+      }
+    }
+
+    const skillStates: Record<string, ReadingSkillState> = {};
+    if (p.skillStates && typeof p.skillStates === 'object' && !Array.isArray(p.skillStates)) {
+      for (const [skillId, value] of Object.entries(p.skillStates as Record<string, unknown>)) {
+        if (!value || typeof value !== 'object') continue;
+        const v = value as Partial<ReadingSkillState>;
+        skillStates[skillId] = {
+          skillId: (typeof v.skillId === 'string' ? v.skillId : skillId) as ReadingSkillState['skillId'],
+          skillName: typeof v.skillName === 'string' ? v.skillName : skillId,
+          accuracy: clampPercent(v.accuracy, 0),
+          attempts: safeCount(v.attempts),
+          correctCount: safeCount(v.correctCount),
+          averageResponseMs: typeof v.averageResponseMs === 'number' ? Math.max(0, v.averageResponseMs) : 0,
+          status: (['NOT_STARTED', 'LEARNING', 'PRACTICING', 'STRONG'] as const).includes(v.status as never)
+            ? (v.status as ReadingSkillState['status'])
+            : 'NOT_STARTED',
+          lastPracticedAt: typeof v.lastPracticedAt === 'number' ? v.lastPracticedAt : undefined,
+        };
+      }
+    }
+
+    const currentStage = (['ACCURACY', 'FLUENCY', 'COMPREHENSION', 'PROCESSING_SPEED', 'COMPETITION_SPEED'] as const).includes(
+      p.currentStage as never
+    )
+      ? (p.currentStage as ReadingStage)
+      : 'ACCURACY';
+
+    return {
+      currentStage,
+      stageStates,
+      skillStates,
+      readingIndex: clampPercent(p.readingIndex, 0),
+      accuracyIndex: clampPercent(p.accuracyIndex, 0),
+      fluencyIndex: clampPercent(p.fluencyIndex, 0),
+      comprehensionIndex: clampPercent(p.comprehensionIndex, 0),
+      headline: typeof p.headline === 'string' ? p.headline : base.headline,
+      encouragement: typeof p.encouragement === 'string' ? p.encouragement : base.encouragement,
+      lastSessionAt: typeof p.lastSessionAt === 'number' ? p.lastSessionAt : undefined,
+    };
+  }
+
+  /**
+   * Rebuilds a structurally valid store from an arbitrary (possibly hostile)
+   * payload. Every field is type-checked and coerced to a safe default.
+   */
+  private static sanitizeLearningOSStore(raw: Record<string, unknown>): LearningOSStore {
+    const now = Date.now();
+    const store = createEmptyLearningOSStore(now);
+    store.schemaVersion = STORAGE_SCHEMA_VERSION;
+
+    const states = raw.knowledgeStates;
+    if (states && typeof states === 'object' && !Array.isArray(states)) {
+      for (const [skillId, value] of Object.entries(states as Record<string, unknown>)) {
+        if (!value || typeof value !== 'object' || Array.isArray(value)) continue;
+        const v = value as Partial<KnowledgeState>;
+        const subject: SubjectType =
+          v.subject === 'toan' || v.subject === 'english' ? v.subject : 'tieng-viet';
+        const num = (n: unknown, fallback = 0) =>
+          typeof n === 'number' && Number.isFinite(n) ? n : fallback;
+        const count = (n: unknown) => Math.max(0, Math.round(num(n, 0)));
+
+        store.knowledgeStates[skillId] = {
+          ...LearningOS.createInitialKnowledgeState(
+            skillId,
+            typeof v.skillName === 'string' && v.skillName ? v.skillName : skillId,
+            subject
+          ),
+          status: (['NOT_STARTED', 'LEARNING', 'PRACTICING', 'MASTERED', 'NEEDS_REVIEW'] as const).includes(
+            v.status as never
+          )
+            ? (v.status as KnowledgeState['status'])
+            : 'NOT_STARTED',
+          mastery: Math.min(100, Math.max(0, num(v.mastery))),
+          confidence: Math.min(100, Math.max(0, num(v.confidence))),
+          accuracy: Math.min(100, Math.max(0, num(v.accuracy))),
+          recentAccuracy: Math.min(100, Math.max(0, num(v.recentAccuracy))),
+          attemptCount: count(v.attemptCount),
+          correctCount: count(v.correctCount),
+          consecutiveCorrect: count(v.consecutiveCorrect),
+          consecutiveIncorrect: count(v.consecutiveIncorrect),
+          lastPracticedAt: typeof v.lastPracticedAt === 'number' ? v.lastPracticedAt : undefined,
+          lastCorrectAt: typeof v.lastCorrectAt === 'number' ? v.lastCorrectAt : undefined,
+          lastIncorrectAt: typeof v.lastIncorrectAt === 'number' ? v.lastIncorrectAt : undefined,
+          averageResponseTimeMs:
+            typeof v.averageResponseTimeMs === 'number' && v.averageResponseTimeMs > 0
+              ? v.averageResponseTimeMs
+              : undefined,
+          difficultyPerformance:
+            v.difficultyPerformance && typeof v.difficultyPerformance === 'object'
+              ? {
+                  easy: countPair(v.difficultyPerformance, 'easy'),
+                  medium: countPair(v.difficultyPerformance, 'medium'),
+                  hard: countPair(v.difficultyPerformance, 'hard'),
+                  challenge: countPair(v.difficultyPerformance, 'challenge'),
+                }
+              : { easy: { attempts: 0, correct: 0 }, medium: { attempts: 0, correct: 0 }, hard: { attempts: 0, correct: 0 }, challenge: { attempts: 0, correct: 0 } },
+          errorProfile:
+            v.errorProfile && typeof v.errorProfile === 'object'
+              ? sanitizeErrorProfile(v.errorProfile as unknown)
+              : { knowledgeGap: 0, careless: 0, speed: 0, misread: 0, reasoning: 0, unclassified: 0 },
+          nextReviewAt: typeof v.nextReviewAt === 'number' ? v.nextReviewAt : undefined,
+          evidenceVersion: Math.max(1, count(v.evidenceVersion) || 1),
+        };
+      }
+    }
+
+    if (Array.isArray(raw.recentEvidences)) {
+      store.recentEvidences = (raw.recentEvidences as LearningEvidence[])
+        .filter((e): e is LearningEvidence => !!e && typeof e === 'object' && typeof e.id === 'string')
+        .slice(0, MAX_RECENT_EVIDENCES);
+    }
+
+    if (Array.isArray(raw.processedEvidenceIds)) {
+      store.processedEvidenceIds = (raw.processedEvidenceIds as unknown[])
+        .filter((id): id is string => typeof id === 'string')
+        .slice(0, MAX_RECENT_EVIDENCES * 2);
+    }
+
+    if (raw.dailyPlan && typeof raw.dailyPlan === 'object' && !Array.isArray(raw.dailyPlan)) {
+      const plan = raw.dailyPlan as Partial<DailyPlan>;
+      if (Array.isArray(plan.items)) {
+        store.dailyPlan = {
+          date: typeof plan.date === 'string' ? plan.date : getTodayString(),
+          estimatedMinutes: typeof plan.estimatedMinutes === 'number' ? plan.estimatedMinutes : 0,
+          items: plan.items.filter((i) => i && typeof i === 'object') as DailyPlan['items'],
+          generatedFrom: {
+            knowledgeVersion: 1,
+            policyVersion: LEARNING_OS_POLICY.POLICY_VERSION,
+            generatedAt: now,
+          },
+        };
+      }
+    }
+
+    const fatigue = raw.fatigue;
+    if (fatigue && typeof fatigue === 'object' && !Array.isArray(fatigue)) {
+      const f = fatigue as Partial<SessionFatigueState>;
+      store.fatigue = {
+        sessionStartTime: typeof f.sessionStartTime === 'number' ? f.sessionStartTime : now,
+        questionsAnsweredThisSession: Math.max(0, Math.round(Number(f.questionsAnsweredThisSession) || 0)),
+        sessionErrorsCount: Math.max(0, Math.round(Number(f.sessionErrorsCount) || 0)),
+        consecutiveErrorsInSession: Math.max(0, Math.round(Number(f.consecutiveErrorsInSession) || 0)),
+        // Strict boolean: a truthy string like 'yes' must NOT enable fatigue.
+        isFatigued: f.isFatigued === true,
+      };
+    }
+
+    if (Array.isArray(raw.recommendationHistory)) {
+      store.recommendationHistory = (raw.recommendationHistory as LearningOSStore['recommendationHistory'])
+        .filter((r) => r && typeof r === 'object' && typeof r.actionId === 'string')
+        .slice(0, 100);
+    }
+
+    return store;
+  }
+
   public static getChildProfile(): ChildProfile {
     try {
       const data = localStorage.getItem(STORAGE_KEYS.CHILD_PROFILE);
@@ -229,6 +725,7 @@ export class StorageService {
               ? raw.completedWeeklyChallenges
               : [],
             dailyChestClaimedDate: raw.dailyChestClaimedDate,
+            isDemoData: raw.isDemoData === true,
           };
 
           // Verify streak progression
@@ -251,8 +748,19 @@ export class StorageService {
     } catch {
       // Ignore parse error and recover safely
     }
-    StorageService.saveChildProfile(DEFAULT_CHILD_PROFILE);
-    return DEFAULT_CHILD_PROFILE;
+    // Never hand out the shared module constant: callers mutate the returned
+    // object, which would otherwise corrupt the "pristine profile" baseline.
+    const fresh: ChildProfile = {
+      ...DEFAULT_CHILD_PROFILE,
+      equipped: { ...DEFAULT_CHILD_PROFILE.equipped },
+      unlockedItems: [...DEFAULT_CHILD_PROFILE.unlockedItems],
+      completedLessons: [],
+      completedWeeklyChallenges: [],
+      lastActiveDate: getTodayString(),
+      isDemoData: false,
+    };
+    StorageService.saveChildProfile(fresh);
+    return fresh;
   }
 
   public static saveChildProfile(profile: ChildProfile) {
@@ -410,7 +918,15 @@ export class StorageService {
     isCorrect: boolean,
     questionId: string,
     prompt: string,
-    subject: SubjectType
+    subject: SubjectType,
+    options: {
+      responseTimeMs?: number;
+      difficulty?: EvidenceDifficulty;
+      errorType?: ErrorCategory;
+      source?: LearningEvidence['source'];
+      /** Stable id so retries of the same item never double-count evidence. */
+      evidenceId?: string;
+    } = {}
   ) {
     const analytics = StorageService.getAnalytics();
     analytics.totalQuestionsAnswered += 1;
@@ -428,16 +944,19 @@ export class StorageService {
       }
     }
 
-    // Emit evidence into Learning OS
+    // Emit evidence into Learning OS (idempotent: replays return false).
     StorageService.recordLearningEvidence({
-      id: `ev_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
-      learnerId: 'child_1',
-      source: 'LESSON',
+      id: options.evidenceId ?? `ev_${subject}_${skillId}_${questionId}_${Date.now()}`,
+      learnerId: StorageService.getChildProfile().id,
+      source: options.source ?? 'LESSON',
       skillId,
       subject,
       questionId,
       timestamp: Date.now(),
       correct: isCorrect,
+      responseTimeMs: options.responseTimeMs,
+      difficulty: options.difficulty,
+      errorType: options.errorType,
     });
 
     let mastery = analytics.skillMastery[skillId];
@@ -463,13 +982,19 @@ export class StorageService {
     }
     mastery.lastPracticed = new Date().toISOString();
 
-    // Determine mastery status
+    // Determine mastery status (thresholds live in the central policy module)
     const accuracy = mastery.attempts > 0 ? mastery.correctCount / mastery.attempts : 0;
-    if (mastery.attempts >= 4 && accuracy >= 0.85) {
+    if (
+      mastery.attempts >= LEGACY_MASTERY_POLICY.MASTERED_MIN_ATTEMPTS &&
+      accuracy >= LEGACY_MASTERY_POLICY.MASTERED_MIN_ACCURACY
+    ) {
       mastery.status = 'MASTERED';
-    } else if (mastery.attempts >= 3 && accuracy < 0.6) {
+    } else if (
+      mastery.attempts >= LEGACY_MASTERY_POLICY.REVIEW_MIN_ATTEMPTS &&
+      accuracy < LEGACY_MASTERY_POLICY.REVIEW_MAX_ACCURACY
+    ) {
       mastery.status = 'NEEDS_REVIEW';
-    } else if (mastery.attempts >= 2) {
+    } else if (mastery.attempts >= LEGACY_MASTERY_POLICY.PRACTICING_MIN_ATTEMPTS) {
       mastery.status = 'PRACTICING';
     } else {
       mastery.status = 'LEARNING';
@@ -695,21 +1220,33 @@ export class StorageService {
   }
 
   public static resetProgress() {
-    localStorage.removeItem(STORAGE_KEYS.CHILD_PROFILE);
-    localStorage.removeItem(STORAGE_KEYS.ANALYTICS);
-    localStorage.removeItem(STORAGE_KEYS.DAILY_QUESTS);
-    localStorage.removeItem(STORAGE_KEYS.ACHIEVEMENTS);
-    localStorage.removeItem(STORAGE_KEYS.COMPETITION_HISTORY);
+    try {
+      localStorage.removeItem(STORAGE_KEYS.CHILD_PROFILE);
+      localStorage.removeItem(STORAGE_KEYS.ANALYTICS);
+      localStorage.removeItem(STORAGE_KEYS.DAILY_QUESTS);
+      localStorage.removeItem(STORAGE_KEYS.ACHIEVEMENTS);
+      localStorage.removeItem(STORAGE_KEYS.COMPETITION_HISTORY);
+      localStorage.removeItem(STORAGE_KEYS.LEARNING_OS_STORE);
+      localStorage.removeItem(STORAGE_KEYS.READING_STORE);
+      localStorage.removeItem(STORAGE_KEYS.KIDBOX_STORE);
+    } catch {
+      // Storage unavailable: nothing to clear.
+    }
   }
 
   /**
    * Seeds realistic demo data for evaluators/parents to test diagnostic reports
    * without affecting initial clean profile creation for new users.
+   *
+   * SAFETY (§1.2): the resulting profile is explicitly flagged with
+   * `isDemoData: true` so the UI can label every screen that shows these
+   * fabricated numbers, and so parents are never misled into believing a real
+   * learner produced them.
    */
   public static seedDemoProfile() {
     const today = getTodayString();
     const demoProfile: ChildProfile = {
-      id: 'child_1',
+      id: 'child_demo',
       name: 'Bé Minh',
       grade: 1,
       avatarBase: 'bear',
@@ -727,6 +1264,7 @@ export class StorageService {
       unlockedItems: ['hat_cap', 'glasses_nerd', 'bag_dino', 'hat_party'],
       completedLessons: ['vn-les-1', 'vn-les-2', 'math-les-1', 'math-les-2', 'eng-les-1'],
       completedWeeklyChallenges: ['week_1'],
+      isDemoData: true,
     };
     StorageService.saveChildProfile(demoProfile);
 
@@ -773,81 +1311,44 @@ export class StorageService {
 
     StorageService.saveAnalytics(analytics);
 
-    // Seed sample competition exam result
-    const sampleExam: CompetitionExamResult = {
-      id: 'demo_exam_01',
-      blueprintId: 'bp-math-mini-01',
-      examTitle: 'Toán Học Mini Test 01',
-      subject: 'toan',
-      timestamp: new Date().toISOString(),
-      durationSeconds: 300,
-      timeUsedSeconds: 110,
-      totalQuestions: 6,
-      correctCount: 5,
-      accuracy: 83,
-      score: 8,
-      speedRating: 'EXCELLENT',
-      speedLabel: 'Tốc độ xuất sắc & Chuẩn xác ⭐',
-      averageSecondsPerQuestion: 18,
-      responses: [
-        { questionId: 'cq-math-01', userAnswer: '17', isCorrect: true, timeSpentSeconds: 12 },
-        { questionId: 'cq-math-02', userAnswer: '14', isCorrect: true, timeSpentSeconds: 15 },
-        { questionId: 'cq-math-03', userAnswer: '>', isCorrect: true, timeSpentSeconds: 14 },
-        { questionId: 'cq-math-05', userAnswer: '10', isCorrect: true, timeSpentSeconds: 10 },
-        { questionId: 'cq-math-08', userAnswer: '3', isCorrect: true, timeSpentSeconds: 11 },
-        { questionId: 'cq-math-09', userAnswer: '5', isCorrect: false, timeSpentSeconds: 22 },
-      ],
-      skillBreakdown: {
-        'MATH-NUMBER': { total: 2, correct: 2, skillName: 'Đếm & Nhận Diện Số 0 - 20' },
-        'MATH-COMPARISON': { total: 1, correct: 1, skillName: 'So Sánh & Thứ Tự Số' },
-        'MATH-ADDITION': { total: 1, correct: 1, skillName: 'Phép Cộng Phạm Vi 10 & 20' },
-        'MATH-SUBTRACTION': { total: 2, correct: 1, skillName: 'Phép Trừ Phạm Vi 10 & 20' },
-      },
-      strongSkills: ['Đếm & Nhận Diện Số 0 - 20', 'So Sánh & Thứ Tự Số', 'Phép Cộng Phạm Vi 10 & 20'],
-      weakSkills: ['Phép Trừ Phạm Vi 10 & 20'],
-      errorAnalysis: [
-        {
-          questionId: 'cq-math-09',
-          prompt: 'Tìm x biết: 18 - x = 14',
-          skillId: 'MATH-SUBTRACTION',
-          skillName: 'Phép Trừ Phạm Vi 10 & 20',
-          userAnswer: '5',
-          correctAnswer: '4',
-          explanation: 'Số trừ = Số bị trừ - Hiệu = 18 - 14 = 4.',
-          category: 'KNOWLEDGE_GAP',
-          advice: 'Kỹ năng "Phép Trừ Phạm Vi 10 & 20" cần được ôn luyện lại trong mục Luyện Dạng Bài.',
-        },
-      ],
-      readinessSnapshot: {
-        overallLevel: 'DEVELOPING',
-        overallLabel: 'Đang rèn luyện & khám phá 🌱',
-        knowledgeScore: 83,
-        accuracyScore: 83,
-        speedScore: 90,
-        consistencyScore: 85,
-        skillCoverageScore: 35,
-        evidence: {
-          totalExamsTaken: 1,
-          recentAccuracyAverage: 83,
-          medianSecondsPerQuestion: 18,
-          strongSkillsCount: 3,
-          weakSkillsCount: 1,
-          totalSkillsCovered: 4,
-        },
-        recommendations: [
-          'Bé làm rất tốt ở các bài đếm số và phép cộng.',
-          'Nên rèn thêm phép trừ phạm vi 20 để phản xạ nhanh hơn.',
-        ],
-        isSufficientData: true,
-      },
-    };
+    // Seed a sample competition exam result.
+    // IMPORTANT: the demo paper is produced by the real CompetitionEngine from
+    // scripted demo answers, so it can never drift from production scoring logic.
+    const demoBlueprint = getBlueprintById('bp-math-mini-01');
+    let sampleExam: CompetitionExamResult | null = null;
+    if (demoBlueprint) {
+      const demoQuestions = CompetitionEngine.assembleExamQuestions(demoBlueprint, DEMO_SEED);
+      const demoResponses: QuestionResponse[] = demoQuestions.map((q, idx) => {
+        // 5 of 6 answered correctly on purpose so reports show a realistic mix.
+        const isCorrect = idx !== 3;
+        return {
+          questionId: q.id,
+          userAnswer: isCorrect ? q.correctAnswer : q.options[q.options.length - 1],
+          isCorrect,
+          timeSpentSeconds: isCorrect ? 12 + idx : 26,
+        };
+      });
+      sampleExam = CompetitionEngine.scoreSession(
+        demoBlueprint,
+        demoQuestions,
+        demoResponses,
+        110,
+        [],
+        DEMO_SEED
+      );
+      sampleExam.id = 'demo_exam_01';
+    }
 
     const compStore: CompetitionHistoryStore = {
-      examResults: [sampleExam],
-      practicedSkills: {
-        'MATH-NUMBER': { attempts: 2, correct: 2, lastPracticed: today },
-        'MATH-SUBTRACTION': { attempts: 2, correct: 1, lastPracticed: today },
-      },
+      examResults: sampleExam ? [sampleExam] : [],
+      practicedSkills: sampleExam
+        ? Object.entries(sampleExam.skillBreakdown).reduce<
+            Record<string, { attempts: number; correct: number; lastPracticed: string }>
+          >((acc, [skillId, stat]) => {
+            acc[skillId] = { attempts: stat.total, correct: stat.correct, lastPracticed: today };
+            return acc;
+          }, {})
+        : {},
       speedTrialsCompleted: 0,
       remediationPlans: [
         {
@@ -857,6 +1358,7 @@ export class StorageService {
         },
       ],
     };
+
     StorageService.saveCompetitionHistory(compStore);
   }
 }

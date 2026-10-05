@@ -1,6 +1,7 @@
 import { VIETNAMESE_TOPICS } from './vietnameseCurriculum';
 import { MATH_TOPICS } from './mathCurriculum';
 import { ENGLISH_TOPICS } from './englishCurriculum';
+import { getKidBoxSkillCatalogue } from './kidBoxTaxonomy';
 import { Lesson, Question, SubjectType, Topic } from '../types';
 
 export const ALL_TOPICS: Record<SubjectType, Topic[]> = {
@@ -56,6 +57,19 @@ export function getAllSkills(): { skillId: string; skillName: string; subject: S
           });
         }
       }
+    }
+  }
+
+  // The Kid's Box Companion track (§8) extends this same catalogue instead of
+  // creating a second taxonomy: its skills are English skills, resolved by the
+  // very same `getAllSkills()` lookup that names every piece of evidence.
+  for (const skill of getKidBoxSkillCatalogue()) {
+    if (!map.has(skill.skillId)) {
+      map.set(skill.skillId, {
+        skillId: skill.skillId,
+        skillName: `Kid's Box Companion: ${skill.skillName}`,
+        subject: skill.subject,
+      });
     }
   }
 

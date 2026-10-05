@@ -8,7 +8,9 @@ export default defineConfig(() => {
     plugins: [react(), tailwindcss()],
     resolve: {
       alias: {
-        '@': path.resolve(__dirname, '.'),
+        // import.meta.dirname keeps this config ESM-native (no __dirname shim),
+        // which is what Vite's native config loader expects.
+        '@': path.resolve(import.meta.dirname, '.'),
       },
     },
     server: {

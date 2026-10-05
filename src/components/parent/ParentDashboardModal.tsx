@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { StorageService } from '../../services/storage';
-import { AdaptiveService, ParentDiagnosticReport } from '../../services/adaptive';
+import { AdaptiveService, ParentDiagnosticReport, ReadingProgressReport } from '../../services/adaptive';
 import { ParentSettings } from '../../types';
 import { sound } from '../../services/sound';
 import {
@@ -18,7 +18,9 @@ import {
   BarChart3,
   ShieldCheck,
   Trophy,
+  Languages,
 } from 'lucide-react';
+import { KidBoxParentPanel } from './KidBoxParentPanel';
 
 interface ParentDashboardModalProps {
   isOpen: boolean;
@@ -38,7 +40,11 @@ export const ParentDashboardModal: React.FC<ParentDashboardModalProps> = ({
 
   const [settings, setSettings] = useState<ParentSettings>(StorageService.getParentSettings());
   const [report, setReport] = useState<ParentDiagnosticReport | null>(null);
-  const [activeTab, setActiveTab] = useState<'progress' | 'insights' | 'competition' | 'settings'>('progress');
+  const [readingReport, setReadingReport] = useState<ReadingProgressReport | null>(null);
+  const [activeTab, setActiveTab] = useState<
+    'progress' | 'reading' | 'insights' | 'competition' | 'kidbox' | 'settings'
+  >('progress');
+  const [showSeedConfirm, setShowSeedConfirm] = useState(false);
 
   // Regenerate gate challenge on open
   React.useEffect(() => {
@@ -59,6 +65,7 @@ export const ParentDashboardModal: React.FC<ParentDashboardModalProps> = ({
       sound.playCorrect();
       setIsAuthenticated(true);
       setReport(AdaptiveService.generateParentReport());
+      setReadingReport(AdaptiveService.generateReadingReport());
     } else {
       sound.playWrong();
       setGateError(true);
@@ -110,6 +117,7 @@ export const ParentDashboardModal: React.FC<ParentDashboardModalProps> = ({
     setResetSuccessMessage('Đã đặt lại tiến độ về dữ liệu mới tinh ban đầu!');
     setShowResetConfirm(false);
     setReport(AdaptiveService.generateParentReport());
+    setReadingReport(AdaptiveService.generateReadingReport());
     if (onDataReset) onDataReset();
     setTimeout(() => setResetSuccessMessage(null), 3000);
   };
@@ -117,10 +125,14 @@ export const ParentDashboardModal: React.FC<ParentDashboardModalProps> = ({
   const handleSeedDemoData = () => {
     StorageService.seedDemoProfile();
     sound.playStar();
-    setResetSuccessMessage('Đã tạo dữ liệu học thử nghiệm thành công để xem báo cáo!');
+    setShowSeedConfirm(false);
+    setResetSuccessMessage(
+      'Đã nạp DỮ LIỆU THỬ NGHIỆM. Các biểu đồ đang hiển thị là số liệu mẫu, không phải tiến bộ thật của bé.'
+    );
     setReport(AdaptiveService.generateParentReport());
+    setReadingReport(AdaptiveService.generateReadingReport());
     if (onDataReset) onDataReset();
-    setTimeout(() => setResetSuccessMessage(null), 3000);
+    setTimeout(() => setResetSuccessMessage(null), 6000);
   };
 
   if (!isOpen) return null;
@@ -195,6 +207,23 @@ export const ParentDashboardModal: React.FC<ParentDashboardModalProps> = ({
         ) : (
           // Authenticated Parent Dashboard
           <div className="flex-1 flex flex-col overflow-hidden">
+            {/* DEMO DATA BANNER (§1.2): fabricated figures must never look real */}
+            {report?.isDemoData && (
+              <div
+                role="status"
+                className="px-6 py-2.5 bg-amber-100 border-b-2 border-amber-300 text-amber-950 text-xs font-bold flex items-start gap-2"
+              >
+                <span className="text-base leading-none pt-0.5" aria-hidden="true">
+                  ⚠️
+                </span>
+                <span>
+                  Đang hiển thị <strong>DỮ LIỆU THỬ NGHIỆM</strong> — các con số dưới đây là số
+                  liệu mẫu để minh hoạ, không phải tiến bộ thật của bé. Bấm “Đặt lại tiến độ” để
+                  xoá và bắt đầu bằng hồ sơ sạch.
+                </span>
+              </div>
+            )}
+
             {/* Nav Tabs */}
             <div className="flex border-b border-slate-200 bg-slate-50 px-6 pt-3 gap-6">
               <button
@@ -220,6 +249,17 @@ export const ParentDashboardModal: React.FC<ParentDashboardModalProps> = ({
                 <span>Phân Tích & Lời Khuyên</span>
               </button>
               <button
+                onClick={() => setActiveTab('reading')}
+                className={`pb-3 text-sm font-bold flex items-center gap-2 border-b-2 transition-all ${
+                  activeTab === 'reading'
+                    ? 'border-blue-600 text-blue-600'
+                    : 'border-transparent text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                <BookOpen className="w-4 h-4" />
+                <span>Luyện Đọc</span>
+              </button>
+              <button
                 onClick={() => setActiveTab('competition')}
                 className={`pb-3 text-sm font-bold flex items-center gap-2 border-b-2 transition-all ${
                   activeTab === 'competition'
@@ -229,6 +269,17 @@ export const ParentDashboardModal: React.FC<ParentDashboardModalProps> = ({
               >
                 <Trophy className="w-4 h-4" />
                 <span>Đấu Trường Thi Thử</span>
+              </button>
+              <button
+                onClick={() => setActiveTab('kidbox')}
+                className={`pb-3 text-sm font-bold flex items-center gap-2 border-b-2 transition-all ${
+                  activeTab === 'kidbox'
+                    ? 'border-blue-600 text-blue-600'
+                    : 'border-transparent text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                <Languages className="w-4 h-4" />
+                <span>Kid&apos;s Box</span>
               </button>
               <button
                 onClick={() => setActiveTab('settings')}
@@ -398,6 +449,114 @@ export const ParentDashboardModal: React.FC<ParentDashboardModalProps> = ({
                 </div>
               )}
 
+              {activeTab === 'reading' && (
+                <div className="space-y-5">
+                  {readingReport && readingReport.totalSessions > 0 ? (
+                    <>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        <div className="p-4 bg-sky-50 border border-sky-200 rounded-2xl">
+                          <span className="text-xs text-sky-700 font-semibold block">Chỉ số đọc</span>
+                          <span className="text-2xl font-black text-sky-900 tabular-nums">
+                            {readingReport.readingIndex}/100
+                          </span>
+                        </div>
+                        <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl">
+                          <span className="text-xs text-emerald-700 font-semibold block">
+                            Đọc chính xác
+                          </span>
+                          <span className="text-2xl font-black text-emerald-900 tabular-nums">
+                            {readingReport.accuracyIndex}%
+                          </span>
+                        </div>
+                        <div className="p-4 bg-violet-50 border border-violet-200 rounded-2xl">
+                          <span className="text-xs text-violet-700 font-semibold block">
+                            Hiểu nội dung
+                          </span>
+                          <span className="text-2xl font-black text-violet-900 tabular-nums">
+                            {readingReport.comprehensionIndex}%
+                          </span>
+                        </div>
+                        <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl">
+                          <span className="text-xs text-amber-700 font-semibold block">
+                            Tốc độ đọc
+                          </span>
+                          <span className="text-2xl font-black text-amber-900 tabular-nums">
+                            {readingReport.wordsPerMinute > 0
+                              ? `${readingReport.wordsPerMinute} từ/phút`
+                              : 'Chưa đo'}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="p-5 bg-sky-50 border border-sky-200 rounded-2xl">
+                        <span className="font-black text-sky-950 block">{readingReport.headline}</span>
+                        <span className="text-sm text-sky-900">{readingReport.encouragement}</span>
+                        <p className="text-xs text-sky-800 mt-2">
+                          Bước đang luyện: <strong>{readingReport.currentStageLabel}</strong> ·{' '}
+                          {readingReport.totalSessions} lượt · chính xác trung bình{' '}
+                          {readingReport.averageAccuracy}%
+                        </p>
+                      </div>
+
+                      <div className="p-5 bg-white border border-slate-200 rounded-2xl space-y-2">
+                        <h4 className="text-sm font-black text-slate-900">Tiến bộ theo bậc thang</h4>
+                        {readingReport.stageRows.map((row) => (
+                          <div key={row.stage} className="text-xs">
+                            <div className="flex items-center justify-between font-bold">
+                              <span className={row.unlocked ? 'text-slate-800' : 'text-slate-400'}>
+                                {row.completed ? '✅' : row.unlocked ? '🔓' : '🔒'} {row.label}
+                              </span>
+                              <span className="tabular-nums text-slate-600">
+                                {row.accuracy}% / chuẩn {row.gate}%
+                              </span>
+                            </div>
+                            <div className="h-2 bg-slate-200 rounded-full overflow-hidden mt-1">
+                              <div
+                                className={`h-full ${row.completed ? 'bg-emerald-500' : 'bg-sky-500'}`}
+                                style={{ width: `${Math.min(100, row.accuracy)}%` }}
+                              />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      {readingReport.skillRows.length > 0 && (
+                        <div className="p-5 bg-white border border-slate-200 rounded-2xl space-y-2">
+                          <h4 className="text-sm font-black text-slate-900">Kỹ năng đọc chi tiết</h4>
+                          {readingReport.skillRows.map((row) => (
+                            <div
+                              key={row.skillId}
+                              className="flex items-center justify-between text-xs bg-slate-50 border border-slate-200 rounded-xl px-3 py-2"
+                            >
+                              <span className="font-bold text-slate-700">{row.skillName}</span>
+                              <span className="tabular-nums text-slate-600">
+                                {row.accuracy}% ({row.attempts} lượt)
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      <div className="p-5 bg-amber-50 border border-amber-200 rounded-2xl">
+                        <h4 className="text-sm font-black text-amber-900 mb-2">
+                          Gợi ý cho ba mẹ về việc đọc
+                        </h4>
+                        <ul className="space-y-2 text-xs md:text-sm text-amber-950 list-disc pl-5">
+                          {readingReport.adviceList.map((adv, i) => (
+                            <li key={i}>{adv}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    </>
+                  ) : (
+                    <p className="text-xs text-slate-600 bg-slate-50 border border-slate-200 rounded-2xl p-4">
+                      Bé chưa có lượt luyện đọc nào. Mời bé mở chuyên đề “Luyện Đọc” ở trang chủ và
+                      đọc một đoạn văn ngắn để bắt đầu.
+                    </p>
+                  )}
+                </div>
+              )}
+
               {activeTab === 'competition' && (
                 <div className="space-y-5">
                   {/* Summary metric banner */}
@@ -496,6 +655,10 @@ export const ParentDashboardModal: React.FC<ParentDashboardModalProps> = ({
                 </div>
               )}
 
+              {activeTab === 'kidbox' && (
+                <KidBoxParentPanel onDataChanged={onDataReset} />
+              )}
+
               {activeTab === 'settings' && (
                 <div className="space-y-5">
                   {/* Daily Screen Time Limit */}
@@ -574,6 +737,30 @@ export const ParentDashboardModal: React.FC<ParentDashboardModalProps> = ({
                       </div>
                     )}
 
+                    {showSeedConfirm ? (
+                      <div className="p-3 bg-indigo-50 border border-indigo-300 rounded-xl text-xs space-y-2">
+                        <p className="font-bold text-indigo-900">
+                          ⚠️ Thao tác này sẽ GHI ĐÈ hồ sơ hiện tại bằng dữ liệu mẫu. Các số liệu mẫu sẽ
+                          được ghi rõ là “dữ liệu thử nghiệm” trong mọi báo cáo để ba mẹ không bị nhầm
+                          là tiến bộ thật của bé.
+                        </p>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={handleSeedDemoData}
+                            className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold text-xs cursor-pointer"
+                          >
+                            Xác nhận nạp dữ liệu mẫu
+                          </button>
+                          <button
+                            onClick={() => setShowSeedConfirm(false)}
+                            className="px-3 py-1.5 bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 rounded-lg font-bold text-xs cursor-pointer"
+                          >
+                            Hủy
+                          </button>
+                        </div>
+                      </div>
+                    ) : null}
+
                     {showResetConfirm ? (
                       <div className="p-3 bg-rose-50 border border-rose-300 rounded-xl text-xs space-y-2">
                         <p className="font-bold text-rose-800">
@@ -605,8 +792,8 @@ export const ParentDashboardModal: React.FC<ParentDashboardModalProps> = ({
                         </button>
 
                         <button
-                          onClick={handleSeedDemoData}
-                          className="flex items-center gap-1.5 px-3 py-2 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-xl text-xs font-bold text-indigo-700 transition-all cursor-pointer"
+                          onClick={() => setShowSeedConfirm(true)}
+                          className="px-3 py-2 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-xl text-xs font-bold text-indigo-700 transition-all cursor-pointer"
                           title="Tạo hồ sơ học mẫu để xem đầy đủ biểu đồ và khuyến nghị sư phạm"
                         >
                           <BarChart3 className="w-4 h-4 text-indigo-500" />
