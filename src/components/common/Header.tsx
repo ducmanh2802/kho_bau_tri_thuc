@@ -30,6 +30,7 @@ export const Header: React.FC<HeaderProps> = ({
   const navItems: { screen: ActiveScreen; label: string; icon: string }[] = [
     { screen: 'home', label: 'Trang Chủ', icon: '🏠' },
     { screen: 'world_map', label: 'Bản Đồ', icon: '🗺️' },
+    { screen: 'competition', label: 'Đấu Trường', icon: '🏆' },
     { screen: 'games', label: 'Trò Chơi', icon: '🎮' },
     { screen: 'daily_review', label: 'Ôn Tập', icon: '💡' },
     { screen: 'achievements', label: 'Vườn Sao', icon: '🌳' },

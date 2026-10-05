@@ -10,6 +10,7 @@ import { DailyReviewScreen } from './components/review/DailyReviewScreen';
 import { WeeklyChallengeScreen } from './components/challenge/WeeklyChallengeScreen';
 import { AchievementsGardenScreen } from './components/achievements/AchievementsGardenScreen';
 import { AvatarShopScreen } from './components/shop/AvatarShopScreen';
+import { CompetitionHubScreen } from './components/competition/CompetitionHubScreen';
 import { ParentDashboardModal } from './components/parent/ParentDashboardModal';
 import { ScreenTimeModal } from './components/parent/ScreenTimeModal';
 
@@ -112,6 +113,13 @@ export default function App() {
 
         {currentScreen === 'weekly_challenge' && (
           <WeeklyChallengeScreen
+            onBack={() => setCurrentScreen('home')}
+            onProfileUpdate={refreshProfile}
+          />
+        )}
+
+        {currentScreen === 'competition' && (
+          <CompetitionHubScreen
             onBack={() => setCurrentScreen('home')}
             onProfileUpdate={refreshProfile}
           />

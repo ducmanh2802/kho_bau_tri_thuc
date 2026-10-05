@@ -2,14 +2,22 @@ import {
   Achievement,
   AvatarItem,
   ChildProfile,
+  CompetitionExamResult,
+  CompetitionHistoryStore,
+  DailyPlan,
   DailyQuest,
+  KnowledgeState,
   LearningAnalytics,
+  LearningEvidence,
+  LearningOSStore,
   MasteryStatus,
   ParentSettings,
+  SessionFatigueState,
   SkillMastery,
   SubjectType,
 } from '../types';
 import { getAllSkills } from '../data/curriculum';
+import { LearningOS, LEARNING_OS_POLICY } from './learningOS';
 
 const STORAGE_KEYS = {
   CHILD_PROFILE: 'kho_bau_child_profile',
@@ -17,6 +25,8 @@ const STORAGE_KEYS = {
   PARENT_SETTINGS: 'kho_bau_parent_settings',
   DAILY_QUESTS: 'kho_bau_daily_quests',
   ACHIEVEMENTS: 'kho_bau_achievements',
+  COMPETITION_HISTORY: 'kho_bau_competition_history',
+  LEARNING_OS_STORE: 'kho_bau_learning_os_store',
 };
 
 export const AVATAR_SHOP_ITEMS: AvatarItem[] = [
@@ -418,6 +428,18 @@ export class StorageService {
       }
     }
 
+    // Emit evidence into Learning OS
+    StorageService.recordLearningEvidence({
+      id: `ev_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      learnerId: 'child_1',
+      source: 'LESSON',
+      skillId,
+      subject,
+      questionId,
+      timestamp: Date.now(),
+      correct: isCorrect,
+    });
+
     let mastery = analytics.skillMastery[skillId];
     if (!mastery) {
       mastery = {
@@ -569,11 +591,115 @@ export class StorageService {
     }
   }
 
+  public static getCompetitionHistory(): CompetitionHistoryStore {
+    const emptyStore: CompetitionHistoryStore = {
+      examResults: [],
+      practicedSkills: {},
+      speedTrialsCompleted: 0,
+      remediationPlans: [],
+    };
+    try {
+      const data = localStorage.getItem(STORAGE_KEYS.COMPETITION_HISTORY);
+      if (data) {
+        const parsed = JSON.parse(data);
+        if (parsed && typeof parsed === 'object') {
+          return {
+            examResults: Array.isArray(parsed.examResults) ? parsed.examResults : [],
+            practicedSkills: parsed.practicedSkills && typeof parsed.practicedSkills === 'object' ? parsed.practicedSkills : {},
+            speedTrialsCompleted: typeof parsed.speedTrialsCompleted === 'number' ? parsed.speedTrialsCompleted : 0,
+            remediationPlans: Array.isArray(parsed.remediationPlans) ? parsed.remediationPlans : [],
+          };
+        }
+      }
+    } catch {
+      // Safe fallback
+    }
+    return emptyStore;
+  }
+
+  public static saveCompetitionHistory(store: CompetitionHistoryStore) {
+    try {
+      localStorage.setItem(STORAGE_KEYS.COMPETITION_HISTORY, JSON.stringify(store));
+    } catch {
+      // Storage full handled safely
+    }
+  }
+
+  /**
+   * Idempotently records an exam result and awards profile rewards.
+   */
+  public static recordCompetitionResult(
+    result: CompetitionExamResult,
+    xpReward: number,
+    starsReward: number
+  ) {
+    const store = StorageService.getCompetitionHistory();
+    const existingIndex = store.examResults.findIndex((e) => e.id === result.id);
+
+    if (existingIndex >= 0) {
+      // Already recorded: avoid duplicate rewards
+      store.examResults[existingIndex] = result;
+      StorageService.saveCompetitionHistory(store);
+      return;
+    }
+
+    // Append new result
+    store.examResults.unshift(result);
+    if (store.examResults.length > 30) {
+      store.examResults.pop();
+    }
+
+    if (result.blueprintId.includes('speed')) {
+      store.speedTrialsCompleted += 1;
+    }
+
+    // Track practiced skills
+    Object.keys(result.skillBreakdown).forEach((sId) => {
+      const st = result.skillBreakdown[sId];
+      if (!store.practicedSkills[sId]) {
+        store.practicedSkills[sId] = { attempts: 0, correct: 0, lastPracticed: new Date().toISOString() };
+      }
+      store.practicedSkills[sId].attempts += st.total;
+      store.practicedSkills[sId].correct += st.correct;
+      store.practicedSkills[sId].lastPracticed = new Date().toISOString();
+    });
+
+    StorageService.saveCompetitionHistory(store);
+
+    // Reward child profile
+    const profile = StorageService.getChildProfile();
+    profile.xp += xpReward;
+    profile.stars += starsReward;
+    StorageService.saveChildProfile(profile);
+
+    // Update analytics
+    const analytics = StorageService.getAnalytics();
+    analytics.totalQuestionsAnswered += result.totalQuestions;
+    analytics.totalCorrect += result.correctCount;
+
+    // Check errors
+    result.errorAnalysis.forEach((err) => {
+      analytics.recentErrors.unshift({
+        questionId: err.questionId,
+        subject: result.subject,
+        prompt: err.prompt,
+        timestamp: new Date().toISOString(),
+      });
+      if (analytics.recentErrors.length > 20) {
+        analytics.recentErrors.pop();
+      }
+    });
+
+    StorageService.saveAnalytics(analytics);
+    StorageService.checkAchievements();
+  }
+
   public static resetProgress() {
     localStorage.removeItem(STORAGE_KEYS.CHILD_PROFILE);
     localStorage.removeItem(STORAGE_KEYS.ANALYTICS);
     localStorage.removeItem(STORAGE_KEYS.DAILY_QUESTS);
     localStorage.removeItem(STORAGE_KEYS.ACHIEVEMENTS);
+    localStorage.removeItem(STORAGE_KEYS.COMPETITION_HISTORY);
   }
 
   /**
@@ -646,5 +772,91 @@ export class StorageService {
     ];
 
     StorageService.saveAnalytics(analytics);
+
+    // Seed sample competition exam result
+    const sampleExam: CompetitionExamResult = {
+      id: 'demo_exam_01',
+      blueprintId: 'bp-math-mini-01',
+      examTitle: 'Toán Học Mini Test 01',
+      subject: 'toan',
+      timestamp: new Date().toISOString(),
+      durationSeconds: 300,
+      timeUsedSeconds: 110,
+      totalQuestions: 6,
+      correctCount: 5,
+      accuracy: 83,
+      score: 8,
+      speedRating: 'EXCELLENT',
+      speedLabel: 'Tốc độ xuất sắc & Chuẩn xác ⭐',
+      averageSecondsPerQuestion: 18,
+      responses: [
+        { questionId: 'cq-math-01', userAnswer: '17', isCorrect: true, timeSpentSeconds: 12 },
+        { questionId: 'cq-math-02', userAnswer: '14', isCorrect: true, timeSpentSeconds: 15 },
+        { questionId: 'cq-math-03', userAnswer: '>', isCorrect: true, timeSpentSeconds: 14 },
+        { questionId: 'cq-math-05', userAnswer: '10', isCorrect: true, timeSpentSeconds: 10 },
+        { questionId: 'cq-math-08', userAnswer: '3', isCorrect: true, timeSpentSeconds: 11 },
+        { questionId: 'cq-math-09', userAnswer: '5', isCorrect: false, timeSpentSeconds: 22 },
+      ],
+      skillBreakdown: {
+        'MATH-NUMBER': { total: 2, correct: 2, skillName: 'Đếm & Nhận Diện Số 0 - 20' },
+        'MATH-COMPARISON': { total: 1, correct: 1, skillName: 'So Sánh & Thứ Tự Số' },
+        'MATH-ADDITION': { total: 1, correct: 1, skillName: 'Phép Cộng Phạm Vi 10 & 20' },
+        'MATH-SUBTRACTION': { total: 2, correct: 1, skillName: 'Phép Trừ Phạm Vi 10 & 20' },
+      },
+      strongSkills: ['Đếm & Nhận Diện Số 0 - 20', 'So Sánh & Thứ Tự Số', 'Phép Cộng Phạm Vi 10 & 20'],
+      weakSkills: ['Phép Trừ Phạm Vi 10 & 20'],
+      errorAnalysis: [
+        {
+          questionId: 'cq-math-09',
+          prompt: 'Tìm x biết: 18 - x = 14',
+          skillId: 'MATH-SUBTRACTION',
+          skillName: 'Phép Trừ Phạm Vi 10 & 20',
+          userAnswer: '5',
+          correctAnswer: '4',
+          explanation: 'Số trừ = Số bị trừ - Hiệu = 18 - 14 = 4.',
+          category: 'KNOWLEDGE_GAP',
+          advice: 'Kỹ năng "Phép Trừ Phạm Vi 10 & 20" cần được ôn luyện lại trong mục Luyện Dạng Bài.',
+        },
+      ],
+      readinessSnapshot: {
+        overallLevel: 'DEVELOPING',
+        overallLabel: 'Đang rèn luyện & khám phá 🌱',
+        knowledgeScore: 83,
+        accuracyScore: 83,
+        speedScore: 90,
+        consistencyScore: 85,
+        skillCoverageScore: 35,
+        evidence: {
+          totalExamsTaken: 1,
+          recentAccuracyAverage: 83,
+          medianSecondsPerQuestion: 18,
+          strongSkillsCount: 3,
+          weakSkillsCount: 1,
+          totalSkillsCovered: 4,
+        },
+        recommendations: [
+          'Bé làm rất tốt ở các bài đếm số và phép cộng.',
+          'Nên rèn thêm phép trừ phạm vi 20 để phản xạ nhanh hơn.',
+        ],
+        isSufficientData: true,
+      },
+    };
+
+    const compStore: CompetitionHistoryStore = {
+      examResults: [sampleExam],
+      practicedSkills: {
+        'MATH-NUMBER': { attempts: 2, correct: 2, lastPracticed: today },
+        'MATH-SUBTRACTION': { attempts: 2, correct: 1, lastPracticed: today },
+      },
+      speedTrialsCompleted: 0,
+      remediationPlans: [
+        {
+          generatedDate: today,
+          targetSkills: ['MATH-SUBTRACTION'],
+          completed: false,
+        },
+      ],
+    };
+    StorageService.saveCompetitionHistory(compStore);
   }
 }

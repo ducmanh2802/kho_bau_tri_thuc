@@ -150,5 +150,9 @@ export type ActiveScreen =
   | 'games'
   | 'daily_review'
   | 'weekly_challenge'
+  | 'competition'
   | 'achievements'
   | 'avatar_shop';
+
+export * from './competition';
+export * from './learningOS';

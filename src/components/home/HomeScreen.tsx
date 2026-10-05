@@ -213,24 +213,42 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         </div>
       </div>
 
-      {/* Secondary Fast Action Row (Games, Daily Smart Review, Weekly Challenge) */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      {/* Secondary Fast Action Row (Games, Daily Smart Review, Competition Arena, Weekly Challenge) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+        {/* Competition Hub */}
+        <button
+          onClick={() => {
+            sound.playClick();
+            onNavigate('competition');
+          }}
+          className="p-4 bg-gradient-to-br from-amber-500 to-orange-600 text-white rounded-3xl shadow-lg flex items-center justify-between transition-all hover:scale-102 active:scale-95 cursor-pointer border-3 border-amber-300"
+        >
+          <div className="flex items-center gap-3">
+            <span className="text-3xl">🏆</span>
+            <div className="text-left">
+              <h4 className="font-black text-sm md:text-base font-display">Đấu Trường</h4>
+              <p className="text-[11px] text-amber-100 font-semibold">Thi thử & Tốc độ</p>
+            </div>
+          </div>
+          <span className="text-xs font-black bg-white/20 px-2.5 py-1 rounded-xl">Vào thi</span>
+        </button>
+
         {/* Game Center */}
         <button
           onClick={() => {
             sound.playClick();
             onOpenGames();
           }}
-          className="p-5 bg-gradient-to-r from-purple-500 to-indigo-600 text-white rounded-3xl shadow-lg flex items-center justify-between transition-all hover:scale-102 active:scale-95 cursor-pointer border-3 border-purple-300"
+          className="p-4 bg-gradient-to-br from-purple-500 to-indigo-600 text-white rounded-3xl shadow-lg flex items-center justify-between transition-all hover:scale-102 active:scale-95 cursor-pointer border-3 border-purple-300"
         >
           <div className="flex items-center gap-3">
-            <span className="text-4xl">🎮</span>
-            <div>
-              <h4 className="font-black text-base md:text-lg font-display">Trung Tâm Game</h4>
-              <p className="text-xs text-purple-200 font-semibold">10+ trò chơi thông minh</p>
+            <span className="text-3xl">🎮</span>
+            <div className="text-left">
+              <h4 className="font-black text-sm md:text-base font-display">Khu Trò Chơi</h4>
+              <p className="text-[11px] text-purple-200 font-semibold">14 mini-games vui</p>
             </div>
           </div>
-          <span className="text-sm font-bold bg-white/20 px-3 py-1.5 rounded-xl">Chơi ngay</span>
+          <span className="text-xs font-bold bg-white/20 px-2.5 py-1 rounded-xl">Chơi ngay</span>
         </button>
 
         {/* Daily Smart Review */}
@@ -239,16 +257,16 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             sound.playClick();
             onOpenDailyReview();
           }}
-          className="p-5 bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 rounded-3xl shadow-lg flex items-center justify-between transition-all hover:scale-102 active:scale-95 cursor-pointer border-3 border-amber-300"
+          className="p-4 bg-gradient-to-br from-yellow-400 to-amber-500 text-slate-950 rounded-3xl shadow-lg flex items-center justify-between transition-all hover:scale-102 active:scale-95 cursor-pointer border-3 border-amber-300"
         >
           <div className="flex items-center gap-3">
-            <span className="text-4xl">💡</span>
-            <div>
-              <h4 className="font-black text-base md:text-lg font-display">Ôn Tập Hôm Nay</h4>
-              <p className="text-xs text-amber-900 font-semibold">Gợi ý câu hỏi cần nhớ</p>
+            <span className="text-3xl">💡</span>
+            <div className="text-left">
+              <h4 className="font-black text-sm md:text-base font-display">Ôn Tập Ngày</h4>
+              <p className="text-[11px] text-amber-950 font-semibold">Chống quên kiến thức</p>
             </div>
           </div>
-          <span className="text-sm font-black bg-white/80 px-3 py-1.5 rounded-xl">Luyện tập</span>
+          <span className="text-xs font-black bg-white/80 px-2.5 py-1 rounded-xl">Ôn ngay</span>
         </button>
 
         {/* Weekly Challenge */}
@@ -257,16 +275,16 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             sound.playClick();
             onOpenWeeklyChallenge();
           }}
-          className="p-5 bg-gradient-to-r from-rose-500 to-pink-600 text-white rounded-3xl shadow-lg flex items-center justify-between transition-all hover:scale-102 active:scale-95 cursor-pointer border-3 border-rose-300"
+          className="p-4 bg-gradient-to-br from-rose-500 to-pink-600 text-white rounded-3xl shadow-lg flex items-center justify-between transition-all hover:scale-102 active:scale-95 cursor-pointer border-3 border-rose-300"
         >
           <div className="flex items-center gap-3">
-            <span className="text-4xl">🏆</span>
-            <div>
-              <h4 className="font-black text-base md:text-lg font-display">Đấu Trường Tuần</h4>
-              <p className="text-xs text-rose-200 font-semibold">Thử thách nhận cúp</p>
+            <span className="text-3xl">🌟</span>
+            <div className="text-left">
+              <h4 className="font-black text-sm md:text-base font-display">Thử Thách Tuần</h4>
+              <p className="text-[11px] text-rose-200 font-semibold">Nhận cúp danh dự</p>
             </div>
           </div>
-          <span className="text-sm font-bold bg-white/20 px-3 py-1.5 rounded-xl">Thi đấu</span>
+          <span className="text-xs font-bold bg-white/20 px-2.5 py-1 rounded-xl">Thử sức</span>
         </button>
       </div>
 

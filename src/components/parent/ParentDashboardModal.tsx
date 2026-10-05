@@ -17,6 +17,7 @@ import {
   Download,
   BarChart3,
   ShieldCheck,
+  Trophy,
 } from 'lucide-react';
 
 interface ParentDashboardModalProps {
@@ -37,7 +38,7 @@ export const ParentDashboardModal: React.FC<ParentDashboardModalProps> = ({
 
   const [settings, setSettings] = useState<ParentSettings>(StorageService.getParentSettings());
   const [report, setReport] = useState<ParentDiagnosticReport | null>(null);
-  const [activeTab, setActiveTab] = useState<'progress' | 'insights' | 'settings'>('progress');
+  const [activeTab, setActiveTab] = useState<'progress' | 'insights' | 'competition' | 'settings'>('progress');
 
   // Regenerate gate challenge on open
   React.useEffect(() => {
@@ -91,7 +92,8 @@ export const ParentDashboardModal: React.FC<ParentDashboardModalProps> = ({
   const handleExportData = () => {
     const profile = StorageService.getChildProfile();
     const analytics = StorageService.getAnalytics();
-    const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify({ profile, analytics }, null, 2));
+    const competitionHistory = StorageService.getCompetitionHistory();
+    const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify({ profile, analytics, competitionHistory }, null, 2));
     const dlAnchor = document.createElement('a');
     dlAnchor.setAttribute('href', dataStr);
     dlAnchor.setAttribute('download', `kho_bau_tri_thuc_report_${new Date().toISOString().split('T')[0]}.json`);
@@ -216,6 +218,17 @@ export const ParentDashboardModal: React.FC<ParentDashboardModalProps> = ({
               >
                 <Lightbulb className="w-4 h-4" />
                 <span>Phân Tích & Lời Khuyên</span>
+              </button>
+              <button
+                onClick={() => setActiveTab('competition')}
+                className={`pb-3 text-sm font-bold flex items-center gap-2 border-b-2 transition-all ${
+                  activeTab === 'competition'
+                    ? 'border-blue-600 text-blue-600'
+                    : 'border-transparent text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                <Trophy className="w-4 h-4" />
+                <span>Đấu Trường Thi Thử</span>
               </button>
               <button
                 onClick={() => setActiveTab('settings')}
@@ -382,6 +395,104 @@ export const ParentDashboardModal: React.FC<ParentDashboardModalProps> = ({
                       </p>
                     )}
                   </div>
+                </div>
+              )}
+
+              {activeTab === 'competition' && (
+                <div className="space-y-5">
+                  {/* Summary metric banner */}
+                  {(() => {
+                    const compStore = StorageService.getCompetitionHistory();
+                    const exams = compStore.examResults;
+                    const avgAcc =
+                      exams.length > 0
+                        ? Math.round(exams.reduce((sum, e) => sum + e.accuracy, 0) / exams.length)
+                        : 0;
+
+                    return (
+                      <>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                          <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl">
+                            <span className="text-xs text-amber-700 font-bold block">Bài thi đã làm</span>
+                            <span className="text-2xl font-black text-amber-950 font-display mt-0.5 block">
+                              {exams.length} bài
+                            </span>
+                          </div>
+
+                          <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl">
+                            <span className="text-xs text-emerald-700 font-bold block">Chính xác trung bình</span>
+                            <span className="text-2xl font-black text-emerald-950 font-display mt-0.5 block">
+                              {exams.length > 0 ? `${avgAcc}%` : 'Chưa thi'}
+                            </span>
+                          </div>
+
+                          <div className="p-4 bg-purple-50 border border-purple-200 rounded-2xl col-span-2 sm:col-span-1">
+                            <span className="text-xs text-purple-700 font-bold block">Thử thách tốc độ</span>
+                            <span className="text-2xl font-black text-purple-950 font-display mt-0.5 block">
+                              {compStore.speedTrialsCompleted} lượt
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Recent Exam History */}
+                        <div className="p-5 bg-slate-50 border border-slate-200 rounded-2xl space-y-3">
+                          <h4 className="text-sm font-black text-slate-800 flex items-center gap-2">
+                            <Trophy className="w-4 h-4 text-amber-600" />
+                            Nhật Ký Các Lần Thi Thử Của Bé
+                          </h4>
+
+                          {exams.length > 0 ? (
+                            <div className="space-y-2">
+                              {exams.map((ex, i) => (
+                                <div
+                                  key={i}
+                                  className="p-3 bg-white border border-slate-200 rounded-xl flex items-center justify-between text-xs"
+                                >
+                                  <div>
+                                    <div className="flex items-center gap-2">
+                                      <span className="font-bold text-slate-800">{ex.examTitle}</span>
+                                      <span className="text-[10px] px-2 py-0.5 bg-slate-100 rounded-md font-semibold text-slate-600">
+                                        {new Date(ex.timestamp).toLocaleDateString('vi-VN')}
+                                      </span>
+                                    </div>
+                                    <span className="text-[11px] text-slate-500">
+                                      Thời gian: {Math.floor(ex.timeUsedSeconds / 60)}m {ex.timeUsedSeconds % 60}s • {ex.speedLabel}
+                                    </span>
+                                  </div>
+
+                                  <div className="text-right">
+                                    <span className="font-black text-sm text-amber-900 block font-display">
+                                      {ex.score}/10
+                                    </span>
+                                    <span className="text-[11px] font-bold text-emerald-700">
+                                      {ex.accuracy}% đúng
+                                    </span>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="text-xs text-slate-500 italic">
+                              Bé chưa tham gia bài thi thử nào trong Đấu Trường.
+                            </p>
+                          )}
+                        </div>
+
+                        {/* Psychological Guidance for Parents */}
+                        <div className="p-4 bg-sky-50 border border-sky-200 rounded-2xl space-y-1.5 text-xs text-sky-950">
+                          <span className="font-black block text-sky-900">
+                            💡 Định hướng thi thử lành mạnh cho học sinh lớp 1:
+                          </span>
+                          <p>
+                            • Mục tiêu thi thử là giúp bé quen dần với dạng bài, rèn sự tập trung và biết cách phân bổ thời gian.
+                          </p>
+                          <p>
+                            • Tuyệt đối không tạo áp lực điểm số hoặc so sánh thứ hạng với các bạn khác. Mỗi tiến bộ nhỏ của con đều đáng được ghi nhận!
+                          </p>
+                        </div>
+                      </>
+                    );
+                  })()}
                 </div>
               )}
 
