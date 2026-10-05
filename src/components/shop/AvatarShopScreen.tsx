@@ -26,7 +26,8 @@ export const AvatarShopScreen: React.FC<AvatarShopScreenProps> = ({
 
   const handleSelectMascot = (mId: 'bear' | 'fox' | 'rabbit' | 'owl') => {
     sound.playClick();
-    const updated = { ...profile, avatarBase: mId };
+    const fresh = StorageService.getChildProfile();
+    const updated = { ...fresh, avatarBase: mId };
     setProfile(updated);
     StorageService.saveChildProfile(updated);
     onProfileUpdate();
@@ -34,17 +35,18 @@ export const AvatarShopScreen: React.FC<AvatarShopScreenProps> = ({
   };
 
   const handleBuyOrEquip = (item: AvatarItem) => {
-    const isUnlocked = profile.unlockedItems.includes(item.id);
+    const fresh = StorageService.getChildProfile();
+    const isUnlocked = fresh.unlockedItems.includes(item.id);
 
     if (isUnlocked) {
       // Toggle equip
       sound.playClick();
-      const currentEquipped = profile.equipped[item.type];
+      const currentEquipped = fresh.equipped[item.type];
       const newEquipped = currentEquipped === item.id ? undefined : item.id;
       const updated: ChildProfile = {
-        ...profile,
+        ...fresh,
         equipped: {
-          ...profile.equipped,
+          ...fresh.equipped,
           [item.type]: newEquipped,
         },
       };
@@ -53,15 +55,15 @@ export const AvatarShopScreen: React.FC<AvatarShopScreenProps> = ({
       onProfileUpdate();
     } else {
       // Buy with stars
-      if (profile.stars >= item.priceStars) {
+      if (fresh.stars >= item.priceStars) {
         sound.playLevelUp();
         fireCelebrationConfetti();
         const updated: ChildProfile = {
-          ...profile,
-          stars: profile.stars - item.priceStars,
-          unlockedItems: [...profile.unlockedItems, item.id],
+          ...fresh,
+          stars: fresh.stars - item.priceStars,
+          unlockedItems: [...fresh.unlockedItems, item.id],
           equipped: {
-            ...profile.equipped,
+            ...fresh.equipped,
             [item.type]: item.id,
           },
         };

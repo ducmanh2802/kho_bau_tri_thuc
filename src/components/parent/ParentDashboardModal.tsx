@@ -99,14 +99,26 @@ export const ParentDashboardModal: React.FC<ParentDashboardModalProps> = ({
     sound.playStar();
   };
 
-  const handleReset = () => {
-    if (window.confirm('Ba mẹ có chắc chắn muốn đặt lại toàn bộ tiến độ học tập của bé không?')) {
-      StorageService.resetProgress();
-      sound.playClick();
-      alert('Đã đặt lại tiến độ thành công!');
-      if (onDataReset) onDataReset();
-      onClose();
-    }
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [resetSuccessMessage, setResetSuccessMessage] = useState<string | null>(null);
+
+  const handleConfirmReset = () => {
+    StorageService.resetProgress();
+    sound.playClick();
+    setResetSuccessMessage('Đã đặt lại tiến độ về dữ liệu mới tinh ban đầu!');
+    setShowResetConfirm(false);
+    setReport(AdaptiveService.generateParentReport());
+    if (onDataReset) onDataReset();
+    setTimeout(() => setResetSuccessMessage(null), 3000);
+  };
+
+  const handleSeedDemoData = () => {
+    StorageService.seedDemoProfile();
+    sound.playStar();
+    setResetSuccessMessage('Đã tạo dữ liệu học thử nghiệm thành công để xem báo cáo!');
+    setReport(AdaptiveService.generateParentReport());
+    if (onDataReset) onDataReset();
+    setTimeout(() => setResetSuccessMessage(null), 3000);
   };
 
   if (!isOpen) return null;
@@ -237,7 +249,7 @@ export const ParentDashboardModal: React.FC<ParentDashboardModalProps> = ({
                       <div className="flex items-center gap-1.5 mt-1">
                         <CheckCircle className="w-5 h-5 text-emerald-600" />
                         <span className="text-2xl font-black text-emerald-900">
-                          {report?.overallAccuracy || 88}%
+                          {analytics.totalQuestionsAnswered > 0 ? `${report?.overallAccuracy ?? 0}%` : 'Chưa có'}
                         </span>
                       </div>
                     </div>
@@ -273,12 +285,15 @@ export const ParentDashboardModal: React.FC<ParentDashboardModalProps> = ({
                         <span className="flex items-center gap-1">
                           <span>📚</span> Tiếng Việt (Chữ cái, vần, chính tả, đọc hiểu)
                         </span>
-                        <span>{report?.subjectMastery['tieng-viet'].percent || 85}% ({report?.subjectMastery['tieng-viet'].label})</span>
+                        <span>
+                          {report?.subjectMastery['tieng-viet'].percent ?? 0}% (
+                          {report?.subjectMastery['tieng-viet'].label ?? 'Chưa làm bài'})
+                        </span>
                       </div>
                       <div className="w-full h-3 bg-slate-200 rounded-full overflow-hidden">
                         <div
                           className="h-full bg-amber-500 rounded-full transition-all duration-500"
-                          style={{ width: `${report?.subjectMastery['tieng-viet'].percent || 85}%` }}
+                          style={{ width: `${report?.subjectMastery['tieng-viet'].percent ?? 0}%` }}
                         />
                       </div>
                     </div>
@@ -289,12 +304,15 @@ export const ParentDashboardModal: React.FC<ParentDashboardModalProps> = ({
                         <span className="flex items-center gap-1">
                           <span>🔢</span> Toán Học (Đếm 0-20, cộng trừ, hình học, lời văn)
                         </span>
-                        <span>{report?.subjectMastery['toan'].percent || 80}% ({report?.subjectMastery['toan'].label})</span>
+                        <span>
+                          {report?.subjectMastery['toan'].percent ?? 0}% (
+                          {report?.subjectMastery['toan'].label ?? 'Chưa làm bài'})
+                        </span>
                       </div>
                       <div className="w-full h-3 bg-slate-200 rounded-full overflow-hidden">
                         <div
                           className="h-full bg-blue-500 rounded-full transition-all duration-500"
-                          style={{ width: `${report?.subjectMastery['toan'].percent || 80}%` }}
+                          style={{ width: `${report?.subjectMastery['toan'].percent ?? 0}%` }}
                         />
                       </div>
                     </div>
@@ -305,12 +323,15 @@ export const ParentDashboardModal: React.FC<ParentDashboardModalProps> = ({
                         <span className="flex items-center gap-1">
                           <span>🇬🇧</span> Tiếng Anh (Phonics, từ vựng, con vật, màu sắc)
                         </span>
-                        <span>{report?.subjectMastery['english'].percent || 75}% ({report?.subjectMastery['english'].label})</span>
+                        <span>
+                          {report?.subjectMastery['english'].percent ?? 0}% (
+                          {report?.subjectMastery['english'].label ?? 'Chưa làm bài'})
+                        </span>
                       </div>
                       <div className="w-full h-3 bg-slate-200 rounded-full overflow-hidden">
                         <div
                           className="h-full bg-emerald-500 rounded-full transition-all duration-500"
-                          style={{ width: `${report?.subjectMastery['english'].percent || 75}%` }}
+                          style={{ width: `${report?.subjectMastery['english'].percent ?? 0}%` }}
                         />
                       </div>
                     </div>
@@ -435,23 +456,61 @@ export const ParentDashboardModal: React.FC<ParentDashboardModalProps> = ({
                   <div className="p-5 bg-slate-50 border border-slate-200 rounded-2xl space-y-3">
                     <h4 className="text-sm font-black text-slate-800 mb-2">Quản Lý Dữ Liệu</h4>
 
-                    <div className="flex flex-wrap gap-3">
-                      <button
-                        onClick={handleExportData}
-                        className="flex items-center gap-1.5 px-4 py-2 bg-white hover:bg-slate-100 border border-slate-300 rounded-xl text-xs font-bold text-slate-700 transition-all"
-                      >
-                        <Download className="w-4 h-4" />
-                        Xuất báo cáo tiến độ (.json)
-                      </button>
+                    {resetSuccessMessage && (
+                      <div className="p-3 bg-emerald-50 border border-emerald-300 rounded-xl text-xs font-bold text-emerald-800 flex items-center gap-2">
+                        <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
+                        <span>{resetSuccessMessage}</span>
+                      </div>
+                    )}
 
-                      <button
-                        onClick={handleReset}
-                        className="flex items-center gap-1.5 px-4 py-2 bg-rose-50 hover:bg-rose-100 border border-rose-300 rounded-xl text-xs font-bold text-rose-700 transition-all ml-auto"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                        Đặt lại tiến độ
-                      </button>
-                    </div>
+                    {showResetConfirm ? (
+                      <div className="p-3 bg-rose-50 border border-rose-300 rounded-xl text-xs space-y-2">
+                        <p className="font-bold text-rose-800">
+                          ⚠️ Ba mẹ có chắc chắn muốn đặt lại toàn bộ tiến độ học tập của bé về ban đầu?
+                        </p>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={handleConfirmReset}
+                            className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg font-bold text-xs cursor-pointer"
+                          >
+                            Xác nhận đặt lại
+                          </button>
+                          <button
+                            onClick={() => setShowResetConfirm(false)}
+                            className="px-3 py-1.5 bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 rounded-lg font-bold text-xs cursor-pointer"
+                          >
+                            Hủy
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex flex-wrap items-center gap-2.5">
+                        <button
+                          onClick={handleExportData}
+                          className="flex items-center gap-1.5 px-3 py-2 bg-white hover:bg-slate-100 border border-slate-300 rounded-xl text-xs font-bold text-slate-700 transition-all cursor-pointer"
+                        >
+                          <Download className="w-4 h-4 text-slate-500" />
+                          Xuất file (.json)
+                        </button>
+
+                        <button
+                          onClick={handleSeedDemoData}
+                          className="flex items-center gap-1.5 px-3 py-2 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-xl text-xs font-bold text-indigo-700 transition-all cursor-pointer"
+                          title="Tạo hồ sơ học mẫu để xem đầy đủ biểu đồ và khuyến nghị sư phạm"
+                        >
+                          <BarChart3 className="w-4 h-4 text-indigo-500" />
+                          Tạo dữ liệu thử nghiệm
+                        </button>
+
+                        <button
+                          onClick={() => setShowResetConfirm(true)}
+                          className="flex items-center gap-1.5 px-3 py-2 bg-rose-50 hover:bg-rose-100 border border-rose-300 rounded-xl text-xs font-bold text-rose-700 transition-all ml-auto cursor-pointer"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                          Đặt lại tiến độ
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}

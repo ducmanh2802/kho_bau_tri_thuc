@@ -68,6 +68,12 @@ export const SentenceScrambleGame: React.FC<{ onExit: () => void }> = ({ onExit 
     }
   };
 
+  const handleRemoveWord = (idx: number) => {
+    if (trainDriving) return;
+    sound.playClick();
+    setAssembledWords((prev) => prev.filter((_, i) => i !== idx));
+  };
+
   const handleResetAssembled = () => {
     sound.playClick();
     setAssembledWords([]);
@@ -118,16 +124,20 @@ export const SentenceScrambleGame: React.FC<{ onExit: () => void }> = ({ onExit 
           {currentLevel.correctWords.map((_, idx) => {
             const word = assembledWords[idx];
             return (
-              <div
+              <button
                 key={idx}
+                onClick={() => word && handleRemoveWord(idx)}
+                disabled={!word || trainDriving}
+                title={word ? 'Chạm để gỡ từ này' : undefined}
                 className={`w-20 md:w-28 h-16 md:h-20 rounded-2xl border-4 flex flex-col items-center justify-center font-black text-sm md:text-lg shadow-md transition-all shrink-0 ${
                   word
-                    ? 'bg-amber-400 border-amber-500 text-amber-950 scale-100'
-                    : 'bg-white/60 border-dashed border-amber-300 text-slate-300'
+                    ? 'bg-amber-400 border-amber-500 text-amber-950 scale-100 hover:bg-amber-300 cursor-pointer active:scale-95'
+                    : 'bg-white/60 border-dashed border-amber-300 text-slate-300 cursor-default'
                 }`}
               >
                 <span>{word || `Toa ${idx + 1}`}</span>
-              </div>
+                {word && <span className="text-[9px] text-amber-900 font-bold opacity-75">✕ Gỡ</span>}
+              </button>
             );
           })}
         </div>

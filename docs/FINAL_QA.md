@@ -18,3 +18,5 @@
 | **Giới Hạn Màn Hình** | Cảnh báo nghỉ ngơi khi học đủ số phút quy định | Nhắc nhở ấm áp bảo vệ mắt bé | **PASS** |
 | **Lưu Trữ Dữ Liệu** | Tải lại trang (F5/Reload) tiến độ học tập vẫn giữ nguyên vẹn | Dữ liệu được lưu trữ an toàn trong localStorage | **PASS** |
 | **Kiểm Tra Biên Dịch** | Typecheck và Build thành công không có lỗi | `tsc --noEmit` & `npm run build` PASS | **PASS** |
+| **Kiểm Thử Tự Động (Vitest)** | 5 files kiểm thử (24 bài test) bao phủ: Learning Engine, Math, Vietnamese, English, Parent Mode | 24/24 tests passed (100%) | **PASS** |
+| **Tuân Thủ iFrame Sandbox** | Không sử dụng `window.alert` hoặc `window.confirm` chặn giao diện | Toàn bộ xác nhận thực hiện in-modal an toàn | **PASS** |

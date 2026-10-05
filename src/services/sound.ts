@@ -7,9 +7,15 @@ class SoundService {
   private ctx: AudioContext | null = null;
   private isMuted: boolean = false;
   private voiceEnabled: boolean = true;
+  private cachedVoices: SpeechSynthesisVoice[] = [];
 
   constructor() {
-    // AudioContext will be initialized on first user gesture
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      this.cachedVoices = window.speechSynthesis.getVoices();
+      window.speechSynthesis.onvoiceschanged = () => {
+        this.cachedVoices = window.speechSynthesis.getVoices();
+      };
+    }
   }
 
   private getAudioContext(): AudioContext | null {
@@ -227,15 +233,23 @@ class SoundService {
     if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
 
     try {
+      if (window.speechSynthesis.paused) {
+        window.speechSynthesis.resume();
+      }
       window.speechSynthesis.cancel(); // Stop any pending utterances
       const utterance = new SpeechSynthesisUtterance(text);
       utterance.lang = lang;
       utterance.rate = lang === 'vi-VN' ? 0.9 : 0.85; // Slightly slower, clear for grade 1 kids
       utterance.pitch = 1.1; // Friendly, warm pitch
 
-      const voices = window.speechSynthesis.getVoices();
-      if (voices.length > 0) {
-        const matchingVoice = voices.find((v) => v.lang.startsWith(lang.slice(0, 2)));
+      const allVoices = this.cachedVoices.length > 0 ? this.cachedVoices : window.speechSynthesis.getVoices();
+      if (allVoices.length > 0) {
+        // Priority 1: Exact locale match (e.g. 'vi-VN' or 'en-US')
+        let matchingVoice = allVoices.find((v) => v.lang === lang || v.lang.replace('_', '-') === lang);
+        // Priority 2: Prefix match (e.g. 'vi' or 'en')
+        if (!matchingVoice) {
+          matchingVoice = allVoices.find((v) => v.lang.startsWith(lang.slice(0, 2)));
+        }
         if (matchingVoice) {
           utterance.voice = matchingVoice;
         }
@@ -243,7 +257,7 @@ class SoundService {
 
       window.speechSynthesis.speak(utterance);
     } catch {
-      // Speech synthesis error handled quietly
+      // Speech synthesis error handled quietly without crashing
     }
   }
 

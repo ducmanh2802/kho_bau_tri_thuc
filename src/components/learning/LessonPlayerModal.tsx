@@ -129,6 +129,16 @@ export const LessonPlayerModal: React.FC<LessonPlayerModalProps> = ({
     setIsFinished(false);
   };
 
+  const handleRetryCurrentQuestion = () => {
+    sound.playClick();
+    setSelectedAnswer(null);
+    setOrderedList([]);
+    setIsAnswerChecked(false);
+    setIsCorrect(false);
+    setShowHint(true);
+    sound.speak('Bé hãy xem gợi ý và thử lại nhé!');
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 md:p-6 bg-slate-900/70 backdrop-blur-sm animate-pop select-none">
       <div className="relative w-full max-w-2xl h-[92vh] max-h-[720px] bg-white rounded-3xl shadow-2xl flex flex-col overflow-hidden border-4 border-amber-300">
@@ -329,15 +339,28 @@ export const LessonPlayerModal: React.FC<LessonPlayerModalProps> = ({
                   Kiểm tra câu trả lời ✨
                 </button>
               ) : (
-                <button
-                  onClick={handleNextQuestion}
-                  className="w-full py-3.5 px-6 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-black text-base md:text-lg rounded-2xl shadow-lg transition-transform active:scale-95 flex items-center justify-center gap-2 cursor-pointer font-display"
-                >
-                  <span>
-                    {currentIdx + 1 < lesson.questions.length ? 'Câu tiếp theo' : 'Xem kết quả bài học'}
-                  </span>
-                  <ArrowRight className="w-5 h-5" />
-                </button>
+                <div className="flex items-center gap-3">
+                  {!isCorrect && (
+                    <button
+                      onClick={handleRetryCurrentQuestion}
+                      className="flex-1 py-3.5 px-4 bg-amber-100 hover:bg-amber-200 text-amber-900 font-black text-sm md:text-base rounded-2xl shadow-sm transition-transform active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer font-display"
+                    >
+                      <RotateCcw className="w-4 h-4" />
+                      <span>Thử lại câu này 🔁</span>
+                    </button>
+                  )}
+                  <button
+                    onClick={handleNextQuestion}
+                    className={`${
+                      !isCorrect ? 'flex-1' : 'w-full'
+                    } py-3.5 px-6 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-black text-base md:text-lg rounded-2xl shadow-lg transition-transform active:scale-95 flex items-center justify-center gap-2 cursor-pointer font-display`}
+                  >
+                    <span>
+                      {currentIdx + 1 < lesson.questions.length ? 'Câu tiếp theo' : 'Xem kết quả bài học'}
+                    </span>
+                    <ArrowRight className="w-5 h-5" />
+                  </button>
+                </div>
               )}
             </div>
           </div>

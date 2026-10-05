@@ -39,6 +39,7 @@ export const SyllableBuilderGame: React.FC<{ onExit: () => void }> = ({ onExit }
     { label: 'Dấu Sắc (/)', val: 'sắc', sym: '´' },
     { label: 'Dấu Huyền (\\)', val: 'huyền', sym: '`' },
     { label: 'Dấu Hỏi (?)', val: 'hỏi', sym: '?' },
+    { label: 'Dấu Ngã (~)', val: 'ngã', sym: '~' },
     { label: 'Dấu Nặng (.)', val: 'nặng', sym: '.' },
   ];
 

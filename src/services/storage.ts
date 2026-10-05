@@ -111,14 +111,14 @@ const DEFAULT_CHILD_PROFILE: ChildProfile = {
     glasses: 'glasses_nerd',
     backpack: 'bag_dino',
   },
-  xp: 150,
-  stars: 18,
-  gems: 10,
-  tickets: 5,
-  streak: 3,
+  xp: 0,
+  stars: 0,
+  gems: 0,
+  tickets: 0,
+  streak: 1,
   lastActiveDate: new Date().toISOString().split('T')[0],
   unlockedItems: ['hat_cap', 'glasses_nerd', 'bag_dino'],
-  completedLessons: ['vn-les-1', 'math-les-1'],
+  completedLessons: [],
   completedWeeklyChallenges: [],
 };
 
@@ -194,25 +194,52 @@ export class StorageService {
     try {
       const data = localStorage.getItem(STORAGE_KEYS.CHILD_PROFILE);
       if (data) {
-        const parsed = JSON.parse(data) as ChildProfile;
-        // Verify streak
-        const today = getTodayString();
-        if (parsed.lastActiveDate !== today) {
-          const lastDate = new Date(parsed.lastActiveDate);
-          const currDate = new Date(today);
-          const diffDays = Math.round((currDate.getTime() - lastDate.getTime()) / (1000 * 3600 * 24));
-          if (diffDays === 1) {
-            parsed.streak += 1;
-          } else if (diffDays > 1) {
-            parsed.streak = 1;
+        const raw = JSON.parse(data);
+        if (raw && typeof raw === 'object') {
+          // Defensively sanitize and merge with defaults
+          const sanitized: ChildProfile = {
+            id: typeof raw.id === 'string' ? raw.id : DEFAULT_CHILD_PROFILE.id,
+            name: typeof raw.name === 'string' ? raw.name : DEFAULT_CHILD_PROFILE.name,
+            grade: 1,
+            avatarBase: ['bear', 'fox', 'rabbit', 'owl'].includes(raw.avatarBase)
+              ? raw.avatarBase
+              : DEFAULT_CHILD_PROFILE.avatarBase,
+            equipped: raw.equipped && typeof raw.equipped === 'object' ? raw.equipped : {},
+            xp: typeof raw.xp === 'number' && !isNaN(raw.xp) && raw.xp >= 0 ? raw.xp : 0,
+            stars: typeof raw.stars === 'number' && !isNaN(raw.stars) && raw.stars >= 0 ? raw.stars : 0,
+            gems: typeof raw.gems === 'number' && !isNaN(raw.gems) && raw.gems >= 0 ? raw.gems : 0,
+            tickets: typeof raw.tickets === 'number' && !isNaN(raw.tickets) && raw.tickets >= 0 ? raw.tickets : 0,
+            streak: typeof raw.streak === 'number' && !isNaN(raw.streak) && raw.streak >= 1 ? raw.streak : 1,
+            lastActiveDate: typeof raw.lastActiveDate === 'string' ? raw.lastActiveDate : getTodayString(),
+            unlockedItems: Array.isArray(raw.unlockedItems)
+              ? raw.unlockedItems
+              : [...DEFAULT_CHILD_PROFILE.unlockedItems],
+            completedLessons: Array.isArray(raw.completedLessons) ? raw.completedLessons : [],
+            completedWeeklyChallenges: Array.isArray(raw.completedWeeklyChallenges)
+              ? raw.completedWeeklyChallenges
+              : [],
+            dailyChestClaimedDate: raw.dailyChestClaimedDate,
+          };
+
+          // Verify streak progression
+          const today = getTodayString();
+          if (sanitized.lastActiveDate !== today) {
+            const lastDate = new Date(sanitized.lastActiveDate);
+            const currDate = new Date(today);
+            const diffDays = Math.round((currDate.getTime() - lastDate.getTime()) / (1000 * 3600 * 24));
+            if (diffDays === 1) {
+              sanitized.streak += 1;
+            } else if (diffDays > 1) {
+              sanitized.streak = 1;
+            }
+            sanitized.lastActiveDate = today;
+            StorageService.saveChildProfile(sanitized);
           }
-          parsed.lastActiveDate = today;
-          StorageService.saveChildProfile(parsed);
+          return sanitized;
         }
-        return parsed;
       }
     } catch {
-      // Ignore parse error
+      // Ignore parse error and recover safely
     }
     StorageService.saveChildProfile(DEFAULT_CHILD_PROFILE);
     return DEFAULT_CHILD_PROFILE;
@@ -222,14 +249,27 @@ export class StorageService {
     try {
       localStorage.setItem(STORAGE_KEYS.CHILD_PROFILE, JSON.stringify(profile));
     } catch {
-      // Storage full or private mode
+      // Storage full or private mode handled safely
     }
   }
 
   public static getParentSettings(): ParentSettings {
     try {
       const data = localStorage.getItem(STORAGE_KEYS.PARENT_SETTINGS);
-      if (data) return JSON.parse(data);
+      if (data) {
+        const parsed = JSON.parse(data);
+        if (parsed && typeof parsed === 'object') {
+          return {
+            dailyLimitMinutes: typeof parsed.dailyLimitMinutes === 'number' ? parsed.dailyLimitMinutes : 20,
+            soundEnabled: typeof parsed.soundEnabled === 'boolean' ? parsed.soundEnabled : true,
+            musicEnabled: typeof parsed.musicEnabled === 'boolean' ? parsed.musicEnabled : true,
+            voiceEnabled: typeof parsed.voiceEnabled === 'boolean' ? parsed.voiceEnabled : true,
+            difficultyScale: ['easy', 'normal', 'advanced'].includes(parsed.difficultyScale)
+              ? parsed.difficultyScale
+              : 'normal',
+          };
+        }
+      }
     } catch {
       // Ignore
     }
@@ -247,13 +287,13 @@ export class StorageService {
   public static getAnalytics(): LearningAnalytics {
     const today = getTodayString();
     let analytics: LearningAnalytics = {
-      totalMinutesSpent: 28,
-      minutesToday: 12,
+      totalMinutesSpent: 0,
+      minutesToday: 0,
       todayDate: today,
-      totalQuestionsAnswered: 24,
-      totalCorrect: 21,
-      lessonsCompletedCount: 2,
-      gamesPlayedCount: 3,
+      totalQuestionsAnswered: 0,
+      totalCorrect: 0,
+      lessonsCompletedCount: 0,
+      gamesPlayedCount: 0,
       skillMastery: {},
       recentErrors: [],
     };
@@ -261,12 +301,20 @@ export class StorageService {
     try {
       const data = localStorage.getItem(STORAGE_KEYS.ANALYTICS);
       if (data) {
-        const parsed = JSON.parse(data) as LearningAnalytics;
-        if (parsed.todayDate !== today) {
-          parsed.todayDate = today;
-          parsed.minutesToday = 0;
+        const parsed = JSON.parse(data);
+        if (parsed && typeof parsed === 'object') {
+          analytics = {
+            totalMinutesSpent: typeof parsed.totalMinutesSpent === 'number' ? parsed.totalMinutesSpent : 0,
+            minutesToday: parsed.todayDate === today && typeof parsed.minutesToday === 'number' ? parsed.minutesToday : 0,
+            todayDate: today,
+            totalQuestionsAnswered: typeof parsed.totalQuestionsAnswered === 'number' ? parsed.totalQuestionsAnswered : 0,
+            totalCorrect: typeof parsed.totalCorrect === 'number' ? parsed.totalCorrect : 0,
+            lessonsCompletedCount: typeof parsed.lessonsCompletedCount === 'number' ? parsed.lessonsCompletedCount : 0,
+            gamesPlayedCount: typeof parsed.gamesPlayedCount === 'number' ? parsed.gamesPlayedCount : 0,
+            skillMastery: parsed.skillMastery && typeof parsed.skillMastery === 'object' ? parsed.skillMastery : {},
+            recentErrors: Array.isArray(parsed.recentErrors) ? parsed.recentErrors : [],
+          };
         }
-        analytics = parsed;
       }
     } catch {
       // Ignore
@@ -419,12 +467,18 @@ export class StorageService {
   // Record completed lesson
   public static completeLesson(lessonId: string, subject: SubjectType, xp: number, stars: number) {
     const profile = StorageService.getChildProfile();
-    if (!profile.completedLessons.includes(lessonId)) {
+    const isFirstTime = !profile.completedLessons.includes(lessonId);
+
+    if (isFirstTime) {
       profile.completedLessons.push(lessonId);
+      profile.xp += xp;
+      profile.stars += stars;
+      profile.tickets += 1; // Earn 1 arcade ticket per new lesson!
+    } else {
+      // Retaking an already completed lesson grants practice review XP (+5 XP)
+      // but does NOT duplicate stars/tickets (anti-farming reward integrity)
+      profile.xp += 5;
     }
-    profile.xp += xp;
-    profile.stars += stars;
-    profile.tickets += 1; // Earn 1 arcade ticket per lesson!
     StorageService.saveChildProfile(profile);
 
     const analytics = StorageService.getAnalytics();
@@ -520,5 +574,77 @@ export class StorageService {
     localStorage.removeItem(STORAGE_KEYS.ANALYTICS);
     localStorage.removeItem(STORAGE_KEYS.DAILY_QUESTS);
     localStorage.removeItem(STORAGE_KEYS.ACHIEVEMENTS);
+  }
+
+  /**
+   * Seeds realistic demo data for evaluators/parents to test diagnostic reports
+   * without affecting initial clean profile creation for new users.
+   */
+  public static seedDemoProfile() {
+    const today = getTodayString();
+    const demoProfile: ChildProfile = {
+      id: 'child_1',
+      name: 'Bé Minh',
+      grade: 1,
+      avatarBase: 'bear',
+      equipped: {
+        hat: 'hat_cap',
+        glasses: 'glasses_nerd',
+        backpack: 'bag_dino',
+      },
+      xp: 220,
+      stars: 18,
+      gems: 5,
+      tickets: 4,
+      streak: 4,
+      lastActiveDate: today,
+      unlockedItems: ['hat_cap', 'glasses_nerd', 'bag_dino', 'hat_party'],
+      completedLessons: ['vn-les-1', 'vn-les-2', 'math-les-1', 'math-les-2', 'eng-les-1'],
+      completedWeeklyChallenges: ['week_1'],
+    };
+    StorageService.saveChildProfile(demoProfile);
+
+    const analytics = StorageService.getAnalytics();
+    analytics.totalMinutesSpent = 45;
+    analytics.minutesToday = 15;
+    analytics.totalQuestionsAnswered = 24;
+    analytics.totalCorrect = 19;
+    analytics.lessonsCompletedCount = 5;
+    analytics.gamesPlayedCount = 4;
+
+    // Seed skill masteries
+    if (analytics.skillMastery['vn_alphabet']) {
+      analytics.skillMastery['vn_alphabet'].attempts = 6;
+      analytics.skillMastery['vn_alphabet'].correctCount = 6;
+      analytics.skillMastery['vn_alphabet'].status = 'MASTERED';
+    }
+    if (analytics.skillMastery['math_counting_10']) {
+      analytics.skillMastery['math_counting_10'].attempts = 5;
+      analytics.skillMastery['math_counting_10'].correctCount = 5;
+      analytics.skillMastery['math_counting_10'].status = 'MASTERED';
+    }
+    if (analytics.skillMastery['math_subtraction_10']) {
+      analytics.skillMastery['math_subtraction_10'].attempts = 5;
+      analytics.skillMastery['math_subtraction_10'].correctCount = 1;
+      analytics.skillMastery['math_subtraction_10'].wrongCount = 4;
+      analytics.skillMastery['math_subtraction_10'].status = 'NEEDS_REVIEW';
+    }
+    if (analytics.skillMastery['eng_phonics_letters']) {
+      analytics.skillMastery['eng_phonics_letters'].attempts = 4;
+      analytics.skillMastery['eng_phonics_letters'].correctCount = 3;
+      analytics.skillMastery['eng_phonics_letters'].wrongCount = 1;
+      analytics.skillMastery['eng_phonics_letters'].status = 'PRACTICING';
+    }
+
+    analytics.recentErrors = [
+      {
+        questionId: 'math-q4-2',
+        subject: 'toan',
+        prompt: '10 - 4 = ...',
+        timestamp: new Date().toISOString(),
+      },
+    ];
+
+    StorageService.saveAnalytics(analytics);
   }
 }

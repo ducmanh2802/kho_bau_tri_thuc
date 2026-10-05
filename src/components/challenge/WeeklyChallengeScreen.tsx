@@ -52,10 +52,11 @@ export const WeeklyChallengeScreen: React.FC<WeeklyChallengeScreenProps> = ({
   };
 
   const handleComplete = () => {
+    const freshProfile = StorageService.getChildProfile();
     const updated = {
-      ...profile,
+      ...freshProfile,
       completedWeeklyChallenges: Array.from(
-        new Set([...profile.completedWeeklyChallenges, 'weekly-challenge-week-1'])
+        new Set([...freshProfile.completedWeeklyChallenges, 'weekly-challenge-week-1'])
       ),
     };
     StorageService.saveChildProfile(updated);

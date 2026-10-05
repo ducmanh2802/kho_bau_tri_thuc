@@ -36,10 +36,11 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
     if (!canClaimChest) return;
     sound.playLevelUp();
     fireCelebrationConfetti();
+    const freshProfile = StorageService.getChildProfile();
     const updated = {
-      ...profile,
-      stars: profile.stars + 10,
-      xp: profile.xp + 50,
+      ...freshProfile,
+      stars: freshProfile.stars + 10,
+      xp: freshProfile.xp + 50,
       dailyChestClaimedDate: new Date().toISOString().split('T')[0],
     };
     StorageService.saveChildProfile(updated);

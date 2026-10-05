@@ -73,7 +73,7 @@ export const VIETNAMESE_TOPICS: Topic[] = [
             type: 'image-choice',
             prompt: 'Hình nào có tên bắt đầu bằng chữ B?',
             audioPrompt: 'Hình nào có tên bắt đầu bằng chữ B?',
-            options: ['Búp bê 🪆', 'Ngôi sao ⭐', 'Mặt trời ☀️', 'Bông hoa 🌸'],
+            options: ['Búp bê 🪆', 'Ngôi sao ⭐', 'Mặt trời ☀️', 'Quả táo 🍎'],
             correctAnswer: 'Búp bê 🪆',
             hint: 'Búp bê bắt đầu bằng chữ B.',
             explanation: 'Tuyệt vời! B - Búp bê.',

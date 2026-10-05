@@ -111,9 +111,9 @@ export class AdaptiveService {
     const skills = Object.values(analytics.skillMastery);
 
     const totalAnswered = analytics.totalQuestionsAnswered;
-    const overallAccuracy = totalAnswered > 0 ? Math.round((analytics.totalCorrect / totalAnswered) * 100) : 90;
+    const overallAccuracy = totalAnswered > 0 ? Math.round((analytics.totalCorrect / totalAnswered) * 100) : 0;
 
-    // Calculate percentage per subject
+    // Calculate percentage per subject based on REAL evidence
     const subjectStats: Record<SubjectType, { total: number; correct: number }> = {
       'tieng-viet': { total: 0, correct: 0 },
       'toan': { total: 0, correct: 0 },
@@ -127,59 +127,65 @@ export class AdaptiveService {
       }
     });
 
-    const getSubjectPercent = (sub: SubjectType) => {
+    const getSubjectStatus = (sub: SubjectType): { percent: number; label: string } => {
       const st = subjectStats[sub];
-      if (st.total === 0) return 75; // Baseline starting estimation
-      return Math.round((st.correct / st.total) * 100);
+      if (st.total === 0) {
+        return { percent: 0, label: 'Chưa làm bài' };
+      }
+      const pct = Math.round((st.correct / st.total) * 100);
+      let label = 'Cần luyện thêm';
+      if (pct >= 85) label = 'Rất vững vàng';
+      else if (pct >= 70) label = 'Đạt yêu cầu';
+      return { percent: pct, label };
     };
 
     const subjectMastery: Record<SubjectType, { percent: number; label: string }> = {
-      'tieng-viet': {
-        percent: getSubjectPercent('tieng-viet'),
-        label: getSubjectPercent('tieng-viet') >= 80 ? 'Rất Tốt' : 'Cần Rèn Thêm Vần',
-      },
-      'toan': {
-        percent: getSubjectPercent('toan'),
-        label: getSubjectPercent('toan') >= 80 ? 'Vững Vàng' : 'Cần Rèn Phép Trừ & Lời Văn',
-      },
-      'english': {
-        percent: getSubjectPercent('english'),
-        label: getSubjectPercent('english') >= 80 ? 'Phát Âm Tự Nhiên' : 'Tập Thêm Từ Vựng',
-      },
+      'tieng-viet': getSubjectStatus('tieng-viet'),
+      'toan': getSubjectStatus('toan'),
+      'english': getSubjectStatus('english'),
     };
 
     // Filter weak skills
     const weakSkills = skills.filter((s) => s.status === 'NEEDS_REVIEW' || (s.attempts >= 2 && s.wrongCount > s.correctCount));
     const strongSkills = skills.filter((s) => s.status === 'MASTERED' || (s.attempts >= 3 && s.correctCount / s.attempts >= 0.8));
 
-    // Generate actionable pedagogical advice
+    // Generate actionable pedagogical advice with zero fake claims
     const adviceList: string[] = [];
 
-    if (weakSkills.length > 0) {
+    if (totalAnswered === 0) {
       adviceList.push(
-        `Bé đang gặp một chút thử thách ở ${weakSkills.length} kỹ năng (đặc biệt là phân biệt chính tả hoặc bài toán có lời văn). Ba mẹ nên cho bé luyện tập thêm 5 phút mỗi ngày với mục "Ôn Tập Hôm Nay".`
+        'Bé mới bắt đầu hành trình học tập! Ba mẹ hãy đồng hành cùng bé hoàn thành bài học Tiếng Việt hoặc Toán đầu tiên hôm nay.'
+      );
+      adviceList.push(
+        'Thời gian học lý tưởng: 15–20 phút mỗi ngày. Hãy dành cho bé những lời khen ấm áp để xây dựng niềm yêu thích học tập!'
       );
     } else {
+      if (weakSkills.length > 0) {
+        adviceList.push(
+          `Bé đang gặp một chút thử thách ở ${weakSkills.length} kỹ năng (${weakSkills.map((w) => w.skillName).slice(0, 2).join(', ')}). Ba mẹ nên cho bé luyện tập thêm 5 phút mỗi ngày với mục "Ôn Tập Hôm Nay".`
+        );
+      } else {
+        adviceList.push(
+          'Bé tiếp thu kiến thức rất tốt! Các câu hỏi đã học đều được giải quyết tự tin và chuẩn xác.'
+        );
+      }
+
+      if (subjectStats['toan'].total > 0 && subjectMastery['toan'].percent < 75) {
+        adviceList.push(
+          'Ở môn Toán: Khi làm bài toán bớt đi (phép trừ) hoặc toán có lời văn, ba mẹ có thể dùng que tính hoặc kẹo thật để minh họa trực quan.'
+        );
+      }
+
+      if (subjectStats['tieng-viet'].total > 0 && subjectMastery['tieng-viet'].percent < 75) {
+        adviceList.push(
+          'Ở môn Tiếng Việt: Bé nên đọc to thành tiếng từng âm vần để tai và miệng cùng ghi nhớ nhịp điệu phát âm.'
+        );
+      }
+
       adviceList.push(
-        'Bé có nền tảng tiếp thu rất tốt! Các kỹ năng chữ cái và tính toán cơ bản đều vững vàng.'
+        'Thời gian học khuyến nghị: 15–20 phút/ngày để giữ cho mắt sáng và tinh thần sảng khoái.'
       );
     }
-
-    if (subjectMastery['toan'].percent < 75) {
-      adviceList.push(
-        'Ở môn Toán: Bé cần được minh họa bằng đồ vật thật (ngón tay, que tính, kẹo) khi làm bài toán bớt đi (phép trừ) để trực quan hơn.'
-      );
-    }
-
-    if (subjectMastery['tieng-viet'].percent < 75) {
-      adviceList.push(
-        'Ở môn Tiếng Việt: Bé nên luyện đọc to thành tiếng từng âm vần để tai nghe và miệng cùng ghi nhớ nhịp điệu.'
-      );
-    }
-
-    adviceList.push(
-      'Thời gian học lý tưởng: 15 - 20 phút mỗi ngày. Hãy khen ngợi sự kiên trì của bé bằng những lời động viên ấm áp thay vì chỉ chú trọng điểm số!'
-    );
 
     return {
       overallAccuracy,
