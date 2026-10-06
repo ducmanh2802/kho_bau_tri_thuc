@@ -20,6 +20,24 @@ import { CompetitionQuestion } from '../types/competition';
 
 type Pair = [left: string, right: string];
 
+// P36 §5 — deterministic answer-position rebalancing for builder-made items.
+// Legacy hand-written items in this file clustered the correct answer at
+// options[0] ("always pick A" exploit). Each choice builder below rotates its
+// options so the correct answer lands on a round-robin target position,
+// per options-length class, in file order. Pure permutation: grading (which
+// is value-based) and explanations are untouched.
+const positionCounters: Record<number, number> = {};
+
+function placeAnswer(options: string[], answer: string): string[] {
+  const n = options.length;
+  const current = options.indexOf(answer);
+  if (current < 0 || n < 2) return [...options];
+  const target = (positionCounters[n] ?? 0) % n;
+  positionCounters[n] = (positionCounters[n] ?? 0) + 1;
+  const shift = (current - target + n) % n;
+  return options.map((_, i) => options[(i + shift) % n]);
+}
+
 function base(
   id: string,
   skillId: string,
@@ -52,7 +70,7 @@ function choice(
     questionType: 'multiple-choice',
     version: 1,
     mediaEmoji,
-    options,
+    options: placeAnswer(options, answer),
     correctAnswer: answer,
   };
 }
@@ -102,7 +120,7 @@ function blank(
     questionType: 'fill-blank',
     version: 1,
     mediaEmoji,
-    options,
+    options: placeAnswer(options, answer),
     correctAnswer: answer,
     ...(accepted ? { acceptedAnswers: accepted } : {}),
   };
@@ -247,9 +265,8 @@ export const EXPANSION_QUESTIONS: CompetitionQuestion[] = [
     [
       ['Bé có 4 bút chì, mua thêm 4 bút chì', '+'],
       ['Trên cây có 9 chim, 3 chim bay đi', '-'],
-      ['1 hộp có 6 viên kẹo, 3 hộp như vậy', '×'],
     ],
-    'Có thêm thì cộng, bớt đi thì trừ, nhiều nhóm bằng nhau thì nhân.',
+    'Có thêm thì cộng, bớt đi thì trừ.',
     40
   ),
   choice(
@@ -383,14 +400,14 @@ export const EXPANSION_QUESTIONS: CompetitionQuestion[] = [
     'MATH-MEASUREMENT',
     'Đại lượng',
     'MEDIUM',
-    'Nối mỗi đại lượng với đơn vị đo của nó.',
+    'Nối mỗi đồ vật với cách đo phù hợp của nó.',
     '⚖️',
     [
-      ['Khối lượng quả táo', 'gam'],
-      ['Độ dài que kẹo', 'xentimét'],
-      ['Khoảng cách hai trường', 'ki lô mét'],
+      ['Bàn học dài', 'gang tay'],
+      ['Sân trường rộng', 'bước chân'],
+      ['Bút chì ngắn', 'xentimét'],
     ],
-    'Cân đo khối lượng bằng gam, đo ngắn bằng xentimét, đo xa bằng ki lô mét.',
+    'Bàn học đo bằng gang tay, sân trường đo bằng bước chân, bút chì đo bằng xentimét.',
     35
   ),
   bool(
@@ -411,11 +428,11 @@ export const EXPANSION_QUESTIONS: CompetitionQuestion[] = [
     'MATH-MEASUREMENT',
     'Đại lượng',
     'CHALLENGE',
-    'Chai nước cân nặng 500 gam, hộp bánh cân nặng 1 kilogram. Hỏi chai nước nặng hơn hay nhẹ hơn?',
+    'Gói muối cân nặng 1 ki-lô-gam, gói đường cân nặng 2 ki-lô-gam. Hỏi gói muối nặng hơn hay nhẹ hơn gói đường?',
     '🍞',
     ['Nhẹ hơn', 'Nặng hơn', 'Bằng nhau', 'Không biết'],
     'Nhẹ hơn',
-    '1 kilogram = 1000 gam. Chai nước 500 gam, nhẹ hơn hộp bánh 1000 gam.',
+    '1 ki-lô-gam nhẹ hơn 2 ki-lô-gam, nên gói muối nhẹ hơn gói đường.',
     30
   ),
 
@@ -546,11 +563,11 @@ export const EXPANSION_QUESTIONS: CompetitionQuestion[] = [
     'MATH-SUBTRACTION',
     'Phép tính',
     'CHALLENGE',
-    'Trong một chuồng có 14 con gà. Bé đếm thêm 4 con nữa. Hỏi chuồng có tất cả bao nhiêu con?',
+    'Trong chuồng có 14 con gà. Mẹ mua thêm 4 con gà nữa bỏ vào chuồng. Hỏi chuồng có tất cả bao nhiêu con?',
     '🐔',
     ['18 con', '10 con', '20 con', '11 con'],
     '18 con',
-    '"Đếm thêm" là cộng, không phải trừ: 14 + 4 = 18 con.',
+    '"Mua thêm" là cộng: 14 + 4 = 18 con.',
     30
   ),
   blank(
@@ -577,8 +594,8 @@ export const EXPANSION_QUESTIONS: CompetitionQuestion[] = [
     'MEDIUM',
     'Sắp xếp các từ thành một câu có nghĩa.',
     '🐦',
-    ['Con', 'chim', 'bay', 'lên', 'cày', 'cao.'],
-    'Câu "Con chim bay lên cày cao." đúng trật tự chủ ngữ rồi vị ngữ rồi dấu kết thúc.',
+    ['Con', 'chim', 'bay', 'lên', 'cành', 'cao.'],
+    'Câu "Con chim bay lên cành cao." đúng trật tự chủ ngữ rồi vị ngữ rồi dấu kết thúc.',
     30
   ),
   bool(
@@ -587,10 +604,10 @@ export const EXPANSION_QUESTIONS: CompetitionQuestion[] = [
     'TV-SENTENCE',
     'Ngữ pháp',
     'HARD',
-    'Đánh giá mệnh đề: "Câu "Cây cóc có quả" là một câu có nghĩa."',
+    'Đánh giá mệnh đề: "Câu "Bàn ghế chạy nhảy" là một câu có nghĩa."',
     '🌳',
     'Sai',
-    '"Cây cóc có quả" không tạo thành câu có nghĩa vì từ ngữ nối không hợp lý.',
+    '"Bàn ghế" là đồ vật, không thể "chạy nhảy" như con người nên câu này vô nghĩa.',
     28
   ),
   choice(
@@ -601,9 +618,9 @@ export const EXPANSION_QUESTIONS: CompetitionQuestion[] = [
     'MEDIUM',
     'Tiếng nào có âm đầu là "tr"?',
     '🚂',
-    ['trâu', 'tre', 'tư', 'thơ'],
+    ['trâu', 'te', 'tư', 'thơ'],
     'trâu',
-    'Tiếng "trâu" bắt đầu bằng âm đôi "tr". "Tre" và "tư" chỉ có âm đầu "t".',
+    'Tiếng "trâu" bắt đầu bằng âm đôi "tr". "Te" và "tư" chỉ có âm đầu "t", "thơ" có âm đầu "th".',
     25
   ),
   blank(
@@ -628,11 +645,11 @@ export const EXPANSION_QUESTIONS: CompetitionQuestion[] = [
     'MATH-LOGIC',
     'Tư duy logic',
     'HARD',
-    'Bé có 3 hộp bánh và 4 hộp bánh. Mỗi hộp có 2 chiếc bánh. Hỏi bé có tất cả bao nhiêu chiếc bánh?',
+    'Bé có 3 hộp bánh. Mẹ cho Bé thêm 4 hộp bánh. Hỏi Bé có tất cả bao nhiêu hộp bánh?',
     '🥐',
-    ['14 chiếc', '7 chiếc', '12 chiếc', '6 chiếc'],
-    '14 chiếc',
-    'Tổng số hộp là 3 + 4 = 7 hộp, mỗi hộp 2 chiếc nên 7 × 2 = 14 chiếc.',
+    ['7 hộp', '6 hộp', '8 hộp', '12 hộp'],
+    '7 hộp',
+    'Tổng số hộp bánh: 3 + 4 = 7 hộp.',
     35
   ),
   bool(
@@ -660,10 +677,10 @@ export const EXPANSION_QUESTIONS: CompetitionQuestion[] = [
     [
       ['mèo', 'nheo'],
       ['bếp', 'kép'],
-      ['xanh', 'tươi'],
+      ['vàng', 'sáng'],
       ['đi', 'kì'],
     ],
-    'Các tiếng cùng vần có phần vần giống nhau: mèo–nheo, bếp–kép, xanh–tươi, đi–kì.',
+    'Các tiếng cùng vần có phần vần giống nhau: mèo–nheo (vần eo), bếp–kép (vần ép), vàng–sáng (vần ang), đi–kì (vần i).',
     35
   ),
   ordering(
@@ -672,10 +689,10 @@ export const EXPANSION_QUESTIONS: CompetitionQuestion[] = [
     'TV-RHYME',
     'Cấu tạo từ',
     'MEDIUM',
-    'Sắp xếp các tiếng sao cho tạo thành vần "an" đúng thứ tự trong câu ca dao.',
+    'Sắp xếp các từ thành câu đúng.',
     '🌳',
-    ['cây', 'đan', 'thơm', 'râm'],
-    'Câu "Cây đan thơm râm" — các tiếng đan, thơm, râm đều có vần "an".',
+    ['Bé', 'Lan', 'quét', 'bàn.'],
+    'Câu "Bé Lan quét bàn." đúng trật tự chủ ngữ rồi vị ngữ rồi dấu kết thúc.',
     35
   ),
   choice(
@@ -686,9 +703,9 @@ export const EXPANSION_QUESTIONS: CompetitionQuestion[] = [
     'CHALLENGE',
     'Tiếng nào KHÔNG cùng vần với "bát"?',
     '🍚',
-    ['Cát', 'Đất', 'Nắng', 'Mát'],
+    ['Cát', 'Hát', 'Nắng', 'Mát'],
     'Nắng',
-    'Bát–cát–mát cùng vần "at". "Đất" có vần "ất" và "nắng" có vần "ăng" nên không cùng vần.',
+    'Bát–cát–hát–mát cùng vần "at". "Nắng" có vần "ăng" nên không cùng vần.',
     30
   ),
 
@@ -699,10 +716,10 @@ export const EXPANSION_QUESTIONS: CompetitionQuestion[] = [
     'TV-READING',
     'Đọc hiểu',
     'MEDIUM',
-    'Đọc đoạn văn: "Chú chó vàng chạy nhanh trên bãi cỏ. Chú sủa vui và đuổi bóng bay."\nHỏi: Chú chó đang chơi với gì?',
+    'Đọc đoạn văn: "Chú chó vàng chạy nhanh trên bãi cỏ. Chú sủa vui và đuổi bóng bay."\nĐánh giá mệnh đề: "Chú chó vàng đuổi theo con mèo."',
     '🐕',
     'Sai',
-    'Đoạn văn nói chú đuổi "bóng bay", không phải "con bóng".',
+    'Đoạn văn viết chú chó đuổi "bóng bay", không phải con mèo.',
     25
   ),
   matching(
@@ -762,10 +779,10 @@ export const EXPANSION_QUESTIONS: CompetitionQuestion[] = [
     'MEDIUM',
     'Điền chữ vào chỗ chấm cho đúng chính tả: "Bé dùng ... để vẽ bức tranh."',
     '🖍️',
-    ['mút', 'mụt', 'mít', 'mất'],
-    'mút',
+    ['bút', 'mụt', 'mít', 'mất'],
+    'bút',
     undefined,
-    'Từ "mút" viết bằng chữ m và u: mút. Các cách viết còn lại không tạo thành từ.',
+    'Chỉ có "bút" tạo thành câu có nghĩa: "Bé dùng bút để vẽ bức tranh."',
     20
   ),
   choice(
@@ -865,7 +882,7 @@ export const EXPANSION_QUESTIONS: CompetitionQuestion[] = [
     '🐕',
     ['g', 'y', 'n', 't'],
     'g',
-    ['g', 'y'],
+    undefined,
     'The word is "dog", spelt d-o-g.',
     20
   ),
@@ -954,11 +971,11 @@ export const EXPANSION_QUESTIONS: CompetitionQuestion[] = [
     'EN-BODY',
     'Vocabulary',
     'CHALLENGE',
-    'Which two words name the same body part?',
+    'Which two words both name parts of your face?',
     '🖐️',
-    ['Hand and foot', 'Hand and nose', 'Knee and ear', 'Ear and eye'],
-    'Hand and foot',
-    'A hand and a foot are both limbs. The other pairs are different parts.',
+    ['Eye and nose', 'Hand and foot', 'Knee and ear', 'Arm and leg'],
+    'Eye and nose',
+    'Eyes and nose are both on your face. The other pairs mix face and limb parts.',
     32
   ),
 ];

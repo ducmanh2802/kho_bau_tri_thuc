@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { StorageService } from '../../services/storage';
 import { AdaptiveService, ParentDiagnosticReport, ReadingProgressReport } from '../../services/adaptive';
+import { DecisionEngine } from '../../services/decisionEngine';
+import type { DecisionOutput } from '../../types';
 import { ParentSettings } from '../../types';
 import { sound } from '../../services/sound';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
@@ -20,6 +22,8 @@ import {
   ShieldCheck,
   Trophy,
   Languages,
+  Target,
+  TrendingUp,
 } from 'lucide-react';
 import { KidBoxParentPanel } from './KidBoxParentPanel';
 
@@ -42,6 +46,7 @@ export const ParentDashboardModal: React.FC<ParentDashboardModalProps> = ({
   const [settings, setSettings] = useState<ParentSettings>(StorageService.getParentSettings());
   const [report, setReport] = useState<ParentDiagnosticReport | null>(null);
   const [readingReport, setReadingReport] = useState<ReadingProgressReport | null>(null);
+  const [decisionReport, setDecisionReport] = useState<DecisionOutput | null>(null);
   const [activeTab, setActiveTab] = useState<
     'progress' | 'reading' | 'insights' | 'competition' | 'kidbox' | 'settings'
   >('progress');
@@ -78,6 +83,7 @@ export const ParentDashboardModal: React.FC<ParentDashboardModalProps> = ({
       setIsAuthenticated(true);
       setReport(AdaptiveService.generateParentReport());
       setReadingReport(AdaptiveService.generateReadingReport());
+      setDecisionReport(DecisionEngine.decide());
     } else {
       sound.playWrong();
       setGateError(true);
@@ -137,6 +143,7 @@ export const ParentDashboardModal: React.FC<ParentDashboardModalProps> = ({
     setShowResetConfirm(false);
     setReport(AdaptiveService.generateParentReport());
     setReadingReport(AdaptiveService.generateReadingReport());
+    setDecisionReport(DecisionEngine.decide());
     if (onDataReset) onDataReset();
     setTimeout(() => setResetSuccessMessage(null), 3000);
   };
@@ -150,6 +157,7 @@ export const ParentDashboardModal: React.FC<ParentDashboardModalProps> = ({
     );
     setReport(AdaptiveService.generateParentReport());
     setReadingReport(AdaptiveService.generateReadingReport());
+    setDecisionReport(DecisionEngine.decide());
     if (onDataReset) onDataReset();
     setTimeout(() => setResetSuccessMessage(null), 6000);
   };
@@ -430,7 +438,131 @@ export const ParentDashboardModal: React.FC<ParentDashboardModalProps> = ({
               )}
 
               {activeTab === 'insights' && (
-                <div className="space-y-4">
+                <div className="space-y-4" data-testid="parent-decision-insights">
+                  {/* P39 Decision Engine — Hôm nay · Điểm mạnh · Cần củng cố · Nên học tiếp */}
+                  {decisionReport && (
+                    <div
+                      className="p-5 bg-indigo-50 border border-indigo-200 rounded-2xl space-y-4"
+                      data-testid="parent-decision-report"
+                      data-decision-mode={decisionReport.mode}
+                      data-insufficient-evidence={decisionReport.insufficientEvidence ? 'true' : 'false'}
+                    >
+                      <div className="flex items-start justify-between gap-3 flex-wrap">
+                        <div>
+                          <h4 className="text-sm font-black text-indigo-950 flex items-center gap-2">
+                            <Target className="w-5 h-5 text-indigo-600" />
+                            Hôm Nay Bé Nên Học Gì?
+                          </h4>
+                          <p className="text-xs text-indigo-900 font-bold mt-1">
+                            {decisionReport.parentReport.headline}
+                          </p>
+                        </div>
+                        <span className="text-[11px] font-black bg-white/80 border border-indigo-200 rounded-lg px-2 py-1">
+                          {decisionReport.evidenceSummary.totalAttempts} lượt luyện · chế độ{' '}
+                          {decisionReport.mode}
+                        </span>
+                      </div>
+
+                      {decisionReport.insufficientEvidence && decisionReport.insufficientEvidenceMessage && (
+                        <p className="text-xs font-bold text-indigo-900 bg-white/70 border border-indigo-200 rounded-xl p-2.5">
+                          {decisionReport.insufficientEvidenceMessage.vi}
+                        </p>
+                      )}
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="bg-white/80 border border-emerald-200 rounded-xl p-3">
+                          <h5 className="text-xs font-black text-emerald-800 mb-1.5 flex items-center gap-1">
+                            <CheckCircle className="w-3.5 h-3.5" /> Điểm mạnh
+                          </h5>
+                          {decisionReport.parentReport.strengths.length > 0 ? (
+                            <ul className="space-y-1">
+                              {decisionReport.parentReport.strengths.map((s) => (
+                                <li key={s.skillName} className="text-[11px] font-semibold">
+                                  <strong>{s.skillName}</strong> — {s.detail}
+                                </li>
+                              ))}
+                            </ul>
+                          ) : (
+                            <p className="text-[11px] text-slate-600 font-medium">
+                              Chưa đủ dữ liệu để xác định điểm mạnh.
+                            </p>
+                          )}
+                        </div>
+
+                        <div className="bg-white/80 border border-rose-200 rounded-xl p-3">
+                          <h5 className="text-xs font-black text-rose-800 mb-1.5 flex items-center gap-1">
+                            <AlertTriangle className="w-3.5 h-3.5" /> Cần củng cố
+                          </h5>
+                          {decisionReport.parentReport.needsWork.length > 0 ? (
+                            <ul className="space-y-1">
+                              {decisionReport.parentReport.needsWork.map((n) => (
+                                <li key={n.skillName} className="text-[11px] font-semibold">
+                                  <strong>{n.skillName}</strong> — {n.detail}
+                                  {n.reasonCodes.length > 0 && (
+                                    <span className="block text-[10px] opacity-70 mt-0.5">
+                                      {n.reasonCodes.join(' · ')}
+                                    </span>
+                                  )}
+                                </li>
+                              ))}
+                            </ul>
+                          ) : (
+                            <p className="text-[11px] text-slate-600 font-medium">
+                              Chưa có kỹ năng nào cần củng cố khẩn cấp.
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="bg-white/80 border border-sky-200 rounded-xl p-3">
+                        <h5 className="text-xs font-black text-sky-800 mb-1.5 flex items-center gap-1">
+                          <TrendingUp className="w-3.5 h-3.5" /> Đang tiến bộ
+                        </h5>
+                        {decisionReport.parentReport.improving.length > 0 ? (
+                          <ul className="space-y-1">
+                            {decisionReport.parentReport.improving.map((i) => (
+                              <li key={i.skillName} className="text-[11px] font-semibold">
+                                <strong>{i.skillName}</strong> — {i.detail}
+                              </li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <p className="text-[11px] text-slate-600 font-medium">
+                            Chưa đủ tín hiệu tiến bộ để báo cáo.
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="bg-white/80 border border-amber-200 rounded-xl p-3">
+                        <h5 className="text-xs font-black text-amber-900 mb-1.5">Nên học tiếp</h5>
+                        <ul className="space-y-1.5" data-testid="parent-next-best">
+                          {decisionReport.parentReport.nextBest.map((n) => (
+                            <li key={n.title} className="text-[11px] font-semibold">
+                              <strong>{n.title}</strong>
+                              <span className="block opacity-85">
+                                Vì sao: {n.why} · khoảng {n.howLong} phút
+                              </span>
+                              {n.reasonCodes.length > 0 && (
+                                <span className="block text-[10px] opacity-65 mt-0.5">
+                                  {n.reasonCodes.join(', ')}
+                                </span>
+                              )}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+
+                      <p className="text-[10px] font-bold text-indigo-900/70">
+                        Giá trị chỉ đến từ dữ liệu học tập thật của bé · thời gian hoạt động hôm nay:{' '}
+                        {decisionReport.parentReport.activityMinutesToday} phút · số lượt:{' '}
+                        {decisionReport.parentReport.totalAttempts}
+                        {decisionReport.competitionReadinessLabel
+                          ? ` · Đấu Trường: ${decisionReport.competitionReadinessLabel}`
+                          : ''}
+                      </p>
+                    </div>
+                  )}
+
                   {/* Pedagogical Advice */}
                   <div className="p-5 bg-amber-50 border border-amber-200 rounded-2xl">
                     <h4 className="text-sm font-black text-amber-900 mb-3 flex items-center gap-2">

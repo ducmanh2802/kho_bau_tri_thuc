@@ -102,7 +102,7 @@ export const SubjectScreen: React.FC<SubjectScreenProps> = ({
         </div>
 
         <button
-          onClick={() => sound.speak(subjectInfo.welcome, subject === 'english' ? 'en-US' : 'vi-VN')}
+          onClick={() => sound.speak(subjectInfo.welcome, subject === 'english' ? 'en-GB' : 'vi-VN')}
           className="px-4 py-2 bg-white/20 hover:bg-white/30 rounded-2xl font-black text-xs flex items-center gap-2 active:scale-95 transition-all shrink-0 cursor-pointer"
         >
           <span>🔊 Nghe giới thiệu</span>

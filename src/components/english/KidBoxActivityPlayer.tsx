@@ -6,6 +6,11 @@ import { KidBoxStore } from '../../services/kidBoxStore';
 import { StorageService } from '../../services/storage';
 import { sound } from '../../services/sound';
 import {
+  resolvePraise,
+  speakPraise,
+  type PraiseResult,
+} from '../../services/praiseEngine';
+import {
   BRITISH_LOCALE,
   describeSpeakingMethod,
   getBritishVoiceCapability,
@@ -51,6 +56,10 @@ export const KidBoxActivityPlayer: React.FC<KidBoxActivityPlayerProps> = ({
   const [usedReplay, setUsedReplay] = useState(false);
   const [recognitionState, setRecognitionState] = useState<RecognitionState>('IDLE');
   const [methodLabel, setMethodLabel] = useState<string | null>(null);
+  // P38 canonical praise: caption === TTS, always English (en-GB) in Kid's Box.
+  const [praise, setPraise] = useState<PraiseResult | null>(null);
+  const [praiseCorrect, setPraiseCorrect] = useState(false);
+  const praiseEventRef = useRef(0);
 
   const startedAt = useRef(Date.now());
   const voice = useMemo(() => getBritishVoiceCapability(), []);
@@ -73,6 +82,8 @@ export const KidBoxActivityPlayer: React.FC<KidBoxActivityPlayerProps> = ({
   useEffect(() => {
     setSelectedId(null);
     setFeedback(null);
+    setPraise(null);
+    setPraiseCorrect(false);
     setShowExplanation(false);
     setRecognitionState(isSpeaking && !recognition.supported ? 'UNAVAILABLE' : 'IDLE');
     startedAt.current = Date.now();
@@ -111,25 +122,40 @@ export const KidBoxActivityPlayer: React.FC<KidBoxActivityPlayerProps> = ({
     [activity, usedReplay]
   );
 
+  /**
+   * P38 — every Kid's Box praise moment resolves through the canonical
+   * engine (English, en-GB). The SAME string is captioned and spoken, and
+   * the eventId guarantees one logical event → one praise → max one TTS.
+   */
+  const praiseOutcome = (correct: boolean, roundKey: string): PraiseResult => {
+    praiseEventRef.current += 1;
+    const resolved = resolvePraise({
+      subject: 'ENGLISH',
+      kidBox: true,
+      outcome: correct ? 'CORRECT' : 'ENCOURAGEMENT',
+      eventId: `kidbox:${activity.id}:${roundKey}:n${praiseEventRef.current}`,
+    });
+    setPraise(resolved);
+    setPraiseCorrect(correct);
+    setFeedback(resolved.text);
+    speakPraise(resolved);
+    return resolved;
+  };
+
   const handleChoice = (itemId: string) => {
     if (selectedId) return;
     setSelectedId(itemId);
     const result = submit({ type: 'CHOICE', itemId }, `round${roundIndex}-${itemId}`);
-    setFeedback(
-      result.outcome === 'CORRECT' || result.outcome === 'RECOGNITION_MATCH'
-        ? 'Tuyệt vời! Bé làm đúng rồi 🎉'
-        : 'Chưa đúng, nhưng không sao — mình nghe lại rồi thử tiếp nhé.'
+    praiseOutcome(
+      result.outcome === 'CORRECT' || result.outcome === 'RECOGNITION_MATCH',
+      `round${roundIndex}-${itemId}`
     );
     setShowExplanation(true);
   };
 
   const handleActionDone = (itemId: string) => {
     const result = submit({ type: 'ACTION_DONE', itemId }, `act-${roundIndex}-${itemId}`);
-    setFeedback(
-      result.outcome === 'CORRECT'
-        ? 'Tuyệt vời! Bé nghe và làm theo đúng rồi 👏'
-        : 'Mình nghe lại câu lệnh một lần nữa nhé.'
-    );
+    praiseOutcome(result.outcome === 'CORRECT', `act-${roundIndex}-${itemId}`);
     setShowExplanation(true);
   };
 
@@ -141,7 +167,9 @@ export const KidBoxActivityPlayer: React.FC<KidBoxActivityPlayerProps> = ({
       setRecognitionState('UNAVAILABLE');
       setMethodLabel(describeSpeakingMethod('SELF_CHECK'));
       submit({ type: 'SPEAK', recognitionSupported: false, selfConfirmed: true }, `speak-${roundIndex}`);
-      setFeedback('Ghi nhận rồi! Bé tự đối chiếu với ba mẹ nhé (không chấm điểm phát âm).');
+      // Encouragement stays in English (P38); the Vietnamese self-check
+      // guidance lives in the method chip above, not in the praise line.
+      praiseOutcome(false, `speak-${roundIndex}`);
       setShowExplanation(true);
       return;
     }
@@ -152,7 +180,7 @@ export const KidBoxActivityPlayer: React.FC<KidBoxActivityPlayerProps> = ({
       setRecognitionState('NO_MATCH');
       setMethodLabel(describeSpeakingMethod('SELF_CHECK'));
       submit({ type: 'SPEAK', recognitionSupported: false, selfConfirmed: true }, `speak-${roundIndex}-fallback`);
-      setFeedback('Máy chưa nhận được giọng nói. Bé nói lại rồi tự đối chiếu với ba mẹ nhé.');
+      praiseOutcome(false, `speak-${roundIndex}-fallback`);
       setShowExplanation(true);
       return;
     }
@@ -176,21 +204,13 @@ export const KidBoxActivityPlayer: React.FC<KidBoxActivityPlayerProps> = ({
       `speak-${roundIndex}`,
       { speechUsed: true }
     );
-    setFeedback(
-      result.outcome === 'RECOGNITION_MATCH'
-        ? 'Nghe giống rồi! (kết quả so khớp, không phải điểm phát âm)'
-        : 'Gần đúng rồi! Nghe lại một lần nữa nhé.'
-    );
+    praiseOutcome(result.outcome === 'RECOGNITION_MATCH', `speak-${roundIndex}-match`);
     setShowExplanation(true);
   };
 
   const handleGameFinish = (taps: string[]) => {
     const result = submit({ type: 'TAPS', itemIds: taps }, `game-${taps.join('_')}`);
-    setFeedback(
-      result.outcome === 'CORRECT'
-        ? 'Bắt được hết rồi! Mỗi lượt bấm đều được ghi nhận nhé 🎯'
-        : 'Bé thử lại ván nữa nhé, không sao đâu!'
-    );
+    praiseOutcome(result.outcome === 'CORRECT', `game-${taps.join('_')}`);
     setShowExplanation(true);
   };
 
@@ -424,15 +444,22 @@ export const KidBoxActivityPlayer: React.FC<KidBoxActivityPlayerProps> = ({
             </div>
           )}
 
-          {/* Feedback + §28 explanation */}
+          {/* Feedback + §28 explanation — caption === TTS (P38 parity) */}
           {feedback && (
             <div
               className={`rounded-2xl border-2 p-3.5 text-sm font-black ${
-                correctCount > 0 && feedback.includes('Tuyệt vời')
+                praiseCorrect
                   ? 'bg-emerald-50 border-emerald-300 text-emerald-900'
                   : 'bg-amber-50 border-amber-300 text-amber-900'
               }`}
               role="status"
+              data-testid="praise-caption"
+              data-praise-text={praise?.text ?? feedback}
+              data-praise-tts={praise?.ttsText ?? feedback}
+              data-praise-locale={praise?.locale ?? BRITISH_LOCALE}
+              data-praise-language={praise?.language ?? 'en-GB'}
+              data-praise-outcome={praise?.outcome ?? ''}
+              lang="en"
             >
               {feedback}
               {showExplanation && <p className="text-xs font-semibold mt-1.5 opacity-90">{activity.explanation}</p>}

@@ -62,11 +62,11 @@ export function buildQuestionAudioTarget(
   return { type: 'QUESTION', text, questionId: question.id };
 }
 
-/** TTS locale for a question: English questions use en-US, rest use vi-VN. */
+/** TTS locale for a question: English questions use en-GB (P38), rest use vi-VN. */
 export function getQuestionAudioLang(
   question: QuestionAudioSource | null | undefined
 ): AudioLang {
-  return question?.subject === 'english' ? 'en-US' : 'vi-VN';
+  return question?.subject === 'english' ? 'en-GB' : 'vi-VN';
 }
 
 /**

@@ -17,6 +17,8 @@ interface GameModalWrapperProps {
   children: React.ReactNode;
   instructions: string;
   audioInstruction?: string;
+  /** TTS locale for instructions (P38: English games use en-GB). */
+  audioLang?: 'vi-VN' | 'en-US' | 'en-GB';
   earnedXp?: number;
   earnedStars?: number;
 }
@@ -33,6 +35,7 @@ export const GameModalWrapper: React.FC<GameModalWrapperProps> = ({
   children,
   instructions,
   audioInstruction,
+  audioLang = 'vi-VN',
   earnedXp = 25,
   earnedStars = 2,
 }) => {
@@ -47,15 +50,15 @@ export const GameModalWrapper: React.FC<GameModalWrapperProps> = ({
   };
 
   const playInstructionVoice = () => {
-    sound.speak(audioInstruction || instructions);
+    sound.speak(audioInstruction || instructions, audioLang);
   };
 
   React.useEffect(() => {
     // Play voice prompt on game start
     if (audioInstruction || instructions) {
-      sound.speak(audioInstruction || instructions);
+      sound.speak(audioInstruction || instructions, audioLang);
     }
-  }, [instructions, audioInstruction]);
+  }, [instructions, audioInstruction, audioLang]);
 
   React.useEffect(() => {
     if (isGameOver && !hasClaimed) {

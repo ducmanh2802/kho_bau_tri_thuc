@@ -178,8 +178,8 @@ describe('question audio routing — canonical question text', () => {
     });
   });
 
-  it('language routing: english → en-US, vietnamese/math → vi-VN', () => {
-    expect(getQuestionAudioLang({ id: 'a', subject: 'english' })).toBe('en-US');
+  it('language routing: english → en-GB (P38), vietnamese/math → vi-VN', () => {
+    expect(getQuestionAudioLang({ id: 'a', subject: 'english' })).toBe('en-GB');
     expect(getQuestionAudioLang({ id: 'b', subject: 'tieng-viet' })).toBe('vi-VN');
     expect(getQuestionAudioLang({ id: 'c', subject: 'toan' })).toBe('vi-VN');
   });

@@ -36,7 +36,7 @@ export const EnglishColorBalloonGame: React.FC<{ onExit: () => void }> = ({ onEx
   const currentTarget = COLOR_TARGETS[targetIdx];
 
   const playVoice = () => {
-    sound.speak(`Pop the ${currentTarget.name} balloon!`, 'en-US');
+    sound.speak(`Pop the ${currentTarget.name} balloon!`, 'en-GB');
   };
 
   useEffect(() => {
@@ -102,7 +102,7 @@ export const EnglishColorBalloonGame: React.FC<{ onExit: () => void }> = ({ onEx
       }
     } else {
       sound.playWrong();
-      sound.speak(`That is ${b.colorName}. Touch ${currentTarget.name}!`, 'en-US');
+      sound.speak(`That is ${b.colorName}. Touch ${currentTarget.name}!`, 'en-GB');
     }
   };
 
@@ -125,6 +125,7 @@ export const EnglishColorBalloonGame: React.FC<{ onExit: () => void }> = ({ onEx
       onExit={onExit}
       instructions={`Touch & Pop: [ ${currentTarget.name} ] (${currentTarget.vietnamese})`}
       audioInstruction={`Pop the ${currentTarget.name} balloon`}
+      audioLang="en-GB"
     >
       <div className="w-full h-full relative rounded-3xl bg-gradient-to-b from-sky-200 via-sky-100 to-indigo-100 overflow-hidden border-3 border-sky-300 select-none">
         {/* Sky Clouds */}

@@ -126,11 +126,206 @@ export const CONTENT_POLICY = {
   DUPLICATE_PROMPT_SIMILARITY: 0.9,
 } as const;
 
+/**
+ * P39 LEARNING OS DECISION ENGINE POLICY
+ *
+ * Every weight, window and gate used by the Decision Engine lives here with a
+ * documented rationale. Tests in tests/decision-engine.test.ts reference every
+ * constant below — changing a number without updating tests is a red flag.
+ *
+ * Design rules encoded:
+ *  - Learning Engine remains the source of truth; Decision Engine only reads.
+ *  - UNAVAILABLE evidence is never treated as GOOD (§6).
+ *  - Ancient activity is not used as if it were current ability (§7).
+ *  - Faster wrong is never improvement (§18): speed requires accuracy stability.
+ *  - Insufficient evidence → discovery, never fabricated weakness (§10/§24).
+ *  - Every recommendation has machine-readable reason codes (§10).
+ */
+export const P39_DECISION_POLICY = {
+  POLICY_VERSION: 'P39-v1',
+
+  /** §7 — evidence freshness windows (ms). */
+  FRESHNESS: {
+    RECENT_MAX_MS: 7 * 24 * 3600 * 1000,
+    OLDER_MAX_MS: 21 * 24 * 3600 * 1000,
+    STALE_MAX_MS: 45 * 24 * 3600 * 1000,
+  },
+
+  /** §6 — evidence-quality confidence multipliers applied to priority scores. */
+  QUALITY_MULTIPLIER: {
+    VERIFIED: 1,
+    PARTIAL: 0.7,
+    STALE: 0.4,
+    UNAVAILABLE: 0,
+  } as Record<'VERIFIED' | 'PARTIAL' | 'STALE' | 'UNAVAILABLE', number>,
+
+  /** Freshness discount on priority contributions. */
+  FRESHNESS_MULTIPLIER: {
+    RECENT: 1,
+    OLDER: 0.75,
+    STALE: 0.4,
+    UNKNOWN: 0.6,
+  } as Record<'RECENT' | 'OLDER' | 'STALE' | 'UNKNOWN', number>,
+
+  /**
+   * §9 — named priority weights. Sum of positive weights is intentionally
+   * larger than any single weight so multiple modest signals can outrank a
+   * single weak signal without magic numbers appearing in the engine.
+   */
+  WEIGHT: {
+    DISCOVERY_NEEDED: 30,
+    // Schedule fact from Learning OS — not accuracy evidence, so it is
+    // weighted above generic discovery and never decayed by freshness.
+    SM2_DUE: 45,
+    NEEDS_REVIEW: 20,
+    FOUNDATION_GAP: 18,
+    REPEATED_ERRORS: 15,
+    RECOVERY_AFTER_ERROR: 14,
+    CURRENT_UNIT: 14,
+    RECENT_ACCURACY_DROP: 12,
+    LOW_STABILITY: 12,
+    NOT_PRACTICED_RECENTLY: 10,
+    LOW_FLUENCY: 10,
+    LOW_COMPREHENSION: 10,
+    SUBJECT_BALANCE: 8,
+    COMPETITION_READINESS: 8,
+    IMPROVEMENT_OPPORTUNITY: 6,
+    ACCURACY_BEFORE_SPEED: 5,
+    FOUNDATION_BEFORE_DEPENDENT: 12,
+    WEAK_BEFORE_MASTERED: 6,
+    SPEED_SAFE: 4,
+    AVAILABILITY_OK: 2,
+    // Penalties
+    RECENT_REPETITION: -20,
+    OVERPRACTICE: -25,
+    FATIGUE: -40,
+  } as Record<string, number>,
+
+  /** §14 — daily plan size (ÔN TẬP HÔM NAY). */
+  DAILY_PLAN: {
+    MIN_ITEMS: 3,
+    MAX_ITEMS: 5,
+    DEFAULT_MINUTES: 12,
+  },
+
+  /** §15 — session planner budgets (respect parent screen-time guidance). */
+  SESSION: {
+    QUICK_MAX_MINUTES: 5,
+    STANDARD_MIN_MINUTES: 10,
+    STANDARD_MAX_MINUTES: 15,
+    FULL_MIN_MINUTES: 15,
+    FULL_MAX_MINUTES: 20,
+    RECOVERY_MAX_MINUTES: 5,
+  },
+
+  /** Cold start / insufficient evidence. */
+  COLD_START_EVIDENCE_THRESHOLD: 3,
+  MIN_ATTEMPTS_FOR_CONFIDENT_NEED: 3,
+
+  /** §18/§21 — speed safety: accuracy must be stable before SPEED_PRACTICE. */
+  SPEED: {
+    ACCURACY_GATE: 80,
+    STABILITY_GATE: 3,
+    RESPONSE_TIME_MIN_SECONDS: 25,
+  },
+
+  /** Competition readiness mapping (P37 ladder → Decision Engine). */
+  COMPETITION: {
+    /** Accuracy below this OR consistency below this blocks mock/speed. */
+    ACCURACY_STABILITY_GATE: 80,
+    CONSISTENCY_GATE: 70,
+  },
+
+  /** §22 — practice repetition control. */
+  REPETITION: {
+    /** Suppress same skill+type unless recovery reasons apply. */
+    COOLDOWN_MS: 4 * 3600 * 1000,
+    RECOVERY_REASONS: ['NEEDS_REVIEW', 'RECOVERY_AFTER_ERROR', 'SM2_DUE'] as string[],
+  },
+
+  /** §13 — subject starvation prevention (evidence-driven, not blind rotation). */
+  SUBJECT_BALANCE: {
+    STARVATION_ATTEMPTS: 6,
+    BOOST: 10,
+  },
+
+  /** §23 — only recommend activities the runtime can actually launch. */
+  RECOMMEND_MAX: 5,
+
+  /** Parent screen-time default when settings are unavailable. */
+  DEFAULT_BUDGET_MINUTES: 20,
+} as const;
+
+/** Launchable game ids the runtime can actually open (§23 availability). */
+export const LAUNCHABLE_GAME_IDS = [
+  'catch_letters',
+  'syllable_builder',
+  'rhyme_hunter',
+  'sentence_scramble',
+  'listen_pick',
+  'falling_numbers',
+  'speed_racing',
+  'number_tower',
+  'ocean_fishing',
+  'shape_sorting',
+  'animal_safari',
+  'color_balloon',
+  'memory_cards',
+  'coloring_canvas',
+  'kidbox_word_safari',
+] as const;
+
 /** Deterministic seed defaults so every assembly path is reproducible. */
 export const SEED_POLICY = {
   DEFAULT_EXAM_SEED: 20250101,
   /** Reading sessions derive their seed from the calendar day. */
   READING_SEED_SALT: 'kho-bau-doc-hieu',
+} as const;
+
+/**
+ * P36 COMPETITION BANK POLICY — depth + distribution gates for the expanded
+ * Grade-1 competition bank (target: 360+ validated canonical items).
+ *
+ * Every threshold below is referenced by tests/competition-p36.test.ts.
+ * Forensic basis (132-item legacy bank, Oct 2026 audit):
+ *  - legacy answer-position bias was 96% at options[0] (§5 defect, fixed by
+ *    deterministic rotation + round-robin placement of new items)
+ *  - legacy EASY prompts peaked at 17 words; manipulative EASY types
+ *    (ordering/matching) legitimately need up to 45s
+ *  - thinnest legacy types were drag-drop (2) and classify (4)
+ */
+export const P36_BANK_POLICY = {
+  /** Minimum genuinely validated canonical items for PASS (§25). */
+  MIN_BANK_ITEMS: 300,
+  /** Preferred depth when the architecture supports it cleanly. */
+  PREFERRED_BANK_ITEMS: 360,
+  /** Minimum items per taxonomy skill (legacy minimum was 3). */
+  MIN_ITEMS_PER_SKILL: 8,
+  /** Minimum items per question type (legacy drag-drop had 2). */
+  MIN_ITEMS_PER_TYPE: 10,
+  /** Minimum items per difficulty band. */
+  MIN_ITEMS_PER_DIFFICULTY: 30,
+  /** Minimum items per subject (legacy English had 27). */
+  MIN_ITEMS_PER_SUBJECT: 60,
+  /** No single answer position may exceed this share of 4-option items. */
+  MAX_ANSWER_POSITION_SHARE: 0.35,
+  /** True/False verdicts must stay inside this [min, max] share band. */
+  TF_MIN_SHARE: 0.35,
+  TF_MAX_SHARE: 0.65,
+  /** EASY prompts stay short enough for Grade-1 decoding (legacy max: 17). */
+  EASY_MAX_PROMPT_WORDS: 30,
+  /** EASY choice items must be answerable quickly (legacy max: 25s). */
+  EASY_CHOICE_MAX_SECONDS: 30,
+  /** EASY manipulative items (ordering/matching) may take longer (max: 45s). */
+  EASY_MANIPULATIVE_MAX_SECONDS: 50,
+  /** MEDIUM items peak at 40s in the legacy bank. */
+  MEDIUM_MAX_SECONDS: 50,
+  /** HARD/CHALLENGE floor: multi-step reasoning needs deliberation time. */
+  HARD_MIN_SECONDS: 15,
+  /** Explanations shorter than this cannot teach (legacy minimum: 19). */
+  MIN_EXPLANATION_CHARS: 12,
+  /** Answer-leak scan only applies to distinctive answers (avoids "Chi"). */
+  LEAK_MIN_ANSWER_CHARS: 8,
 } as const;
 
 /**

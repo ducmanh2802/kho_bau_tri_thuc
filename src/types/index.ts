@@ -175,3 +175,4 @@ export type ActiveScreen =
 export * from './competition';
 export * from './reading';
 export * from './learningOS';
+export * from './decisionEngine';

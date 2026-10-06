@@ -1,6 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Lesson, Question, SubjectType } from '../../types';
 import { sound } from '../../services/sound';
+import {
+  resolvePraise,
+  speakPraise,
+  toPraiseSubject,
+  type PraiseResult,
+} from '../../services/praiseEngine';
 import { fireCelebrationConfetti } from '../../services/confetti';
 import { StorageService } from '../../services/storage';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
@@ -49,6 +55,11 @@ export const LessonPlayerModal: React.FC<LessonPlayerModalProps> = ({
   // data-last-spoken so automation in an isolated JS world can still verify
   // routing against the real app realm).
   const [lastSpoken, setLastSpoken] = useState<string | null>(null);
+  // Canonical praise for the current answer (P38): caption and TTS share ONE
+  // string (praise.text === praise.ttsText). The explanation/hint stays
+  // visible as learning content but is never spoken as praise.
+  const [praise, setPraise] = useState<PraiseResult | null>(null);
+  const praiseAttemptRef = useRef(0);
 
   const question: Question = lesson.questions[currentIdx];
   const progressPercent = Math.round(((currentIdx + 1) / lesson.questions.length) * 100);
@@ -83,6 +94,7 @@ export const LessonPlayerModal: React.FC<LessonPlayerModalProps> = ({
     // Reset state for new question
     setSelectedAnswer(null);
     setLastSpoken(null);
+    setPraise(null);
     setOrderedList([]);
     setIsAnswerChecked(false);
     setIsCorrect(false);
@@ -138,11 +150,22 @@ export const LessonPlayerModal: React.FC<LessonPlayerModalProps> = ({
     if (correct) {
       sound.playCorrect();
       setScore((s) => s + 1);
-      sound.speak(question.explanation || 'Chính xác! Bé giỏi quá!');
     } else {
       sound.playWrong();
-      sound.speak(question.hint || 'Chưa đúng rồi! Bé xem lại nhé!');
     }
+
+    // P38 canonical praise: ONE resolver → ONE caption string → ONE TTS
+    // request with the identical string. Language follows the question
+    // subject (English lessons praise in English, en-GB), so an English
+    // context can never fall back to Vietnamese praise.
+    praiseAttemptRef.current += 1;
+    const resolved = resolvePraise({
+      subject: toPraiseSubject(question.subject),
+      outcome: correct ? 'CORRECT' : 'ENCOURAGEMENT',
+      eventId: `${lesson.id}:${question.id}:attempt-${praiseAttemptRef.current}`,
+    });
+    setPraise(resolved);
+    speakPraise(resolved);
   };
 
   const handleNextQuestion = () => {
@@ -172,7 +195,13 @@ export const LessonPlayerModal: React.FC<LessonPlayerModalProps> = ({
     setIsAnswerChecked(false);
     setIsCorrect(false);
     setShowHint(true);
-    sound.speak('Bé hãy xem gợi ý và thử lại nhé!');
+    // Retry encouragement in the lesson language (P38): same caption/TTS rule.
+    const retryPraise = resolvePraise({
+      subject: toPraiseSubject(question.subject),
+      outcome: 'ENCOURAGEMENT',
+    });
+    setPraise(retryPraise);
+    speakPraise(retryPraise);
   };
 
   return (
@@ -366,6 +395,7 @@ export const LessonPlayerModal: React.FC<LessonPlayerModalProps> = ({
             <div>
               {isAnswerChecked && (
                 <div
+                  role="status"
                   className={`p-3 rounded-2xl mb-3 flex items-center gap-3 animate-pop ${
                     isCorrect
                       ? 'bg-emerald-100 border border-emerald-300 text-emerald-900'
@@ -378,6 +408,19 @@ export const LessonPlayerModal: React.FC<LessonPlayerModalProps> = ({
                     <AlertCircle className="w-6 h-6 text-rose-600 shrink-0" />
                   )}
                   <div className="text-xs md:text-sm font-bold flex-1">
+                    {praise && (
+                      <span
+                        data-testid="praise-caption"
+                        data-praise-text={praise.text}
+                        data-praise-tts={praise.ttsText}
+                        data-praise-locale={praise.locale}
+                        data-praise-language={praise.language}
+                        data-praise-outcome={praise.outcome}
+                        className="block text-sm md:text-base font-black mb-0.5"
+                      >
+                        {praise.characterEmoji} {praise.text}
+                      </span>
+                    )}
                     {isCorrect
                       ? question.explanation || 'Rất tuyệt vời! Bé đã trả lời chính xác!'
                       : `Đáp án đúng là: ${Array.isArray(question.correctAnswer) ? question.correctAnswer.join(' ') : question.correctAnswer}`}

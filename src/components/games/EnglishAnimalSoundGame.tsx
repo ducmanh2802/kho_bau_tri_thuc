@@ -27,12 +27,12 @@ export const EnglishAnimalSoundGame: React.FC<{ onExit: () => void }> = ({ onExi
   const current = SAFARI_ANIMALS[animalIdx];
 
   const playVoice = () => {
-    sound.speak(current.englishName, 'en-US');
+    sound.speak(current.englishName, 'en-GB');
   };
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      sound.speak(`Find the ${current.englishName}!`, 'en-US');
+      sound.speak(`Find the ${current.englishName}!`, 'en-GB');
     }, 400);
     return () => clearTimeout(timer);
   }, [animalIdx]);
@@ -40,7 +40,7 @@ export const EnglishAnimalSoundGame: React.FC<{ onExit: () => void }> = ({ onExi
   const handlePickAnimal = (item: AnimalSafariItem) => {
     if (item.englishName === current.englishName) {
       sound.playCorrect();
-      sound.speak(`Great job! This is a ${item.englishName}!`, 'en-US');
+      sound.speak(`Great job! This is a ${item.englishName}!`, 'en-GB');
       const newScore = score + 1;
       setScore(newScore);
 
@@ -53,7 +53,7 @@ export const EnglishAnimalSoundGame: React.FC<{ onExit: () => void }> = ({ onExi
       }, 1300);
     } else {
       sound.playWrong();
-      sound.speak(`No, this is a ${item.englishName}. Find the ${current.englishName}!`, 'en-US');
+      sound.speak(`No, this is a ${item.englishName}. Find the ${current.englishName}!`, 'en-GB');
     }
   };
 
@@ -75,6 +75,7 @@ export const EnglishAnimalSoundGame: React.FC<{ onExit: () => void }> = ({ onExi
       onExit={onExit}
       instructions={`Listen & find: [ ${current.englishName} ] (${current.vietnameseMeaning})`}
       audioInstruction={`Find the ${current.englishName}`}
+      audioLang="en-GB"
     >
       <div className="w-full h-full flex flex-col justify-between items-center bg-gradient-to-b from-emerald-100 via-yellow-50 to-emerald-200 rounded-3xl p-4 md:p-6 border-3 border-emerald-400 select-none">
         {/* Top Prompt with pronunciation button */}

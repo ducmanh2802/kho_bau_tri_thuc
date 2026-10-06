@@ -1,19 +1,19 @@
 import React, { useMemo, useState } from 'react';
-import { ActiveScreen, LearningAction, RecommendationExplanation } from '../../types';
-import { LearningOS } from '../../services/learningOS';
+import { ActiveScreen, LearningAction } from '../../types';
+import type { DecisionOutput, DecisionRecommendation, SessionKind } from '../../types';
+import { DecisionEngine } from '../../services/decisionEngine';
 import { StorageService } from '../../services/storage';
-import { KidBoxStore } from '../../services/kidBoxStore';
-import { buildKidBoxActions, getKnowledgeSnapshot } from '../../services/kidBoxEngine';
 import { sound } from '../../services/sound';
-import { ChevronRight, Lightbulb, Target, Zap } from 'lucide-react';
+import { ChevronRight, Lightbulb, Target, Zap, Clock, ListChecks, Sparkles } from 'lucide-react';
 
 interface NextBestActionCardProps {
   onNavigate: (screen: ActiveScreen) => void;
 }
 
 /** Maps a Learning OS action type onto the screen that can actually run it. */
-function routeFor(action: LearningAction): ActiveScreen | null {
-  // A track action knows its own destination (§26: one action list, one router).
+function routeFor(action: LearningAction | DecisionRecommendation): ActiveScreen | null {
+  const rec = action as DecisionRecommendation;
+  if (rec.launchRoute) return rec.launchRoute;
   if (action.trackId) return 'kidbox_companion';
 
   switch (action.type) {
@@ -44,55 +44,88 @@ const TYPE_STYLES: Record<string, string> = {
   MAINTENANCE: 'bg-slate-50 border-slate-200 text-slate-700',
 };
 
+const SESSION_BADGE: Record<SessionKind, string> = {
+  QUICK: 'Nhanh ~5 phút',
+  STANDARD: 'Chuẩn 10–15 phút',
+  FULL: 'Đầy đủ 15–20 phút',
+  RECOVERY: 'Phục hồi ngắn',
+  DISCOVERY: 'Khám phá',
+};
+
 /**
- * "Bé nên làm gì tiếp theo?" — driven exclusively by recorded evidence via the
- * Learning OS. Never by a single score, never by an animation, never by AI.
+ * "Hôm nay bé nên học gì tiếp theo?" — driven exclusively by the Decision
+ * Engine, which consumes Learning OS evidence. Never by a single score, never
+ * by AI, never by peer comparison.
+ *
+ * Child sees simple encouraging wording.
+ * Parent can expand "Vì sao?" for evidence + machine-readable reason codes.
  */
 export const NextBestActionCard: React.FC<NextBestActionCardProps> = ({ onNavigate }) => {
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [planOpen, setPlanOpen] = useState(false);
 
-  const store = useMemo(() => StorageService.getLearningOSStore(), []);
+  const decision: DecisionOutput = useMemo(() => DecisionEngine.decide(), []);
+  const recommendations = decision.recommendations.slice(0, 3);
+  const dailyPlan = decision.dailyPlan;
+  const sessionPlan = decision.sessionPlan;
 
-  const actions = useMemo(() => {
-    // The Kid's Box Companion contributes its own evidence-driven actions into
-    // the same ranked list — one recommendation engine, not two (§18, §26).
-    const trackActions = buildKidBoxActions({
-      knowledge: getKnowledgeSnapshot(),
-      store: KidBoxStore.get(),
-      isFatigued: store.fatigue.isFatigued,
-    });
-    return LearningOS.getNextBestActions(store.knowledgeStates, store.fatigue, Date.now(), trackActions).slice(0, 3);
-  }, [store]);
-
-  const explanation = useMemo<RecommendationExplanation | null>(() => {
+  const explanation = useMemo(() => {
     if (expanded === null) return null;
-    const action = actions.find((a) => a.id === expanded);
-    if (!action) return null;
-    return LearningOS.explainRecommendation(action, store.knowledgeStates[action.skillId ?? '']);
-  }, [expanded, actions, store.knowledgeStates]);
+    const action = recommendations.find((a) => a.id === expanded);
+    return action?.explanation ?? null;
+  }, [expanded, recommendations]);
 
-  if (actions.length === 0) return null;
+  if (recommendations.length === 0 && dailyPlan.items.length === 0) return null;
+
+  const insufficient = decision.insufficientEvidence;
 
   return (
-    <section className="bg-white rounded-3xl p-5 md:p-6 border-2 border-blue-200 shadow-sm space-y-4">
+    <section
+      className="bg-white rounded-3xl p-5 md:p-6 border-2 border-blue-200 shadow-sm space-y-4"
+      data-testid="decision-engine-card"
+      data-decision-mode={decision.mode}
+      data-insufficient-evidence={insufficient ? 'true' : 'false'}
+    >
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <h2 className="text-lg font-black text-slate-900 font-display flex items-center gap-2">
           <Target className="w-5 h-5 text-blue-500" />
-          Bé Nên Làm Gì Tiếp Theo?
+          Hôm Nay Bé Nên Học Gì?
         </h2>
-        <span className="text-[11px] font-black text-slate-500 bg-slate-50 border border-slate-200 rounded-lg px-2 py-1">
-          Dựa trên {store.recentEvidences.length} lượt đã luyện
+        <span
+          className="text-[11px] font-black text-slate-500 bg-slate-50 border border-slate-200 rounded-lg px-2 py-1"
+          data-testid="decision-evidence-badge"
+        >
+          Dựa trên {decision.evidenceSummary.totalAttempts} lượt luyện thật
         </span>
       </div>
 
-      <ul className="space-y-2.5">
-        {actions.map((action, idx) => {
+      {insufficient && decision.insufficientEvidenceMessage && (
+        <div
+          className="rounded-2xl bg-sky-50 border-2 border-sky-200 p-3 text-xs md:text-sm text-sky-900 font-bold"
+          data-testid="insufficient-evidence-message"
+        >
+          <p className="font-black mb-0.5">Chưa đủ dữ liệu nhé bé!</p>
+          <p className="opacity-90">{decision.insufficientEvidenceMessage.vi}</p>
+        </div>
+      )}
+
+      {/* Child-facing next best actions */}
+      <ul className="space-y-2.5" data-testid="decision-recommendations">
+        {recommendations.map((action, idx) => {
           const route = routeFor(action);
           const isOpen = expanded === action.id;
+          const available = action.availability === 'AVAILABLE';
           return (
             <li
               key={action.id}
-              className={`rounded-2xl border-2 ${TYPE_STYLES[action.type] ?? TYPE_STYLES.MAINTENANCE}`}
+              className={`rounded-2xl border-2 ${TYPE_STYLES[action.type] ?? TYPE_STYLES.MAINTENANCE} ${
+                available ? '' : 'opacity-60'
+              }`}
+              data-testid="decision-recommendation"
+              data-recommendation-id={action.id}
+              data-priority={action.priorityScore}
+              data-available={available ? 'true' : 'false'}
+              data-reason-codes={action.reasonCodes.join(',')}
             >
               <div className="p-3.5 flex items-start gap-3">
                 <span className="text-2xl shrink-0" aria-hidden="true">
@@ -103,7 +136,8 @@ export const NextBestActionCard: React.FC<NextBestActionCardProps> = ({ onNaviga
                     <span className="text-[10px] font-black uppercase tracking-wider opacity-70">
                       {idx === 0 ? 'Nên làm nhất' : `Ưu tiên ${idx + 1}`}
                     </span>
-                    <span className="text-[10px] font-black bg-white/70 rounded px-1.5 py-0.5">
+                    <span className="text-[10px] font-black bg-white/70 rounded px-1.5 py-0.5 flex items-center gap-1">
+                      <Clock className="w-3 h-3" />
                       ~{action.estimatedMinutes} phút
                     </span>
                   </div>
@@ -120,40 +154,59 @@ export const NextBestActionCard: React.FC<NextBestActionCardProps> = ({ onNaviga
                       }}
                       aria-expanded={isOpen}
                       className="min-h-[44px] px-3 rounded-xl bg-white/80 hover:bg-white text-xs font-black flex items-center gap-1"
+                      data-testid="decision-why-button"
                     >
                       <Lightbulb className="w-3.5 h-3.5" />
                       Vì sao?
                     </button>
-                    {route && (
+                    {route && available && (
                       <button
                         onClick={() => {
                           sound.playClick();
                           onNavigate(route);
                         }}
                         className="min-h-[44px] px-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-black flex items-center gap-1"
+                        data-testid="decision-start-button"
                       >
                         Bắt đầu
                         <ChevronRight className="w-3.5 h-3.5" />
                       </button>
+                    )}
+                    {!available && (
+                      <span className="min-h-[44px] px-3 rounded-xl bg-white/60 text-xs font-black flex items-center opacity-70">
+                        Chưa mở được
+                      </span>
                     )}
                   </div>
                 </div>
               </div>
 
               {isOpen && explanation && (
-                <div className="px-3.5 pb-3.5">
+                <div className="px-3.5 pb-3.5" data-testid="decision-explanation">
                   <div className="rounded-xl bg-white/85 border border-black/5 p-3 text-xs space-y-1.5">
-                    <p className="font-black">Lý do: {explanation.reason}</p>
-                    <p className="font-bold opacity-80">Mục tiêu: {explanation.expectedGoal}</p>
+                    <p className="font-black">Vì sao: {explanation.why}</p>
+                    <p className="font-bold opacity-80">
+                      Thời lượng gợi ý: {explanation.howLong} phút
+                    </p>
                     <ul className="list-disc pl-4 space-y-0.5 opacity-80">
-                      {explanation.evidence.map((e, i) => (
+                      {explanation.evidenceLines.map((e, i) => (
                         <li key={i}>{e}</li>
                       ))}
                     </ul>
-                    <p className="font-black flex items-center gap-1 pt-1">
-                      <Zap className="w-3.5 h-3.5" />
-                      Gợi ý thời lượng: {explanation.suggestedDurationMinutes} phút
-                    </p>
+                    {explanation.reasonCodes.length > 0 && (
+                      <p className="font-black flex items-center gap-1 pt-1 flex-wrap">
+                        <Zap className="w-3.5 h-3.5" />
+                        <span className="opacity-70">Mã lý do (phụ huynh):</span>
+                        {explanation.reasonCodes.map((code) => (
+                          <span
+                            key={code}
+                            className="bg-slate-100 border border-slate-200 rounded px-1.5 py-0.5 text-[10px]"
+                          >
+                            {code}
+                          </span>
+                        ))}
+                      </p>
+                    )}
                   </div>
                 </div>
               )}
@@ -161,6 +214,94 @@ export const NextBestActionCard: React.FC<NextBestActionCardProps> = ({ onNaviga
           );
         })}
       </ul>
+
+      {/* Daily plan — "ÔN TẬP HÔM NAY" as a real Decision Engine output */}
+      <div className="rounded-2xl border-2 border-amber-200 bg-amber-50/60 p-3.5" data-testid="daily-plan">
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <h3 className="font-black text-sm md:text-base text-amber-950 flex items-center gap-2">
+            <ListChecks className="w-4 h-4" />
+            ÔN TẬP HÔM NAY
+            <span className="text-[10px] font-black bg-white/80 rounded px-1.5 py-0.5">
+              {dailyPlan.items.length} mục · ~{dailyPlan.estimatedMinutes} phút
+            </span>
+          </h3>
+          <button
+            onClick={() => {
+              sound.playClick();
+              setPlanOpen((v) => !v);
+            }}
+            aria-expanded={planOpen}
+            className="min-h-[44px] px-3 rounded-xl bg-white/80 hover:bg-white text-xs font-black"
+            data-testid="daily-plan-toggle"
+          >
+            {planOpen ? 'Ẩn chi tiết' : 'Xem kế hoạch'}
+          </button>
+        </div>
+
+        <ol className="mt-2 space-y-1.5" data-testid="daily-plan-items">
+          {dailyPlan.items.map((item, idx) => (
+            <li
+              key={item.id}
+              className="flex items-start gap-2 rounded-xl bg-white/70 border border-amber-100 p-2"
+              data-testid="daily-plan-item"
+            >
+              <span className="text-lg shrink-0" aria-hidden="true">
+                {item.badgeEmoji}
+              </span>
+              <div className="flex-1 min-w-0">
+                <p className="font-black text-xs md:text-sm">
+                  {idx + 1}. {item.title}
+                </p>
+                <p className="text-[11px] font-medium opacity-80">{item.childExplanation}</p>
+                {planOpen && (
+                  <p className="text-[11px] font-bold opacity-70 mt-0.5" data-testid="daily-plan-reason">
+                    Lý do: {item.reason} · ~{item.estimatedMinutes} phút
+                  </p>
+                )}
+              </div>
+              {item.route && (
+                <button
+                  onClick={() => {
+                    sound.playClick();
+                    onNavigate(item.route as ActiveScreen);
+                  }}
+                  className="min-h-[44px] min-w-[44px] px-2.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-[11px] font-black shrink-0"
+                  data-testid="daily-plan-start"
+                >
+                  Học
+                </button>
+              )}
+            </li>
+          ))}
+        </ol>
+      </div>
+
+      {/* Session plan summary */}
+      <div
+        className="rounded-2xl border-2 border-indigo-200 bg-indigo-50/50 p-3.5 space-y-1"
+        data-testid="session-plan"
+        data-session-kind={sessionPlan.kind}
+      >
+        <h3 className="font-black text-sm text-indigo-950 flex items-center gap-2">
+          <Sparkles className="w-4 h-4" />
+          Kế hoạch phiên học
+          <span className="text-[10px] font-black bg-white/80 rounded px-1.5 py-0.5">
+            {SESSION_BADGE[sessionPlan.kind]} · {sessionPlan.estimatedMinutes}/{sessionPlan.budgetMinutes} phút
+          </span>
+        </h3>
+        <p className="text-xs font-bold opacity-80 text-indigo-900">{sessionPlan.explanation}</p>
+        <ul className="space-y-0.5" data-testid="session-plan-items">
+          {sessionPlan.items.map((item) => (
+            <li key={item.id} className="text-[11px] font-semibold flex items-center gap-1.5">
+              <span aria-hidden="true">{item.badgeEmoji}</span>
+              <span className="opacity-90">
+                {item.title} · ~{item.estimatedMinutes} phút
+              </span>
+              <span className="opacity-50">({item.phase})</span>
+            </li>
+          ))}
+        </ul>
+      </div>
     </section>
   );
 };

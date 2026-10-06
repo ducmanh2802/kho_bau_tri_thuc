@@ -13,6 +13,7 @@ import { useSpeak } from '../../hooks/useSpeak';
 import {
   assertQuestionAudioTarget,
   buildQuestionAudioTarget,
+  getQuestionAudioLang,
   logQuestionAudioTarget,
   resolveQuestionAudioText,
 } from '../../services/questionAudio';
@@ -105,7 +106,7 @@ export const CompetitionExamModal: React.FC<CompetitionExamModalProps> = ({
         explanation: question.explanation,
       });
     }
-    speakQuestion(target.text, 'vi-VN');
+    speakQuestion(target.text, getQuestionAudioLang(question));
     logQuestionAudioTarget(target);
     setLastQuestionSpoken(target.text);
   }, [questions, speakQuestion]);
