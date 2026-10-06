@@ -15,6 +15,25 @@ function fail(msg) {
 
 const CLICK = { timeout: 12000 };
 
+async function snap(page, label, steps) {
+  const v = await page.evaluate(() => {
+    const profile = JSON.parse(localStorage.getItem('kho_bau_child_profile') || '{}');
+    const sentinel = localStorage.getItem('__sentinel');
+    const comp = JSON.parse(localStorage.getItem('kho_bau_competition_history') || '{}');
+    const rs = JSON.parse(localStorage.getItem('kho_bau_reading_store') || '{}');
+    return {
+      xp: profile.xp || 0,
+      lessons: (profile.completedLessons || []).length,
+      exams: (comp.examResults || []).length,
+      reading: (rs.metrics || []).length,
+      keys: Object.keys(localStorage).sort().join(','),
+      origin: location.origin,
+      sentinel: sentinel === null ? 'GONE' : sentinel,
+    };
+  });
+  steps.push({ step: 'SNAP_' + label, ...v });
+}
+
 async function answerCurrentItem(page) {
   const opt = page.locator('[data-testid=answer-option]').first();
   if (await opt.count()) await opt.click(CLICK);
@@ -32,8 +51,42 @@ export default async function run(page, ui) {
 }
 
 async function body(page, ui) {
+  // Use whichever origin this run was launched against. A hardcoded host:port here
+  // silently switches to a DIFFERENT origin, which has its own empty localStorage
+  // and looks exactly like "the app wiped the child's progress".
+  const APP_ORIGIN = new URL(page.url()).origin;
+
+  // Trace any destructive storage operation back to its caller.
+  const NL = String.fromCharCode(10);
+  await page.addInitScript(() => {
+    window.__removals = [];
+    const record = (k) => {
+      window.__removals.push({
+        key: k,
+        stack: String(new Error().stack)
+          .split(String.fromCharCode(10))
+          .slice(1, 6)
+          .join(' ~ '),
+      });
+    };
+    const rm = Storage.prototype.removeItem;
+    Storage.prototype.removeItem = function (k) {
+      record(k);
+      return rm.call(this, k);
+    };
+    const cl = Storage.prototype.clear;
+    Storage.prototype.clear = function () {
+      record('*CLEAR*');
+      return cl.call(this);
+    };
+  });
+
   // ---------- 1. NEW CHILD / HOME ----------
-  await page.evaluate(() => localStorage.clear());
+  await page.evaluate(() => {
+    localStorage.clear();
+    // Sentinel: survives unless the whole storage area is replaced/lost.
+    localStorage.setItem('__sentinel', 'alive');
+  });
   await page.reload();
   await page.waitForSelector('text=Xin chào', { timeout: 20000 });
 
@@ -160,8 +213,10 @@ async function body(page, ui) {
   log('readingPersisted', readingStore || { none: true });
   if (!readingStore || readingStore.sessions === 0) fail('reading metrics were not persisted');
 
+  await snap(page, 'afterReading', state.steps);
+
   // ---------- 4. COMPETITION ----------
-  await page.goto('http://127.0.0.1:4173/');
+  await page.goto(APP_ORIGIN + '/');
   await page.waitForSelector('text=Xin chào', { timeout: 20000 });
   await page.getByRole('navigation', { name: 'Điều hướng nhanh' }).getByRole('button', { name: 'Đấu Trường', exact: true }).click(CLICK);
   await page.waitForSelector('text=Kho Báu Đấu Trường Tri Thức', { timeout: 20000 });
@@ -269,6 +324,8 @@ async function body(page, ui) {
     }
   }
 
+  await snap(page, 'afterExams', state.steps);
+
   // ---------- 5. PARENT MODE ----------
   await page.getByRole('button', { name: /Ba Mẹ/ }).first().click(CLICK);
   await page.waitForSelector('text=Cổng Xác Nhận Phụ Huynh', { timeout: 20000 });
@@ -322,6 +379,8 @@ async function body(page, ui) {
       };
     });
 
+  state.removals = await page.evaluate(() => window.__removals || []);
+  await snap(page, 'afterParent', state.steps);
   const before = await read();
   await page.reload();
   await page.waitForSelector('text=Xin chào', { timeout: 20000 });
@@ -334,8 +393,23 @@ async function body(page, ui) {
     after.exams > 0 &&
     after.readingSessions > 0;
 
+  // Guard against the harness itself: a different host:port means a different
+  // localStorage, which looks identical to "the app lost the child's progress".
+  const guard = await page.evaluate(() => ({
+    origin: location.origin,
+    sentinel: localStorage.getItem('__sentinel'),
+  }));
+  log('harnessGuard', guard);
+  if (guard.sentinel !== 'alive') {
+    state.errors.push(
+      `HARNESS BUG: storage sentinel lost (origin ${guard.origin}). ` +
+        'Do not interpret this as an app persistence failure — the run navigated ' +
+        'to a different origin than the one it cleared.'
+    );
+  } else {
+    if (!persisted) fail('progress did not survive a reload');
+  }
   log('persistenceAfterReload', { before, after, persisted });
-  if (!persisted) fail('progress did not survive a reload');
 
   await page.reload();
   await page.waitForSelector('text=Xin chào', { timeout: 20000 });

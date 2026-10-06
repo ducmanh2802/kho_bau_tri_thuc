@@ -13,6 +13,7 @@ import {
   listenBritishOnce,
 } from '../../services/britishSpeech';
 import { KidBoxWordSafari } from './KidBoxWordSafari';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { Hand, Mic, Volume2, X } from 'lucide-react';
 
 interface KidBoxActivityPlayerProps {
@@ -54,6 +55,12 @@ export const KidBoxActivityPlayer: React.FC<KidBoxActivityPlayerProps> = ({
   const startedAt = useRef(Date.now());
   const voice = useMemo(() => getBritishVoiceCapability(), []);
   const recognition = useMemo(() => getSpeechRecognitionCapability(), []);
+
+  // P34 — containment + restoration. Mounted only while the activity is open
+  // (conditional render in KidBoxCompanionScreen), so the hook captures the
+  // opener at mount and hands focus back on unmount. No dismissal change:
+  // Tab cycles inside; the explicit close button remains the only exit.
+  const dialogRef = useFocusTrap<HTMLDivElement>(true);
 
   const isSpeaking = activity.mode === 'SPEAK';
   const isGame = activity.kind === 'MINI_GAME';
@@ -206,10 +213,12 @@ export const KidBoxActivityPlayer: React.FC<KidBoxActivityPlayerProps> = ({
 
   return (
     <div
+      ref={dialogRef}
       className="fixed inset-0 z-50 flex items-center justify-center p-3 md:p-6 bg-slate-900/80 backdrop-blur-md"
       role="dialog"
       aria-modal="true"
       aria-label={activity.titleVi}
+      tabIndex={-1}
     >
       <div className="relative w-full max-w-2xl max-h-[92vh] bg-white rounded-3xl shadow-2xl flex flex-col overflow-hidden border-2 border-emerald-200">
         {/* Header */}

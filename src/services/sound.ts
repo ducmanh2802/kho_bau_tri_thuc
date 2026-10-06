@@ -10,11 +10,21 @@ class SoundService {
   private cachedVoices: SpeechSynthesisVoice[] = [];
 
   constructor() {
-    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-      this.cachedVoices = window.speechSynthesis.getVoices();
-      window.speechSynthesis.onvoiceschanged = () => {
-        this.cachedVoices = window.speechSynthesis.getVoices();
-      };
+    // Voiceless/broken platforms must never crash the app at import time: the
+    // key can exist while the object is unusable, so every touch is guarded.
+    try {
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        this.cachedVoices = window.speechSynthesis.getVoices() ?? [];
+        window.speechSynthesis.onvoiceschanged = () => {
+          try {
+            this.cachedVoices = window.speechSynthesis.getVoices() ?? [];
+          } catch {
+            this.cachedVoices = [];
+          }
+        };
+      }
+    } catch {
+      this.cachedVoices = [];
     }
   }
 

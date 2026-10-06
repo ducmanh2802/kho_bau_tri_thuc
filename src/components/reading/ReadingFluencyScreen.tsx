@@ -11,6 +11,13 @@ import { ReadingEngine } from '../../services/readingEngine';
 import { READING_POLICY } from '../../config/policy';
 import { StorageService } from '../../services/storage';
 import { sound } from '../../services/sound';
+import { useSpeak } from '../../hooks/useSpeak';
+import {
+  assertQuestionAudioTarget,
+  buildQuestionAudioTarget,
+  logQuestionAudioTarget,
+  resolveQuestionAudioText,
+} from '../../services/questionAudio';
 import { fireCelebrationConfetti } from '../../services/confetti';
 import {
   ArrowLeft,
@@ -84,6 +91,10 @@ export const ReadingFluencyScreen: React.FC<ReadingFluencyScreenProps> = ({
   const [checked, setChecked] = useState(false);
   const [result, setResult] = useState<ReadingSessionResult | null>(null);
   const [showPassage, setShowPassage] = useState(true);
+  const { state: audioState, speak: speakQuestion } = useSpeak();
+  // Last canonical question text handed toward TTS (test hook, also rendered
+  // as data-last-spoken for isolated-world automation).
+  const [lastQuestionSpoken, setLastQuestionSpoken] = useState<string | null>(null);
 
   // Real timestamps: the UI never fabricates timing (§1.2).
   const sessionStartRef = useRef<number>(0);
@@ -124,7 +135,32 @@ export const ReadingFluencyScreen: React.FC<ReadingFluencyScreenProps> = ({
   );
 
   const speak = (text: string) => {
-    sound.speak(text, 'vi-VN');
+    speakQuestion(text, 'vi-VN');
+  };
+
+  // QUESTION AUDIO — single source of truth (audioPrompt || prompt).
+  // NEVER stimulus/options[0]/correctAnswer/explanation: resolver returns
+  // null (AUDIO_UNAVAILABLE) instead of falling back, and we stay silent.
+  // The stimulus ("Nghe mình đọc") and passage ("Nghe đoạn đọc") buttons
+  // below are separate ANSWER/PASSAGE channels with their own testids.
+  const playQuestionAudio = () => {
+    if (!current) return;
+    const target = buildQuestionAudioTarget(current);
+    if (!target) return;
+    if (import.meta.env.DEV) {
+      assertQuestionAudioTarget({
+        questionId: target.questionId,
+        text: target.text,
+        canonicalText: resolveQuestionAudioText(current) ?? '',
+        options: current.options,
+        correctAnswer: current.correctAnswer,
+        selectedAnswer: picked,
+        explanation: current.explanation,
+      });
+    }
+    speakQuestion(target.text, 'vi-VN');
+    logQuestionAudioTarget(target);
+    setLastQuestionSpoken(target.text);
   };
 
   const handleCheck = () => {
@@ -161,6 +197,7 @@ export const ReadingFluencyScreen: React.FC<ReadingFluencyScreenProps> = ({
       setIndex((i) => i + 1);
       setPicked(null);
       setChecked(false);
+      setLastQuestionSpoken(null);
       itemStartRef.current = Date.now();
       return;
     }
@@ -349,6 +386,15 @@ export const ReadingFluencyScreen: React.FC<ReadingFluencyScreenProps> = ({
                 <div className="flex gap-2">
                   <button
                     onClick={() => speak(passage.paragraphs.join(' '))}
+                    data-testid="passage-audio"
+                    data-audio-state={audioState}
+                    aria-label={
+                      audioState === 'playing'
+                        ? 'Đang đọc đoạn văn'
+                        : audioState === 'unavailable'
+                          ? 'Thiết bị không đọc được, ba mẹ đọc cùng bé nhé'
+                          : 'Nghe đoạn đọc'
+                    }
                     className="min-h-[44px] px-3 rounded-xl bg-blue-100 hover:bg-blue-200 text-blue-800 font-bold text-xs flex items-center gap-1"
                   >
                     <Volume2 className="w-4 h-4" /> Nghe đoạn đọc
@@ -388,9 +434,30 @@ export const ReadingFluencyScreen: React.FC<ReadingFluencyScreenProps> = ({
             <section className="bg-white rounded-3xl border-2 border-amber-300 p-4 md:p-6 space-y-4">
               <div className="text-center space-y-2">
                 {current.mediaEmoji && <div className="text-4xl md:text-5xl">{current.mediaEmoji}</div>}
-                <h3 className="text-base md:text-xl font-black text-slate-800 font-display leading-relaxed">
-                  {current.prompt}
-                </h3>
+                <div className="flex items-center justify-center gap-2">
+                  <h3 className="text-base md:text-xl font-black text-slate-800 font-display leading-relaxed">
+                    {current.prompt}
+                  </h3>
+                  <button
+                    onClick={playQuestionAudio}
+                    data-testid="question-audio"
+                    data-action="READ_QUESTION"
+                    data-audio-state={audioState}
+                    data-question-id={current.id}
+                    data-last-spoken={lastQuestionSpoken ?? undefined}
+                    title="Đọc câu hỏi"
+                    aria-label={
+                      audioState === 'playing'
+                        ? 'Đang đọc câu hỏi'
+                        : audioState === 'unavailable'
+                          ? 'Thiết bị không đọc được, ba mẹ đọc cùng bé nhé'
+                          : 'Đọc câu hỏi'
+                    }
+                    className="min-h-[44px] min-w-[44px] p-2 rounded-full bg-blue-100 hover:bg-blue-200 text-blue-800 font-bold text-xs flex items-center justify-center shrink-0"
+                  >
+                    <Volume2 className="w-4 h-4" />
+                  </button>
+                </div>
                 {current.stimulus && (
                   <div className="flex flex-col items-center gap-2">
                     <p className="text-xl md:text-3xl font-black text-amber-800 bg-amber-50 border-2 border-amber-200 rounded-2xl px-4 py-2">
@@ -398,6 +465,11 @@ export const ReadingFluencyScreen: React.FC<ReadingFluencyScreenProps> = ({
                     </p>
                     <button
                       onClick={() => speak(current.stimulus!)}
+                      data-testid="stimulus-audio"
+                      data-audio-state={audioState}
+                      aria-label={
+                        audioState === 'playing' ? 'Đang đọc, bé nghe nhé' : 'Nghe mình đọc'
+                      }
                       className="min-h-[44px] px-4 rounded-2xl bg-blue-100 hover:bg-blue-200 text-blue-800 font-bold text-xs flex items-center gap-1"
                     >
                       <Volume2 className="w-4 h-4" /> Nghe mình đọc

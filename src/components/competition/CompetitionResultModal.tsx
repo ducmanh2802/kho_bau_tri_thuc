@@ -2,6 +2,7 @@ import React from 'react';
 import { CompetitionExamResult } from '../../types/competition';
 import { QUESTION_TYPE_LABELS } from '../../services/competitionEngine';
 import { sound } from '../../services/sound';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { fireCelebrationConfetti } from '../../services/confetti';
 import {
   Trophy,
@@ -42,6 +43,8 @@ export const CompetitionResultModal: React.FC<CompetitionResultModalProps> = ({
   onRetake,
   onStartRemediation,
 }) => {
+  const dialogRef = useFocusTrap<HTMLDivElement>(true);
+
   React.useEffect(() => {
     if (result.accuracy >= 70) {
       sound.playLevelUp();
@@ -59,7 +62,14 @@ export const CompetitionResultModal: React.FC<CompetitionResultModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 md:p-6 bg-slate-900/80 backdrop-blur-md animate-pop">
-      <div className="relative w-full max-w-3xl max-h-[92vh] bg-white rounded-3xl shadow-2xl flex flex-col overflow-hidden border-2 border-amber-300">
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label={`Kết quả ${result.examTitle}`}
+        tabIndex={-1}
+        className="relative w-full max-w-3xl max-h-[92vh] bg-white rounded-3xl shadow-2xl flex flex-col overflow-hidden border-2 border-amber-300"
+      >
         {/* Top Header Banner */}
         <div className="bg-gradient-to-r from-amber-400 via-orange-400 to-amber-500 p-5 text-white flex items-center justify-between shrink-0 shadow-sm">
           <div className="flex items-center gap-3">

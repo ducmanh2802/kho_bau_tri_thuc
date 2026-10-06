@@ -1,14 +1,16 @@
 import { CompetitionQuestion } from '../types/competition';
 import { EXAM_FORMAT_QUESTIONS } from './competitionExamFormats';
+import { EXPANSION_QUESTIONS } from './competitionBankExpansion';
 
 /**
  * Version of the whole competition question bank. Bump whenever any item
  * changes so persisted exam provenance stays traceable (§17).
  */
-export const COMPETITION_BANK_VERSION = 2;
+export const COMPETITION_BANK_VERSION = 3;
 
 export const COMPETITION_QUESTIONS: CompetitionQuestion[] = [
   ...EXAM_FORMAT_QUESTIONS,
+  ...EXPANSION_QUESTIONS,
   // ==========================================
   // TIẾNG VIỆT (TV-PHONICS, TV-TONES, TV-SYLLABLE, TV-RHYME, TV-SPELLING, TV-WORD, TV-SENTENCE, TV-READING, TV-LANGUAGE-LOGIC)
   // ==========================================

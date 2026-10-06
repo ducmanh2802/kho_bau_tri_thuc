@@ -31,73 +31,87 @@ function readCount() {
 }
 
 async function playMemoryGameToEnd(page) {
-  // Cards live in the 12-cell grid; each reveals its label when flipped.
   const cards = page.locator('div.grid.grid-cols-3 button, div.grid.grid-cols-4 button');
   const total = await cards.count();
   if (total === 0) return { matched: false, reason: 'no cards rendered' };
 
-  const labelOf = async (i) => {
-    const t = await cards.nth(i).innerText();
-    const emoji = t.trim().split('\n')[0] || '';
-    return emoji;
+  const safeClick = async (i) => {
+    try {
+      await cards.nth(i).click({ timeout: 2500 });
+      await page.waitForTimeout(140);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+  const faceOf = async (i) => {
+    const t = (await cards.nth(i).innerText()).trim();
+    return t.split('\n')[0] || '';
   };
 
-  // Probe indices to learn which card shows which face, then pair them up.
-  const known = new Map(); // index -> emoji
-  const paired = new Set();
+  const known = new Map(); // index -> revealed face
+  const settled = new Set(); // indices already matched (do not touch again)
   let guard = 0;
 
-  while (paired.size < 12 && guard < 60) {
+  while (settled.size < total && guard < 80) {
     guard += 1;
-    let progressed = false;
 
-    // Try to match two already-known indices with the same face.
+    // 1) Try to complete a pair from what we already know.
     const byFace = new Map();
     for (const [idx, face] of known) {
-      if (paired.has(idx)) continue;
+      if (settled.has(idx)) continue;
       if (!byFace.has(face)) byFace.set(face, []);
       byFace.get(face).push(idx);
     }
+    let matchedThisTurn = false;
     for (const [, idxs] of byFace) {
-      if (idxs.length >= 2) {
-        await cards.nth(idxs[0]).click(CLICK);
-        await page.waitForTimeout(120);
-        await cards.nth(idxs[1]).click(CLICK);
-        await page.waitForTimeout(350);
-        paired.add(idxs[0]);
-        paired.add(idxs[1]);
-        progressed = true;
+      if (idxs.length < 2) continue;
+      if (await safeClick(idxs[0]) && (await safeClick(idxs[1]))) {
+        settled.add(idxs[0]);
+        settled.add(idxs[1]);
+        matchedThisTurn = true;
         break;
       }
     }
-    if (progressed) continue;
+    if (matchedThisTurn) continue;
 
-    // Otherwise probe one new card and learn its face.
+    // 2) Otherwise probe one fresh card plus a partner to release the flip.
     let probed = false;
-    for (let i = 0; i < total; i++) {
-      if (known.has(i)) continue;
-      await cards.nth(i).click(CLICK);
-      await page.waitForTimeout(150);
-      known.set(i, await labelOf(i));
+    for (let i = 0; i < total; i += 1) {
+      if (known.has(i) || settled.has(i)) continue;
+      if (!(await safeClick(i))) continue;
+      known.set(i, await faceOf(i));
       probed = true;
-      // Flip a second card so the engine releases the flip state.
-      for (let j = 0; j < total; j++) {
-        if (j === i) continue;
-        await cards.nth(j).click(CLICK);
-        await page.waitForTimeout(150);
-        known.set(j, await labelOf(j));
-        break;
+      for (let j = 0; j < total; j += 1) {
+        if (j === i || settled.has(j)) continue;
+        if (await safeClick(j)) {
+          known.set(j, await faceOf(j));
+          break;
+        }
       }
       await page.waitForTimeout(950); // let the engine auto-unflip non-matches
       break;
     }
     if (!probed) break;
   }
-  return { matched: paired.size >= 12, paired: paired.size, guard };
+
+  return { matched: settled.size >= total, settled: settled.size, guard };
 }
 
 export default async function run(page, ui) {
   const out = { mountSmoke: [], rewards: {}, errors: [] };
+
+  // Optional phone leg (§27): QA_VIEWPORT=390x844 shrinks the viewport so the
+  // same 14 games are proven mountable, closable and tappable on mobile.
+  // (The harness passes no CLI args to scripts, so this reads the environment.)
+  const vpMatch = (process.env.QA_VIEWPORT || '').match(/^(\d+)x(\d+)$/);
+  const vp = vpMatch
+    ? { width: Number(vpMatch[1]), height: Number(vpMatch[2]), label: vpMatch[0] }
+    : null;
+  if (vp) {
+    await page.setViewportSize({ width: vp.width, height: vp.height });
+    out.viewport = vp.label;
+  }
 
   await page.evaluate(() => localStorage.clear());
   await page.reload();
@@ -108,22 +122,39 @@ export default async function run(page, ui) {
   await page.waitForSelector('text=Đấu Trường Trò Chơi Trí Tuệ', { timeout: 20000 });
 
   // ---- A) every game mounts and closes ----
-  for (const title of GAME_TITLES) {
-    const record = { game: title };
+  // The hub renders the catalog in a fixed order, so the Nth "Chơi ngay" button
+  // is the Nth game in GAME_TITLES.
+  const playButtons = page.getByRole('button', { name: /Chơi ngay/ });
+  const catalogCount = await playButtons.count();
+  out.catalogCount = catalogCount;
+
+  for (let i = 0; i < GAME_TITLES.length; i += 1) {
+    const title = GAME_TITLES[i];
+    const record = { index: i, game: title };
     try {
-      const card = page.locator('div', { has: page.getByRole('heading', { name: title, exact: true }) }).last();
-      const play = card.getByRole('button', { name: /Chơi ngay/ });
-      await play.click(CLICK);
+      await playButtons.nth(i).click(CLICK);
       await page.waitForTimeout(700);
 
-      // The game shell shows mascot + instructions + score pill.
-      const shell = await ui.snapshot();
-      record.mounted = shell.includes('Đã thử') || shell.includes('Chơi lại') || shell.includes('Tiếp tục học') || shell.includes('Điểm') || shell.includes('/');
-      record.hasScorePill = /\d+\s*\/\s*\d+/.test(shell);
-
-      // Close via the wrapper close button.
-      const close = page.getByRole('button', { name: /Đóng|Tiếp tục học|Chơi lại/ }).first();
+      // Authoritative evidence that GameModalWrapper mounted:
+      //   - the game title is rendered
+      //   - the wrapper's own icon-only close button exists (found via aria-label)
+      //   - the mute toggle exists
+      const shellText = await page.evaluate(() => document.body.innerText);
+      const close = page.getByRole('button', { name: 'Đóng trò chơi và quay lại' }).first();
       const closeCount = await close.count();
+      const muteCount = await page
+        .getByRole('button', { name: 'Tắt âm thanh' })
+        .or(page.getByRole('button', { name: 'Bật âm thanh' }))
+        .count();
+      record.hasTitle = shellText.includes(title);
+      record.hasCloseButton = closeCount > 0;
+      record.hasMuteButton = muteCount > 0;
+      record.mounted = record.hasTitle && record.hasCloseButton && record.hasMuteButton;
+      // 200%-zoom sweep (P2-3): record horizontal overflow per game while open.
+      record.overflowPx = await page.evaluate(() => {
+        const de = document.documentElement;
+        return Math.max(0, de.scrollWidth - de.clientWidth);
+      });
       if (closeCount > 0) await close.click(CLICK);
       await page.waitForTimeout(400);
       record.closed = (await page.getByText(title, { exact: true }).count()) > 0;
@@ -146,17 +177,16 @@ export default async function run(page, ui) {
   const countBefore = await page.evaluate(readCount);
 
   // D) mount then leave without finishing -> no reward
-  const memCard = page
-    .locator('div', { has: page.getByRole('heading', { name: 'Lật Thẻ Trí Nhớ Vàng', exact: true }) })
-    .last();
-  await memCard.getByRole('button', { name: /Chơi ngay/ }).click(CLICK);
+  const memIndex = GAME_TITLES.indexOf('Lật Thẻ Trí Nhớ Vàng');
+  const playAgain = page.getByRole('button', { name: /Chơi ngay/ });
+  await playAgain.nth(memIndex).click(CLICK);
   await page.waitForTimeout(700);
-  await page.getByRole('button', { name: /Tiếp tục học|Đóng/ }).first().click(CLICK);
+  await page.getByRole('button', { name: 'Đóng trò chơi và quay lại' }).first().click(CLICK);
   await page.waitForTimeout(500);
   const countAfterMountOnly = await page.evaluate(readCount);
 
   // B) full round -> exactly one reward
-  await memCard.getByRole('button', { name: /Chơi ngay/ }).click(CLICK);
+  await playAgain.nth(memIndex).click(CLICK);
   await page.waitForTimeout(700);
   const play1 = await playMemoryGameToEnd(page);
   await page.waitForTimeout(900);
@@ -191,6 +221,15 @@ export default async function run(page, ui) {
     out.errors.push(`round 1 awarded ${countAfterRound1 - countBefore}, expected 1`);
   if (!out.rewards.round2AwardedOnce)
     out.errors.push(`round 2 awarded ${countAfterRound2 - countAfterRound1}, expected 1`);
+
+  // Any game that overflows its viewport is unreachable content for a zoom user.
+  for (const r of out.mountSmoke) {
+    if (typeof r.overflowPx === 'number' && r.overflowPx > 2) {
+      out.errors.push(`${r.game}: horizontal overflow ${r.overflowPx}px at ${out.viewport || 'default viewport'}`);
+    }
+  }
+
+  if (vp) await page.setViewportSize({ width: 1280, height: 800 });
 
   return out;
 }

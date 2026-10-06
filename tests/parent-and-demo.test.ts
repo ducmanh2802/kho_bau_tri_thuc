@@ -81,6 +81,24 @@ describe('Parent Mode, Demo Data & Store Mechanics', () => {
     expect(updated.voiceEnabled).toBe(false);
   });
 
+  it('defaults questionAutoplay ON and migrates stored settings without it (§20)', () => {
+    // Fresh defaults: pre-readers need to hear questions.
+    const fresh = StorageService.getParentSettings();
+    expect(fresh.questionAutoplay).toBe(true);
+
+    // Stored settings from before the field existed must migrate to ON, not crash.
+    localStorage.setItem(
+      'kho_bau_parent_settings',
+      JSON.stringify({ dailyLimitMinutes: 20, soundEnabled: true })
+    );
+    expect(StorageService.getParentSettings().questionAutoplay).toBe(true);
+
+    // An explicit parental OFF must survive a save/load round-trip.
+    StorageService.saveParentSettings({ ...fresh, questionAutoplay: false });
+    expect(StorageService.getParentSettings().questionAutoplay).toBe(false);
+    StorageService.saveParentSettings({ ...fresh, questionAutoplay: true });
+  });
+
   it('enforces avatar shop purchasing with stars and equipping', () => {
     // Start with 0 stars
     let profile = StorageService.getChildProfile();

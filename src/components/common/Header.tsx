@@ -146,12 +146,14 @@ export const Header: React.FC<HeaderProps> = ({
             <ShoppingBag className="w-4 h-4" aria-hidden="true" />
           </button>
 
-          {/* Sound Mute Toggle */}
+          {/* Sound Mute Toggle — hidden on extremely narrow widths (200% zoom):
+              it duplicates the Parent Dashboard sound control and every game
+              has its own mute toggle, so nothing becomes unreachable. */}
           <button
             onClick={handleToggleSound}
             aria-label={isMuted ? 'Bật âm thanh' : 'Tắt âm thanh'}
             aria-pressed={isMuted}
-            className="min-w-[44px] min-h-[44px] flex items-center justify-center bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition-transform active:scale-95 cursor-pointer"
+            className="min-w-[44px] min-h-[44px] max-[300px]:hidden items-center justify-center bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition-transform active:scale-95 cursor-pointer flex"
           >
             {isMuted ? (
               <VolumeX className="w-4 h-4 text-rose-500" aria-hidden="true" />

@@ -76,24 +76,39 @@ src/
 |---|---|
 | `qa/golden-path.mjs` | 17 bước: bé mới → bài học → đọc → thi → xem lại → phụ huynh → reload |
 | `qa/responsive-a11y.mjs` | 6 viewport + accessibility + reduced motion |
-| `qa/debug-timer.mjs`, `qa/debug-persist.mjs`, `qa/debug-parent.mjs` | công cụ chẩn đoán |
+| `qa/games.mjs` | 14 game mount/đóng + thưởng đúng 1 lần mỗi vòng |
+| `qa/focus.mjs` | focus trap + khôi phục focus |
+| `qa/offline-pwa.mjs` | service worker, cache, tắt mạng, vẫn học được, icon decode, cache-wipe survival |
+| `qa/audio.mjs` | trạng thái TTS, chống stacked, cổng autoplay, audio đoạn đọc |
+| `qa/mobile.mjs` | 4 viewport + xoay + background/resume |
+| `qa/mobile-golden.mjs` | 7 chặng mobile @390px + @195px (zoom 200%), XP giữ nguyên |
+| `qa/kidbox-focus.mjs` | trap + restore cho activity player Kid's Box |
+| `qa/games.mjs` @195px | 14/14 game ≤2px tràn ở zoom 200% |
+| `qa/question-types.mjs` | 7 bài thi thật: đủ 7 dạng bài, mọi dạng đều trả lời + chấm được |
 
 ```bash
 npm run build
-npm run preview -- --port 4173
-node "<browser-skill>/browser.mjs" http://127.0.0.1:4173/ --script ./qa/golden-path.mjs
-node "<browser-skill>/browser.mjs" http://127.0.0.1:4173/ --script ./qa/responsive-a11y.mjs
+npm run preview -- --port 4200
+node "<browser-skill>/browser.mjs" http://127.0.0.1:4200/ --script ./qa/golden-path.mjs
+node "<browser-skill>/browser.mjs" http://127.0.0.1:4200/ --script ./qa/responsive-a11y.mjs
+node "<browser-skill>/browser.mjs" http://127.0.0.1:4200/ --script ./qa/games.mjs
+node "<browser-skill>/browser.mjs" http://127.0.0.1:4200/ --script ./qa/focus.mjs
+node "<browser-skill>/browser.mjs" http://127.0.0.1:4200/ --script ./qa/offline-pwa.mjs
+node "<browser-skill>/browser.mjs" http://127.0.0.1:4200/ --script ./qa/question-types.mjs
+node "<browser-skill>/browser.mjs" http://127.0.0.1:4200/ --script ./qa/audio.mjs
+node "<browser-skill>/browser.mjs" http://127.0.0.1:4200/ --script ./qa/mobile.mjs
+node "<browser-skill>/browser.mjs" http://127.0.0.1:4200/ --script ./qa/mobile-golden.mjs
 ```
 
 ## Việc còn lại (không chặn phát hành)
 
 | # | Việc | Ưu tiên |
 |---|---|---|
-| 1 | Service worker / PWA để app tự cài và chạy offline từ lần đầu | P2 |
-| 2 | Bổ sung câu hỏi thi để phủ hết chương trình lớp 1 (hiện 78 câu) | P2 |
+| 1 | ~~Sinh icon PNG 192/512 cho manifest~~ **xong (P34): 192+512 any & maskable + apple-touch, generator zero-dep, browser decode PASS** | — |
+| 2 | ~~Bổ sung câu hỏi thi để phủ hết chương trình lớp 1~~ **xong: 78 → 132 câu, 0 lỗi validator, 0 thiếu câu cho mọi blueprint** | — |
+| 6 | ~~Đưa file âm thanh về repo~~ **không cần (P34): WebAudio synth + Web Speech, 0 file, 0 remote — đúng policy, không rủi ro bản quyền** | — |
 | 3 | Audit riêng cho track KID'S BOX | Cao — **không dùng với trẻ cho tới khi audit** |
-| 4 | Bọc modal bằng focus trap + trả focus về nút đã mở | P2 |
-| 5 | Đưa file âm thanh về repo thay vì TTS phụ thuộc giọng hệ thống | P2 |
+| 4 | ~~Mở rộng focus trap sang `ScreenTimeModal`~~ **xong (P34): dialog semantics + trap + restore, ESC giữ mở, QA PASS** | — |
 
 ## Nguyên tắc không được phá vỡ
 

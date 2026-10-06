@@ -3,6 +3,7 @@ import { Volume2, VolumeX, X, Trophy, Star, Sparkles, RotateCcw } from 'lucide-r
 import { sound } from '../../services/sound';
 import { fireCelebrationConfetti } from '../../services/confetti';
 import { StorageService } from '../../services/storage';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
 
 interface GameModalWrapperProps {
   title: string;
@@ -37,6 +38,7 @@ export const GameModalWrapper: React.FC<GameModalWrapperProps> = ({
 }) => {
   const [isMuted, setIsMuted] = React.useState(sound.getMuted());
   const [hasClaimed, setHasClaimed] = React.useState(false);
+  const dialogRef = useFocusTrap<HTMLDivElement>(true);
 
   const toggleSound = () => {
     const next = !isMuted;
@@ -71,7 +73,14 @@ export const GameModalWrapper: React.FC<GameModalWrapperProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 md:p-6 bg-slate-900/70 backdrop-blur-sm animate-pop">
-      <div className="relative w-full max-w-4xl h-[92vh] max-h-[780px] bg-gradient-to-b from-amber-50 to-orange-50 rounded-3xl shadow-2xl flex flex-col overflow-hidden border-4 border-amber-300">
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
+        tabIndex={-1}
+        className="relative w-full max-w-4xl h-[92vh] max-h-[780px] bg-gradient-to-b from-amber-50 to-orange-50 rounded-3xl shadow-2xl flex flex-col overflow-hidden border-4 border-amber-300"
+      >
         {/* Top Header */}
         <div className="flex items-center justify-between px-4 py-3 bg-white/90 border-b-2 border-amber-200">
           <div className="flex items-center gap-3">
@@ -96,26 +105,33 @@ export const GameModalWrapper: React.FC<GameModalWrapperProps> = ({
             {/* Read instruction button */}
             <button
               onClick={playInstructionVoice}
-              title="Đọc hướng dẫn"
-              className="p-2 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-full transition-all active:scale-95"
+              aria-label="Đọc hướng dẫn bằng giọng nói"
+              className="min-w-[44px] min-h-[44px] flex items-center justify-center bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-full transition-all active:scale-95"
             >
-              <Volume2 className="w-5 h-5" />
+              <Volume2 className="w-5 h-5" aria-hidden="true" />
             </button>
 
             {/* Mute toggle */}
             <button
               onClick={toggleSound}
-              className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-full transition-all active:scale-95"
+              aria-label={isMuted ? 'Bật âm thanh' : 'Tắt âm thanh'}
+              aria-pressed={isMuted}
+              className="min-w-[44px] min-h-[44px] flex items-center justify-center bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-full transition-all active:scale-95"
             >
-              {isMuted ? <VolumeX className="w-5 h-5 text-red-500" /> : <Volume2 className="w-5 h-5" />}
+              {isMuted ? (
+                <VolumeX className="w-5 h-5 text-red-500" aria-hidden="true" />
+              ) : (
+                <Volume2 className="w-5 h-5" aria-hidden="true" />
+              )}
             </button>
 
             {/* Close button */}
             <button
               onClick={onExit}
-              className="p-2 bg-red-100 hover:bg-red-200 text-red-600 rounded-full transition-all active:scale-95 ml-1"
+              aria-label="Đóng trò chơi và quay lại"
+              className="min-w-[44px] min-h-[44px] flex items-center justify-center bg-red-100 hover:bg-red-200 text-red-600 rounded-full transition-all active:scale-95 ml-1"
             >
-              <X className="w-5 h-5" />
+              <X className="w-5 h-5" aria-hidden="true" />
             </button>
           </div>
         </div>

@@ -3,6 +3,15 @@ import { Lesson, Question, SubjectType } from '../../types';
 import { sound } from '../../services/sound';
 import { fireCelebrationConfetti } from '../../services/confetti';
 import { StorageService } from '../../services/storage';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
+import { useSpeak } from '../../hooks/useSpeak';
+import {
+  assertQuestionAudioTarget,
+  buildQuestionAudioTarget,
+  getQuestionAudioLang,
+  logQuestionAudioTarget,
+  resolveQuestionAudioText,
+} from '../../services/questionAudio';
 import {
   Volume2,
   X,
@@ -34,26 +43,53 @@ export const LessonPlayerModal: React.FC<LessonPlayerModalProps> = ({
   const [showHint, setShowHint] = useState(false);
   const [score, setScore] = useState(0);
   const [isFinished, setIsFinished] = useState(false);
+  const dialogRef = useFocusTrap<HTMLDivElement>(true);
+  const { state: audioState, speak: speakQuestion } = useSpeak();
+  // Last canonical text handed toward TTS (test hook; also rendered as
+  // data-last-spoken so automation in an isolated JS world can still verify
+  // routing against the real app realm).
+  const [lastSpoken, setLastSpoken] = useState<string | null>(null);
 
   const question: Question = lesson.questions[currentIdx];
   const progressPercent = Math.round(((currentIdx + 1) / lesson.questions.length) * 100);
 
-  // Read prompt on change
+  // Read prompt on demand. Auto-play is the parent-controlled accessibility mode
+  // (§20): pre-readers need to hear questions, and a parent can switch it off.
+  // Single source of truth: resolveQuestionAudioText (audioPrompt || prompt).
+  // NEVER answers[0]/options[0]/selectedAnswer/explanation — resolver returns
+  // null (AUDIO_UNAVAILABLE) instead of falling back, and we stay silent.
   const playPromptAudio = () => {
-    const textToSpeak = question.audioPrompt || question.prompt;
-    const lang = question.subject === 'english' ? 'en-US' : 'vi-VN';
-    sound.speak(textToSpeak, lang);
+    const target = buildQuestionAudioTarget(question);
+    if (!target) return;
+    if (import.meta.env.DEV) {
+      assertQuestionAudioTarget({
+        questionId: target.questionId,
+        text: target.text,
+        canonicalText: resolveQuestionAudioText(question) ?? '',
+        options: question.options,
+        correctAnswer: question.correctAnswer,
+        selectedAnswer: selectedAnswer,
+        explanation: question.explanation,
+        hint: question.hint,
+      });
+    }
+    const lang = getQuestionAudioLang(question);
+    logQuestionAudioTarget(target);
+    setLastSpoken(target.text);
+    speakQuestion(target.text, lang);
   };
 
   useEffect(() => {
     // Reset state for new question
     setSelectedAnswer(null);
+    setLastSpoken(null);
     setOrderedList([]);
     setIsAnswerChecked(false);
     setIsCorrect(false);
     setShowHint(false);
 
-    // Speak automatically
+    // Speak automatically only when the parent left the accessibility mode on.
+    if (!StorageService.getParentSettings().questionAutoplay) return;
     const timer = setTimeout(() => {
       playPromptAudio();
     }, 300);
@@ -141,7 +177,14 @@ export const LessonPlayerModal: React.FC<LessonPlayerModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 md:p-6 bg-slate-900/70 backdrop-blur-sm animate-pop select-none">
-      <div className="relative w-full max-w-2xl h-[92vh] max-h-[720px] bg-white rounded-3xl shadow-2xl flex flex-col overflow-hidden border-4 border-amber-300">
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label={lesson.title}
+        tabIndex={-1}
+        className="relative w-full max-w-2xl h-[92vh] max-h-[720px] bg-white rounded-3xl shadow-2xl flex flex-col overflow-hidden border-4 border-amber-300"
+      >
         {/* Top Header */}
         <div className="flex items-center justify-between px-4 py-3 bg-amber-50 border-b border-amber-200">
           <div className="flex items-center gap-2">
@@ -165,9 +208,10 @@ export const LessonPlayerModal: React.FC<LessonPlayerModalProps> = ({
             </div>
             <button
               onClick={onClose}
-              className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-full transition-all active:scale-95"
+              aria-label="Đóng bài học"
+              className="min-w-[44px] min-h-[44px] flex items-center justify-center bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-full transition-all active:scale-95"
             >
-              <X className="w-5 h-5" />
+              <X className="w-5 h-5" aria-hidden="true" />
             </button>
           </div>
         </div>
@@ -197,8 +241,22 @@ export const LessonPlayerModal: React.FC<LessonPlayerModalProps> = ({
                 </h4>
                 <button
                   onClick={playPromptAudio}
-                  className="p-2 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-full active:scale-95 shrink-0"
-                  title="Nghe câu hỏi"
+                  data-testid="question-audio"
+                  data-action="READ_QUESTION"
+                  data-audio-state={audioState}
+                  data-question-id={question.id}
+                  data-last-spoken={lastSpoken ?? undefined}
+                  className="p-2 min-w-[44px] min-h-[44px] bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-full active:scale-95 shrink-0 flex items-center justify-center"
+                  title="Đọc câu hỏi"
+                  aria-label={
+                    audioState === 'playing'
+                      ? 'Đang đọc câu hỏi'
+                      : audioState === 'played'
+                        ? 'Đã đọc xong, chạm để nghe lại'
+                        : audioState === 'unavailable'
+                          ? 'Thiết bị không đọc được, hãy đọc cùng ba mẹ nhé'
+                          : 'Đọc câu hỏi'
+                  }
                 >
                   <Volume2 className="w-5 h-5" />
                 </button>

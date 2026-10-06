@@ -35,7 +35,7 @@
 |---|---|---|
 | `npm ci` (clean room) | **PASS** | xoá `node_modules` + `dist`, `npm ci` → 62 packages, 32s |
 | `npm run typecheck` | **PASS** | `tsc --noEmit`, 0 error |
-| `npm test` | **PASS** | **131/131**, 12 file |
+| `npm test` | **PASS** | **241/241**, 17 file |
 | `npm run build` | **PASS** | `dist/assets/index-*.js` 450.78 kB (gzip 131.09 kB) |
 | `npm run preview` | **PASS** | HTTP 200, golden path 0 error |
 | `npm run dev` | **PASS** | HTTP 200, persistence đo thực tế đúng |
@@ -71,7 +71,7 @@ Browser (100% client-side, local-first)
 Các màn hình nặng (games, competition, reading, parent, shop) được `React.lazy` tách riêng,
 tải khi trẻ thực sự mở tới.
 
-## 5. Ma trận test (131 test)
+## 5. Ma trận test (241 test)
 
 | File | Test | Phạm vi |
 |---|---|---|
@@ -82,11 +82,14 @@ tải khi trẻ thực sự mở tới.
 | `learning-engine.test.ts` | 9 | Persistence, reward idempotency, parent report |
 | `competition-engine.test.ts` | 6 | Assembly, speed fairness, error analysis |
 | `competition-readiness.test.ts` | 5 | Readiness, exam idempotency, reset |
-| `competition-bank.test.ts` | 3 | Bank + blueprint quality gate |
+| `competition-bank.test.ts` | 8 | Bank + blueprint quality gate, **mọi answer key phải chấm đúng qua engine thật** |
 | `math-curriculum.test.ts` | 4 | Tính đúng của phép tính |
 | `vietnamese-curriculum.test.ts` | 4 | Dấu thanh, chính tả, thứ tự câu |
 | `english-curriculum.test.ts` | 3 | Audio prompt, phonics |
 | `parent-and-demo.test.ts` | 4 | Parent mode, demo data, avatar shop |
+| `pwa.test.ts` | 20 | Ma trận hỗ trợ PWA, hợp đồng SW, icon PNG, broadcast SW_UPDATED |
+| `question-audio-routing.test.ts` | 22 | Canonical question text, chống leak đáp án |
+| `parent-and-demo.test.ts` | 5 | Parent mode, demo data, avatar shop, migration questionAutoplay |
 
 ## 6. QA trình duyệt thật (`qa/`)
 
@@ -94,6 +97,9 @@ tải khi trẻ thực sự mở tới.
 |---|---|
 | `qa/golden-path.mjs` | **0 error** trên production build (chạy 2 lần) |
 | `qa/responsive-a11y.mjs` | **0 error** ở cả 6 viewport |
+| `qa/games.mjs` | **0 error** — 14/14 game |
+| `qa/focus.mjs` | **0 error** — 3 hộp thoại |
+| `qa/offline-pwa.mjs` | **0 error** — tắt mạng vẫn học được |
 
 Xem `docs/P33_FINAL_CERTIFICATION.md` để biết chi tiết từng bước đã kiểm chứng.
 

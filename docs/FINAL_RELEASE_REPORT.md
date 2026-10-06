@@ -165,21 +165,19 @@ Chi tiết: `docs/P32_GOOGLE_AI_STUDIO.md` · `docs/GOOGLE_AI_STUDIO_RUNBOOK.md`
 **Phạm vi lớp 1 (phần được chứng nhận):**
 
 ```
-Test Files  12 passed (12)
-Tests       131 passed (131)
+Test Files  14 passed (14)
+Tests       179 passed (179)
 ```
 
 **Toàn bộ repository tại thời điểm kiểm chứng:**
 
 ```
-Test Files  13 passed | 1 failed (14)
-Tests       162 passed | 1 failed (163)
+Test Files  17 passed (17)
+Tests       241 passed (241)
 ```
 
-Test duy nhất đang đỏ là `tests/kidbox-activities.test.ts` →
-`matchesSpoken("It's a book.", 'it is a book')` — thuộc track **KID'S BOX** do tiến trình
-khác đang viết song song, **không** nằm trong phạm vi chứng nhận này.
-Không có test nào của phần lớp 1 bị đỏ.
+Gồm cả 3 file test KID'S BOX của tiến trình song song. Chúng đã từng đỏ giữa phiên làm
+việc (do đang viết dở), nên con số này cần kiểm lại ngay trước lúc phát hành.
 
 | File | Số test |
 |---|---|
@@ -195,14 +193,18 @@ Không có test nào của phần lớp 1 bị đỏ.
 | `parent-and-demo.test.ts` | 4 |
 | `competition-bank.test.ts` | 3 |
 | `english-curriculum.test.ts` | 3 |
+| `pwa.test.ts` | 20 |
+| `question-audio-routing.test.ts` | 22 |
+| `competition-bank.test.ts` | 8 |
+| `parent-and-demo.test.ts` | 5 (gồm migration questionAutoplay) |
 
-*(Tổng 12 file của phần lớp 1 = 131 test. 32 test còn lại thuộc 2 file KID'S BOX.)*
+*(Tổng 14 file của phần lớp 1 = 179 test. 62 test còn lại thuộc 3 file KID'S BOX.)*
 
 **Failed (phần lớp 1): 0 · Skipped: 0**
 
 ### Known limitations
 
-1. Chưa có service worker / PWA — chạy offline được sau lần tải đầu nhưng chưa tự cài.
+1. Manifest mới có icon SVG; chưa sinh PNG 192/512 nên một số trình duyệt chưa báo "installable".
 2. Font Google cần mạng; offline dùng font dự phòng, không lỗi chặn.
 3. QA script (`qa/`) phụ thuộc `data-testid`; đã thêm hook ổn định cho mục đích này.
 4. Track **KID'S BOX** trong repo là việc song song của tiến trình khác, **chưa** được audit.
@@ -211,9 +213,26 @@ Không có test nào của phần lớp 1 bị đỏ.
 
 ## Golden Path Result
 
-`qa/golden-path.mjs` trên production build — chạy 2 lần, **0 error**, 0 lỗi console,
-0 request thất bại. 17 bước từ bé mới đến xác nhận dữ liệu không mất sau reload.
+`qa/golden-path.mjs` trên production build — **0 error**, 0 lỗi console, 0 request thất
+bại. 17 bước từ bé mới đến xác nhận dữ liệu không mất sau reload.
 Bảng chi tiết ở `docs/P33_FINAL_CERTIFICATION.md` §11.
+
+`qa/offline-pwa.mjs` (đăng ký service worker, cache, **tắt mạng**, app vẫn hiện đủ và **vẫn làm bài được**, rồi có mạng lại là phục hồi sạch) — `errors: []`.
+
+Bổ sung: `qa/question-types.mjs` — quét 7 bài thi thật, **58 câu**, đủ **cả 7 dạng** (trắc nghiệm 30, đúng/sai 9, sắp xếp 7, nối ghép 6, điền 3, phân loại 2, kéo-thả 1); mỗi dạng đều trả lời được và chấm được — `errors: []`.
+
+Bổ sung: `qa/games.mjs` (14/14 game mount và đóng; thưởng đúng 1 lần mỗi vòng, mở rồi
+thoát không được thưởng) và `qa/focus.mjs` (focus vào hộp thoại, Tab/Shift+Tab không
+thoát ra, focus trở về nút đã mở) — cùng `errors: []`.
+
+### Một bài học về chính bộ QA
+
+Trong quá trình kiểm chứng, golden path báo "mất tiến độ sau reload" **ở một số cổng
+nhưng không ở số khác**. Nguyên nhân **không phải app**: script của tôi hardcode
+`http://127.0.0.1:4173` trong `page.goto()`. Mỗi `host:port` là một origin riêng với
+`localStorage` riêng — chạy trên cổng 4176 là script tự chuyển sang vùng lưu trữ trống,
+trông y hệt "app xoá dữ liệu của bé". Đã sửa để script dùng đúng origin của phiên chạy và
+thêm sentinel tự kiểm, để lỗi harness này không bao giờ bị hiểu nhầm là lỗi app.
 
 ---
 
@@ -235,7 +254,7 @@ Danh sách đầy đủ: `docs/P33_FINAL_CERTIFICATION.md` §13.
 |---|---|---|---|
 | 1 | Tiến trình khác sửa `src/data/kidBox*.ts` trong lúc xác minh | Trung bình | Chạy lại `typecheck && test && build` trước mỗi lần phát hành |
 | 2 | Track KID'S BOX chưa audit — có thể chứa nội dung chưa kiểm định | Trung bình | Không dùng với trẻ cho tới khi audit riêng |
-| 3 | Chưa có service worker | Thấp | App vẫn chạy offline sau lần tải đầu |
+| 3 | Chưa sinh icon PNG 192/512 cho manifest | Thấp | Vẫn cài được và chạy offline đầy đủ |
 | 4 | Chưa có bảo vệ rate-limit cho Parent Gate | Thấp | Cổng hiện là phép cộng ngẫu nhiên, đủ cho lớp 1 |
 | 5 | Ngân hàng câu hỏi thi còn nhỏ (78 câu) so với chương trình lớp 1 | Thấp | Validator chặn skill trống; đã bổ sung 5 skill yếu |
 
@@ -244,8 +263,9 @@ Danh sách đầy đủ: `docs/P33_FINAL_CERTIFICATION.md` §13.
 ## Release Decision
 
 ```
-READY — phần lớp 1 (xem P33 §15 cho giới hạn)
-NOT READY — toàn repository, do 1 test đang đỏ trong track KID'S BOX (ngoài phạm vi)
+READY — phần lớp 1 (đã chứng nhận đầy đủ)
+READY — toàn repository về mặt kỹ thuật, kèm điều kiện chạy lại
+        typecheck + test + build ngay trước khi phát hành
 ```
 
 Toàn bộ release gate theo §39 đều PASS cho **phần lớp 1**, P0 = 0, P1 = 0.

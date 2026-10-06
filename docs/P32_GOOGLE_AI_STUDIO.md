@@ -128,21 +128,44 @@ VITE v8.3.2  ready in 1134 ms
 | Sau khi hoàn thành 1 bài | **110** | **1** (`vn-les-1`) |
 | Sau F5 | **110** | **1** |
 
-## 8. Core flow chạy khi AI unavailable
+## 8. Offline / PWA
+
+| Hạng mục | Kết quả |
+|---|---|
+| Service worker | `public/sw.js` — cache có phiên bản `kho-bau-v1` |
+| Đăng ký | Chỉ ở **production**, qua `src/services/pwa.ts`, **không bao giờ throw** |
+| Chiến lược navigation | **network-first**, fallback về shell đã cache |
+| Chiến lược asset | stale-while-revalidate (tên file có hash nên cache hit không bao giờ sai) |
+| Dev mode | **không** đăng ký (tránh đánh nhau với Vite HMR) |
+| Kiểm chứng | `qa/offline-pwa.mjs`: tắt mạng → app vẫn hiện và **vẫn trả lời câu hỏi được** |
+
+Đây là thiết kế **phòng thủ**: navigation dùng network-first vì phục vụ một HTML cũ có
+thể trỏ tới hash asset không còn tồn tại, gây hỏng app. Network-first đảm bảo bản cập
+nhật luôn tới và HTML cũ không bao giờ được phục vụ khi còn mạng.
+
+```
+rm -rf node_modules dist && npm ci   # 62 packages
+npm run typecheck                    # PASS
+npm test                             # 208/208
+npm run build                        # PASS → dist/sw.js, dist/favicon.svg, dist/manifest.webmanifest
+npm run preview -- --port 4200      # HTTP 200
+```
+
+## 9. Core flow chạy khi AI unavailable
 
 Vì **không có AI nào**, yêu cầu "không phụ thuộc external AI để chấm điểm / tính mastery /
 tính readiness" được thoả mã bằng cách mạnh hơn: không tồn tại đường gọi mạng nào.
 Tắt mạng hoàn toàn thì ứng dụng không đổi một byte hành vi nào.
 
-## 9. Hạn chế đã biết
+## 10. Hạn chế đã biết
 
 | Hạn chế | Mức độ | Ghi chú |
 |---|---|---|
 | Cần Node ≥ 20.19 | P2 | Khớp peer dependency của Vite 8; AI Studio đã cấp Node ≥ 20 |
 | Font Google (`fonts.googleapis.com`) | P2 | Nếu offline, font dự phòng `cursive/sans-serif` vẫn hiển thị; **không** có lỗi chặn |
-| Chưa có PWA/service worker | P2 | App vẫn chạy offline sau khi tải lần đầu; chưa tự cài như app |
+| Manifest chỉ có icon SVG, chưa có PNG 192/512 | P2 | Một số trình duyệt chưa báo "installable"; vẫn chạy và cài được như shortcut |
 
-## 10. Kết luận
+## 11. Kết luận
 
 Không có blocker Google AI Studio. Ứng dụng cài, build, chạy, preview và kiểm chứng
 golden-path được trong môi trường sạch, không cần secret, không cần backend.

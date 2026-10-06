@@ -48,7 +48,7 @@
 | Đọc trong thi | `bp-vn-reading` có `skillDistribution` ưu tiên `TV-READING` |
 | Công bằng | 2 persona test khẳng định chậm-đúng ≠ yếu, nhanh-sai ≠ giỏi |
 
-## 5. GAMES
+## 5. GAMES — kiểm chứng bằng `qa/games.mjs`
 
 14 mini-game trong `GamesHubScreen`, tất cả bọc bằng `GameModalWrapper`:
 
@@ -56,8 +56,28 @@
 `falling_numbers` · `speed_racing` · `number_tower` · `ocean_fishing` · `shape_sorting` ·
 `animal_safari` · `color_balloon` · `memory_cards` · `coloring_canvas`
 
-Cơ chế chống nhân thưởng: `GameModalWrapper` giữ `hasClaimed`; `handleRestart` mới reset nó.
-Đóng game rồi mở lại không cộng thêm vì lần sau là `isGameOver = false`.
+### A) Tất cả 14 game mount và đóng lại được
+
+| Tiêu chí | Kết quả |
+|---|---|
+| Số game trong catalog | **14** |
+| `mounted` (có tiêu đề + nút đóng + nút tắt âm) | **14/14 true** |
+| `closed` (quay lại hub) | **14/14 true** |
+| Lỗi console | **0** |
+| Request thất bại | **0** |
+
+### B) Cơ chế thưởng — đo bằng `gamesPlayedCount`
+
+| Tình huống | Trước | Sau | Chênh lệch |
+|---|---|---|---|
+| Mở game rồi thoát, **không** chơi xong | 0 | 0 | **0 — đúng** |
+| Hoàn thành vòng 1 | 0 | 1 | **+1 — đúng** |
+| Bấm "Chơi lại", hoàn thành vòng 2 | 1 | 2 | **+1 — đúng** |
+
+Màn hình chiến thắng `HOAN HÔ BÉ YÊU!` hiển thị đúng khi khớp đủ 6 cặp.
+
+Cơ chế: `GameModalWrapper` giữ `hasClaimed`; `handleRestart` mới reset nó. Mở game lại
+không cộng thêm vì lần sau `isGameOver = false`.
 
 ## 6. PERSISTENCE
 
@@ -84,8 +104,9 @@ Cơ chế chống nhân thưởng: `GameModalWrapper` giữ `hasClaimed`; `handl
 |---|---|
 | Responsive | 6 viewport · **tràn ngang 0px** ở tất cả |
 | Touch target | **0** nút dưới 44px |
-| Accessibility | **0** nút không tên, **0** ô nhập không nhãn, `lang="vi"`, 3 landmark, 10 heading |
+| Accessibility | **0** nút không tên, **0** ô nhập không nhãn, `lang="vi"`, 4 landmark, 10 heading |
 | Reduced motion | `animation-duration: 1e-05s`, media query active |
+| Focus trap | focus vào hộp thoại, Tab/Shift+Tab không thoát ra, focus trở về nút đã mở |
 
 ## 9. PERFORMANCE
 
@@ -134,13 +155,13 @@ Cơ chế chống nhân thưởng: `GameModalWrapper` giữ `hasClaimed`; `handl
 ## 12. TEST SUMMARY
 
 ```
-Phần lớp 1:  Test Files 12 passed (12) · Tests 131 passed (131)
-Toàn repo:    Test Files 13 passed | 1 failed (14) · Tests 162 passed | 1 failed (163)
+Toàn bộ repo:  Test Files 17 passed (17) · Tests 241 passed (241)
+Phần lớp 1:    Test Files 14 passed (14) · Tests 179 passed (179)
 ```
 
-> Test đỏ duy nhất: `tests/kidbox-activities.test.ts` → `matchesSpoken("It's a book.", 'it is a book')`.
-> Thuộc track **KID'S BOX** (tiến trình khác đang viết song song), **không** thuộc phạm vi
-> chứng nhận này. Không test nào của phần lớp 1 bị đỏ.
+> Lưu ý: lần kiểm chứng này, **toàn bộ repository đều xanh** — 17 file, 241 test, kể cả
+> 3 file test KID'S BOX của tiến trình song song. Chúng đã từng đỏ ở giữa phiên làm việc,
+> nên con số này phải được kiểm lại ngay trước lúc phát hành.
 
 | Nhóm | Test |
 |---|---|
@@ -152,13 +173,31 @@ Toàn repo:    Test Files 13 passed | 1 failed (14) · Tests 162 passed | 1 fail
 | Games / rewards | lesson idempotency, chest, weekly challenge, avatar shop |
 | UI | responsive 6 viewport, touch target, accessible name, reduced motion |
 | Publish | clean `npm ci`, typecheck, test, build, preview, dev |
+| Offline | ma trận hỗ trợ PWA, không đăng ký trong dev, không cache sai, hợp đồng service worker |
+
+### QA trình duyệt — 4 suite, tất cả `errors: []`
+
+| Script | Nội dung | Kết quả |
+|---|---|---|
+| `qa/golden-path.mjs` | 17 bước: bé mới → bài học → đọc → thi → xem lại → phụ huynh → reload | **0 error** |
+| `qa/responsive-a11y.mjs` | 6 viewport + a11y + reduced motion | **0 error** |
+| `qa/games.mjs` | 14 game mount/đóng + thưởng đúng 1 lần mỗi vòng | **0 error** |
+| `qa/focus.mjs` | focus trap + khôi phục focus cho 3 hộp thoại | **0 error** |
+| `qa/offline-pwa.mjs` | đăng ký SW, cache, tắt mạng, vẫn học được, có mạng lại | **0 error** |
+| `qa/question-types.mjs` | 7 bài thi thật, 58 câu, đủ cả 7 dạng bài, mọi dạng đều trả lời + chấm được | **0 error** |
+| `qa/audio.mjs` | nút TTS chuyển trạng thái thật, không xếp hàng, cổng autoplay ON/OFF đều đúng | **0 error** |
+| `qa/mobile.mjs` | 4 viewport 0 tràn, xoay + background/resume giữ nguyên câu hỏi | **0 error** |
+| `qa/mobile-golden.mjs` | 7 chặng @390px, XP giữ nguyên qua reload | **0 error** |
+
+Tất cả chạy trên production build tại một cổng **mới** (4200) để chứng minh kết quả không
+phụ thuộc cổng cũ.
 
 **Known limitations** (P2):
 
-1. Chưa có service worker / PWA — app vẫn chạy offline sau lần tải đầu nhưng chưa tự cài.
-2. Font Google phụ thuộc mạng; offline dùng font dự phòng.
-3. Hai `WARNING` của `contentValidator` thuộc track KID'S BOX (`WORD_COUNT_MISMATCH`),
-   ngoài phạm vi bản phát hành lớp 1 này.
+1. Manifest mới có icon SVG; chưa sinh PNG 192/512 nên một số trình duyệt chưa báo "installable".
+2. Font Google phụ thuộc mạng; offline dùng font dự phòng (đã kiểm chứng, không chặn).
+3. Hai `WARNING` của `contentValidator` thuộc track KID'S BOX (`WORD_COUNT_MISMATCH`).
+4. Focus trap chưa áp dụng cho `ScreenTimeModal` và màn hình kết quả luyện đọc.
 
 ## 13. P0 / P1 / P2
 
@@ -229,7 +268,7 @@ Trạng thái tại thời điểm ký báo cáo:
 |---|---|
 | `npm run typecheck` | **PASS** (toàn bộ cây, gồm cả file KID'S BOX) |
 | 12 test file của phần lớp 1 | **131/131 PASS** |
-| 2 test file KID'S BOX | 1 file đang **đỏ**: `matchesSpoken("It's a book.", 'it is a book')` |
+| 2 test file KID'S BOX | 2 file đang **xanh** — nhưng từng đỏ giữa phiên, nên chưa ổn định |
 | `npm run build` | **PASS** |
 
 ### Chứng nhận này bao gồm và không bao gồm gì
@@ -253,14 +292,13 @@ Cần làm thêm, theo thứ tự:
 
 ## 16. Kết luận
 
-Với phạm vi **lớp 1** — toàn bộ release gate §39 đều PASS, P0 = 0, P1 = 0:
+Tại thời điểm ký: **toàn bộ repository xanh** — typecheck PASS, 241/241 test, build PASS,
+4/4 QA suite `errors: []`.
 
-```
-RELEASE CANDIDATE = READY   (phần lớp 1)
-```
+| Phạm vi | Quyết định |
+|---|---|
+| **Lớp 1** — màn hình, nghiệp vụ, nội dung | `RELEASE CANDIDATE = READY` |
+| **Toàn repository** | `READY` về mặt kỹ thuật, **kèm điều kiện**: phải chạy lại `npm run typecheck && npm test && npm run build` ngay trước lúc phát hành, vì tiến trình song song vẫn đang sửa track KID'S BOX |
 
-Với **toàn bộ repository** — còn 1 test đỏ ngoài phạm vi:
-
-```
-RELEASE CANDIDATE = NOT READY   (toàn repo) — chờ track KID'S BOX hoàn tất
-```
+Track KID'S BOX **không nằm trong phạm vi chứng nhận này**: nội dung của nó chưa được
+audit sư phạm, chưa kiểm an toàn trẻ. Không dùng nó với trẻ cho tới khi có vòng audit riêng.

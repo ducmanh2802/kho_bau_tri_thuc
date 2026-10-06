@@ -112,7 +112,26 @@ nút loa chào (34×36), nút rương (cao 40). Sửa bằng `min-w/min-h-[44px]
 | `heroTransitionDuration` | `1e-05s` |
 | media query active | `true` |
 
-## 4. Test hook
+## 4. Focus management (§24) — kiểm chứng bằng `qa/focus.mjs`
+
+Hook dùng chung `src/hooks/useFocusTrap.ts`: khi mở, đưa focus vào phần tử tập trung đầu
+tiên; giữ focus bên trong khi Tab / Shift+Tab; khi đóng, **trả focus về đúng nút đã mở nó**.
+
+| Hộp thoại | Focus vào hộp | Tab giữ trong | Shift+Tab giữ trong | Trả focus về nút mở |
+|---|---|---|---|---|
+| Bài học (`LessonPlayerModal`) | PASS | PASS 25 lần | PASS 15 lần | PASS → "Vào học" |
+| Game (`GameModalWrapper`, cả 14 game) | PASS | PASS 25 lần | — | PASS → "Chơi ngay" |
+| Phụ huynh (`ParentDashboardModal`) | PASS | PASS 30 lần | — | — (chưa đóng trong test) |
+
+### Hai lỗi thật do test phát hiện
+
+1. **Mất focus sau cổng phụ huynh.** Khi màn hình cổng được thay bằng dashboard, nút
+   "Mở Bảng Phụ Huynh" bị gỡ khỏi DOM → trình duyệt mất focus về `<body>`, tức người dùng
+   bị ném về đầu trang. Đã thêm effect đưa focus trở lại dialog.
+2. **Nút chỉ có icon không có tên truy cập.** Ba nút trong `GameModalWrapper` và một nút
+   trong `LessonPlayerModal`. Đã thêm `aria-label` và kích thước tối thiểu 44px.
+
+## 5. Test hook
 
 Thêm `data-testid` ổn định thay vì đoán selector theo class:
 
@@ -121,7 +140,7 @@ Thêm `data-testid` ổn định thay vì đoán selector theo class:
 | `answer-option` | LessionPlayerModal, ReadingFluencyScreen, CompetitionExamModal |
 | `drag-item` / `drop-bucket` | kéo-thả của CompetitionExamModal |
 
-## 5. Vòng đời & rò rỉ (§22)
+## 6. Vòng đời & rò rỉ (§22)
 
 | Nguồn rò | Cách xử lý |
 |---|---|
@@ -133,7 +152,7 @@ Thêm `data-testid` ổn định thay vì đoán selector theo class:
 
 Không phát hiện memory leak qua golden path (2 vòng học + 2 bài thi + 1 phiên đọc + reload ×2).
 
-## 6. Offline / degraded mode (§25)
+## 7. Offline / degraded mode (§25)
 
 Ứng dụng **không** gọi mạng:
 
@@ -144,13 +163,19 @@ grep -rn "fetch(\|XMLHttpRequest\|axios" src   # → không có kết quả
 Ngoài mạng, mọi thứ vẫn chạy: bài học, đọc hiểu, thi, game, phần thưởng, phụ huynh.
 Không có AI provider để "mất".
 
-## 7. Cách tự kiểm lại
+## 8. Cách tự kiểm lại
 
 ```bash
 npm run build
-npm run preview -- --port 4173
-node "<browser-skill>/browser.mjs" http://127.0.0.1:4173/ --script ./qa/responsive-a11y.mjs
+npm run preview -- --port 4180
+node "<browser-skill>/browser.mjs" http://127.0.0.1:4180/ --script ./qa/responsive-a11y.mjs
+node "<browser-skill>/browser.mjs" http://127.0.0.1:4180/ --script ./qa/focus.mjs
 ```
 
 Kết quả mong đợi: mọi `horizontalOverflowPx` = 0, mọi `touchTargetsUnder44px` = 0,
 `unlabelledButtons` = 0, `errors: []`.
+
+> **Cảnh báo dành cho người viết QA:** đừng hardcode `http://127.0.0.1:PORT` trong script.
+> Mỗi `host:port` là một **origin riêng**, và mỗi origin có `localStorage` riêng — chạy
+> script trên cổng khác sẽ tạo ra ảo giác "app mất dữ liệu". `golden-path.mjs` đã ghi
+> sentinel và kiểm tra origin để bắt đúng lỗi harness này.

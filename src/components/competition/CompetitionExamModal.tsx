@@ -8,11 +8,20 @@ import {
 import { CompetitionEngine, QUESTION_TYPE_LABELS } from '../../services/competitionEngine';
 import { StorageService } from '../../services/storage';
 import { sound } from '../../services/sound';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
+import { useSpeak } from '../../hooks/useSpeak';
+import {
+  assertQuestionAudioTarget,
+  buildQuestionAudioTarget,
+  logQuestionAudioTarget,
+  resolveQuestionAudioText,
+} from '../../services/questionAudio';
 import {
   Clock,
   AlertTriangle,
   ArrowRight,
   ArrowLeft,
+  Volume2,
   X,
   Send,
   Info,
@@ -70,6 +79,36 @@ export const CompetitionExamModal: React.FC<CompetitionExamModalProps> = ({
   const currentIndexRef = useRef(0);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const submittedRef = useRef(false);
+  const dialogRef = useFocusTrap<HTMLDivElement>(isOpen);
+  const { state: questionAudioState, speak: speakQuestion } = useSpeak();
+  // Last canonical question text handed toward TTS (test hook, also rendered
+  // as data-last-spoken for isolated-world automation).
+  const [lastQuestionSpoken, setLastQuestionSpoken] = useState<string | null>(null);
+
+  // QUESTION AUDIO — single source of truth (audioPrompt || prompt).
+  // Competition questions carry no audioPrompt field, so this always resolves
+  // to the canonical prompt. NEVER options[0]/correctAnswer/explanation:
+  // resolver returns null (AUDIO_UNAVAILABLE) instead of falling back.
+  const playQuestionAudio = useCallback(() => {
+    const question = questions[currentIndexRef.current];
+    if (!question) return;
+    const target = buildQuestionAudioTarget(question);
+    if (!target) return;
+    if (import.meta.env.DEV) {
+      assertQuestionAudioTarget({
+        questionId: target.questionId,
+        text: target.text,
+        canonicalText: resolveQuestionAudioText(question) ?? '',
+        options: question.options,
+        correctAnswer: question.correctAnswer,
+        selectedAnswer: answersRef.current[question.id] ?? null,
+        explanation: question.explanation,
+      });
+    }
+    speakQuestion(target.text, 'vi-VN');
+    logQuestionAudioTarget(target);
+    setLastQuestionSpoken(target.text);
+  }, [questions, speakQuestion]);
 
   const commitAnswers = useCallback((next: Record<string, string>) => {
     answersRef.current = next;
@@ -272,6 +311,7 @@ export const CompetitionExamModal: React.FC<CompetitionExamModalProps> = ({
     bankCurrentQuestionTime();
     currentIndexRef.current = newIndex;
     setDragItem(null);
+    setLastQuestionSpoken(null);
     setCurrentIndex(newIndex);
   };
 
@@ -299,7 +339,11 @@ export const CompetitionExamModal: React.FC<CompetitionExamModalProps> = ({
       aria-label={blueprint.title}
       className="fixed inset-0 z-50 flex items-center justify-center p-2 md:p-6 bg-slate-950/85 backdrop-blur-md select-none animate-pop"
     >
-      <div className="relative w-full max-w-4xl h-[95vh] md:h-[90vh] bg-white rounded-3xl shadow-2xl flex flex-col overflow-hidden border-2 border-slate-300">
+      <div
+        ref={dialogRef}
+        tabIndex={-1}
+        className="relative w-full max-w-4xl h-[95vh] md:h-[90vh] bg-white rounded-3xl shadow-2xl flex flex-col overflow-hidden border-2 border-slate-300"
+      >
         {/* Top bar */}
         <div className="px-4 py-3 bg-slate-900 text-white flex items-center justify-between shrink-0 shadow-md gap-2">
           <div className="flex items-center gap-2 min-w-0">
@@ -387,6 +431,28 @@ export const CompetitionExamModal: React.FC<CompetitionExamModalProps> = ({
               <h2 className="text-lg md:text-2xl font-black text-slate-800 font-display leading-relaxed">
                 {currentQ.prompt}
               </h2>
+              <div className="flex items-center justify-center">
+                <button
+                  onClick={playQuestionAudio}
+                  data-testid="question-audio"
+                  data-action="READ_QUESTION"
+                  data-audio-state={questionAudioState}
+                  data-question-id={currentQ.id}
+                  data-last-spoken={lastQuestionSpoken ?? undefined}
+                  title="Đọc câu hỏi"
+                  aria-label={
+                    questionAudioState === 'playing'
+                      ? 'Đang đọc câu hỏi'
+                      : questionAudioState === 'unavailable'
+                        ? 'Thiết bị không đọc được, ba mẹ đọc cùng bé nhé'
+                        : 'Đọc câu hỏi'
+                  }
+                  className="min-h-[44px] min-w-[44px] px-4 rounded-2xl bg-blue-100 hover:bg-blue-200 text-blue-800 font-bold text-xs flex items-center gap-1.5"
+                >
+                  <Volume2 className="w-4 h-4" />
+                  Đọc câu hỏi
+                </button>
+              </div>
               {currentSection?.instruction && (
                 <p className="text-xs text-slate-500 flex items-center justify-center gap-1">
                   <Info className="w-3.5 h-3.5" />
@@ -619,6 +685,7 @@ const QuestionInput: React.FC<{
             return (
               <button
                 key={p.left}
+                data-testid="match-left"
                 onClick={() => onMatch('left', p.left)}
                 aria-pressed={paired || stored === `L:${p.left}`}
                 className={`w-full min-h-[56px] px-4 rounded-2xl border-2 font-bold text-sm flex items-center justify-between gap-2 active:scale-[0.99] ${
@@ -645,6 +712,7 @@ const QuestionInput: React.FC<{
             return (
               <button
                 key={opt}
+                data-testid="match-right"
                 onClick={() => onMatch('right', opt)}
                 aria-pressed={isSelected || isPaired}
                 className={`w-full min-h-[56px] px-4 rounded-2xl border-2 font-bold text-sm flex items-center justify-center active:scale-[0.99] ${

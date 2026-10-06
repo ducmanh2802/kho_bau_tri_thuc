@@ -64,7 +64,9 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         <div className="absolute -bottom-6 -left-6 text-9xl opacity-15 pointer-events-none">⭐</div>
 
         <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6">
-          <div className="flex items-center gap-5 text-center md:text-left">
+          {/* Stacks vertically on extremely narrow widths (200% zoom): the
+              96px mascot plus a text-2xl greeting cannot share one 195px row. */}
+          <div className="flex flex-col min-[340px]:flex-row items-center gap-4 md:gap-5 text-center min-[340px]:text-left md:text-left">
             {/* Mascot Avatar */}
             <div className="relative shrink-0">
               <div className="w-24 h-24 md:w-28 md:h-28 bg-white/95 rounded-3xl shadow-xl flex items-center justify-center text-5xl md:text-6xl border-4 border-amber-200 animate-float">

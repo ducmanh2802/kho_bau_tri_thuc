@@ -43,6 +43,9 @@ const ParentDashboardModal = lazy(() =>
 const ScreenTimeModal = lazy(() =>
   import('./components/parent/ScreenTimeModal').then((m) => ({ default: m.ScreenTimeModal }))
 );
+const UpdateBanner = lazy(() =>
+  import('./components/system/UpdateBanner').then((m) => ({ default: m.UpdateBanner }))
+);
 
 /** Accessible loading state for lazily loaded screens. */
 const ScreenFallback: React.FC<{ label: string }> = ({ label }) => (
@@ -231,7 +234,7 @@ export default function App() {
       */}
       <nav
         aria-label="Điều hướng nhanh"
-        className="2xl:hidden fixed bottom-0 inset-x-0 bg-white/95 backdrop-blur-md border-t border-amber-200 flex items-stretch gap-1 px-2 py-1.5 z-30 shadow-lg overflow-x-auto"
+        className="2xl:hidden fixed bottom-0 inset-x-0 bg-white/95 backdrop-blur-md border-t border-amber-200 flex items-stretch gap-1 px-2 pt-1.5 pb-[max(0.375rem,env(safe-area-inset-bottom))] z-30 shadow-lg overflow-x-auto"
       >
         {BOTTOM_NAV.map((tab) => (
           <button
@@ -259,6 +262,11 @@ export default function App() {
           onClose={() => setIsParentModalOpen(false)}
           onDataReset={refreshProfile}
         />
+      </Suspense>
+
+      {/* Service-worker update notice (§11): reload offered, never forced. */}
+      <Suspense fallback={null}>
+        <UpdateBanner />
       </Suspense>
 
       {/* Daily Screen Time Break Reminder Modal */}

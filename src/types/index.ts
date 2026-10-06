@@ -147,6 +147,16 @@ export interface ParentSettings {
   musicEnabled: boolean;
   voiceEnabled: boolean;
   difficultyScale: 'easy' | 'normal' | 'advanced';
+  /**
+   * Read each question aloud automatically (§20).
+   *
+   * Default ON with an explicit rationale: the audience is 6-year-olds who are
+   * still LEARNING to read, so silent questions lock pre-readers out of the
+   * whole app. This is the documented accessibility mode that permits
+   * auto-play; a parent can switch it OFF and questions stay behind the
+   * user-initiated "Nghe câu hỏi" button. Mute / voice-off still wins.
+   */
+  questionAutoplay: boolean;
 }
 
 export type ActiveScreen =

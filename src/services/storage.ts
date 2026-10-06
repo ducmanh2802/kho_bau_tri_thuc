@@ -315,6 +315,7 @@ const DEFAULT_PARENT_SETTINGS: ParentSettings = {
   musicEnabled: true,
   voiceEnabled: true,
   difficultyScale: 'normal',
+  questionAutoplay: true, // pre-readers need to hear questions; parents can switch off
 };
 
 function getTodayString(): string {
@@ -785,6 +786,8 @@ export class StorageService {
             difficultyScale: ['easy', 'normal', 'advanced'].includes(parsed.difficultyScale)
               ? parsed.difficultyScale
               : 'normal',
+            questionAutoplay:
+              typeof parsed.questionAutoplay === 'boolean' ? parsed.questionAutoplay : true,
           };
         }
       }

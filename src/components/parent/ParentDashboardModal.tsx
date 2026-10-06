@@ -3,6 +3,7 @@ import { StorageService } from '../../services/storage';
 import { AdaptiveService, ParentDiagnosticReport, ReadingProgressReport } from '../../services/adaptive';
 import { ParentSettings } from '../../types';
 import { sound } from '../../services/sound';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
 import {
   Lock,
   X,
@@ -45,6 +46,17 @@ export const ParentDashboardModal: React.FC<ParentDashboardModalProps> = ({
     'progress' | 'reading' | 'insights' | 'competition' | 'kidbox' | 'settings'
   >('progress');
   const [showSeedConfirm, setShowSeedConfirm] = useState(false);
+  const dialogRef = useFocusTrap<HTMLDivElement>(isOpen);
+
+  /**
+   * When the gate screen is replaced by the dashboard, the focused submit button
+   * unmounts and the browser drops focus to <body>. Move focus back onto the
+   * dialog so keyboard users are not dropped at the top of the page.
+   */
+  React.useEffect(() => {
+    if (!isOpen || !isAuthenticated) return;
+    dialogRef.current?.focus({ preventScroll: true });
+  }, [isOpen, isAuthenticated, dialogRef]);
 
   // Regenerate gate challenge on open
   React.useEffect(() => {
@@ -96,6 +108,13 @@ export const ParentDashboardModal: React.FC<ParentDashboardModalProps> = ({
     sound.playClick();
   };
 
+  const handleToggleAutoplay = () => {
+    const next = { ...settings, questionAutoplay: !settings.questionAutoplay };
+    setSettings(next);
+    StorageService.saveParentSettings(next);
+    sound.playClick();
+  };
+
   const handleExportData = () => {
     const profile = StorageService.getChildProfile();
     const analytics = StorageService.getAnalytics();
@@ -142,7 +161,14 @@ export const ParentDashboardModal: React.FC<ParentDashboardModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 md:p-6 bg-slate-900/80 backdrop-blur-md animate-pop">
-      <div className="relative w-full max-w-3xl max-h-[92vh] bg-white rounded-3xl shadow-2xl flex flex-col overflow-hidden border-2 border-slate-200">
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Khu vực dành cho phụ huynh"
+        tabIndex={-1}
+        className="relative w-full max-w-3xl max-h-[92vh] bg-white rounded-3xl shadow-2xl flex flex-col overflow-hidden border-2 border-slate-200"
+      >
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 bg-slate-900 text-white">
           <div className="flex items-center gap-2.5">
@@ -722,6 +748,23 @@ export const ParentDashboardModal: React.FC<ParentDashboardModalProps> = ({
                         }`}
                       >
                         {settings.voiceEnabled ? 'Bật' : 'Tắt'}
+                      </button>
+                    </div>
+
+                    <div className="flex items-center justify-between py-2 text-xs">
+                      <div>
+                        <span className="font-bold text-slate-800 block">Tự đọc câu hỏi (§20)</span>
+                        <span className="text-slate-500">
+                          Mỗi câu hỏi mới tự đọc to cho bé nghe — cần thiết nếu bé chưa đọc thạo
+                        </span>
+                      </div>
+                      <button
+                        onClick={handleToggleAutoplay}
+                        className={`px-3 py-1.5 rounded-lg font-bold text-xs ${
+                          settings.questionAutoplay ? 'bg-emerald-600 text-white' : 'bg-slate-300 text-slate-700'
+                        }`}
+                      >
+                        {settings.questionAutoplay ? 'Bật' : 'Tắt'}
                       </button>
                     </div>
                   </div>

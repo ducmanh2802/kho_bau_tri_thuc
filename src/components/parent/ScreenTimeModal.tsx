@@ -1,6 +1,7 @@
 import React from 'react';
 import { ShieldCheck, Heart } from 'lucide-react';
 import { sound } from '../../services/sound';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
 
 interface ScreenTimeModalProps {
   isOpen: boolean;
@@ -15,20 +16,35 @@ export const ScreenTimeModal: React.FC<ScreenTimeModalProps> = ({
   onExtend,
   onTakeBreak,
 }) => {
+  // §13/14 — containment + restoration. The hook is called unconditionally (it
+  // is inert while inactive), and the trap only engages when the dialog mounts.
+  const dialogRef = useFocusTrap<HTMLDivElement>(isOpen);
+
   if (!isOpen) return null;
 
   const playVoice = () => {
     sound.speak('Hôm nay bé đã học rất chăm chỉ rồi! Hãy để mắt nghỉ ngơi một chút nhé!');
   };
 
+  // Deliberately NO Escape-to-dismiss: this is a child-safety gate, and an
+  // easily-dismissed break reminder is a bypass. The two explicit choices are
+  // the only exits, both large, labelled, and keyboard-reachable. The trap
+  // still cycles Tab/Shift+Tab and focus returns to the opener on close.
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-md animate-pop select-none">
-      <div className="w-full max-w-md bg-white rounded-3xl p-6 md:p-8 text-center shadow-2xl border-4 border-amber-300">
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="screentime-title"
+        tabIndex={-1}
+        className="w-full max-w-md bg-white rounded-3xl p-6 md:p-8 text-center shadow-2xl border-4 border-amber-300"
+      >
         <div className="w-24 h-24 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4 animate-bounce">
           <span className="text-5xl">🦉</span>
         </div>
 
-        <h3 className="text-2xl font-black text-amber-950 font-display mb-2">
+        <h3 id="screentime-title" className="text-2xl font-black text-amber-950 font-display mb-2">
           GIỜ NGHỈ NGƠI CHO MẮT SÁNG!
         </h3>
 

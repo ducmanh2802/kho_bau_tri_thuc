@@ -128,15 +128,15 @@ export const CatchFallingLettersGame: React.FC<{ onExit: () => void }> = ({ onEx
           <span>🌻</span>
         </div>
 
-        {/* Target display HUD */}
-        <div className="absolute top-3 left-1/2 -translate-x-1/2 bg-white/95 px-6 py-2 rounded-2xl shadow-lg border-2 border-amber-300 flex items-center gap-3 z-10">
-          <span className="text-sm font-bold text-amber-900">Bé cần bắt chữ:</span>
-          <span className="w-12 h-12 bg-amber-400 text-amber-950 font-black text-3xl rounded-xl flex items-center justify-center shadow-md animate-pulse-subtle">
+        {/* Target display HUD — max-w keeps it inside 200%-zoom widths. */}
+        <div className="absolute top-3 left-1/2 -translate-x-1/2 max-w-[calc(100%-0.75rem)] bg-white/95 px-3 md:px-6 py-2 rounded-2xl shadow-lg border-2 border-amber-300 flex items-center gap-2 md:gap-3 z-10">
+          <span className="text-xs md:text-sm font-bold text-amber-900 whitespace-nowrap">Bé cần bắt chữ:</span>
+          <span className="w-10 h-10 md:w-12 md:h-12 bg-amber-400 text-amber-950 font-black text-2xl md:text-3xl rounded-xl flex items-center justify-center shadow-md animate-pulse-subtle shrink-0">
             {targetChar}
           </span>
           <button
             onClick={() => sound.speak(`Bắt chữ ${targetChar}`)}
-            className="text-xs bg-amber-100 hover:bg-amber-200 text-amber-800 px-2 py-1 rounded-lg font-bold"
+            className="text-xs bg-amber-100 hover:bg-amber-200 text-amber-800 px-2 py-1 min-h-[44px] rounded-lg font-bold shrink-0"
           >
             🔊 Nghe
           </button>
