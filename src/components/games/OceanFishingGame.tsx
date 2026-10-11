@@ -1,96 +1,67 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { GameModalWrapper } from './GameModalWrapper';
 import { sound } from '../../services/sound';
+import { useGameStage } from '../../hooks/useGameStage';
+import { defaultRoundsPerTier, getTierMeta, numericOptions, seededRng, shuffleSeeded } from '../../data/gameLevels';
 
-interface FishQuestion {
-  id: number;
-  expr: string;
-  ans: number;
-  fishPool: { val: number; emoji: string; color: string }[];
+interface FishItem {
+  val: number;
+  emoji: string;
+  color: string;
 }
 
-const FISH_QUESTIONS: FishQuestion[] = [
-  {
-    id: 1,
-    expr: '9 - 4',
-    ans: 5,
-    fishPool: [
-      { val: 5, emoji: '🐠', color: 'text-amber-500' },
-      { val: 3, emoji: '🐟', color: 'text-blue-500' },
-      { val: 6, emoji: '🐡', color: 'text-rose-500' },
-      { val: 4, emoji: '🐠', color: 'text-emerald-500' },
-    ],
-  },
-  {
-    id: 2,
-    expr: '7 - 2',
-    ans: 5,
-    fishPool: [
-      { val: 4, emoji: '🐟', color: 'text-blue-500' },
-      { val: 5, emoji: '🐠', color: 'text-amber-500' },
-      { val: 6, emoji: '🐡', color: 'text-purple-500' },
-      { val: 3, emoji: '🐠', color: 'text-teal-500' },
-    ],
-  },
-  {
-    id: 3,
-    expr: '10 - 7',
-    ans: 3,
-    fishPool: [
-      { val: 2, emoji: '🐡', color: 'text-rose-500' },
-      { val: 3, emoji: '🐟', color: 'text-blue-500' },
-      { val: 4, emoji: '🐠', color: 'text-amber-500' },
-      { val: 5, emoji: '🐠', color: 'text-emerald-500' },
-    ],
-  },
-  {
-    id: 4,
-    expr: '8 - 6',
-    ans: 2,
-    fishPool: [
-      { val: 1, emoji: '🐟', color: 'text-blue-500' },
-      { val: 2, emoji: '🐠', color: 'text-amber-500' },
-      { val: 3, emoji: '🐡', color: 'text-rose-500' },
-      { val: 4, emoji: '🐠', color: 'text-purple-500' },
-    ],
-  },
-];
+interface FishQuestion {
+  expr: string;
+  ans: number;
+  fishPool: FishItem[];
+}
+
+const FISH_EMOJI = ['🐠', '🐟', '🐡'] as const;
+const FISH_COLORS = ['text-amber-500', 'text-blue-500', 'text-rose-500', 'text-emerald-500', 'text-purple-500', 'text-teal-500'] as const;
+
+function buildFishRounds(tier: number): FishQuestion[] {
+  const roundsPerTier = defaultRoundsPerTier();
+  const count = roundsPerTier[tier - 1];
+  const maxA = tier <= 1 ? 5 : tier <= 3 ? 10 : 20;
+  const maxB = tier <= 3 ? maxA : tier <= 4 ? 9 : 12;
+  const rounds: FishQuestion[] = [];
+  for (let i = 0; i < count; i++) {
+    const rngI = seededRng(2300 + tier * 53 + i * 157);
+    const a = Math.max(2, Math.floor(rngI() * maxA) + 1);
+    const b = tier <= 3 ? Math.max(1, Math.min(Math.floor(rngI() * a), maxB - a + a)) : Math.floor(rngI() * maxB) + 1;
+    const ans = Math.max(0, a - b);
+    const vals = numericOptions(ans, 4, rngI, 0, maxA);
+    const fishPool = vals.map((val, idx) => ({
+      val,
+      emoji: FISH_EMOJI[idx % FISH_EMOJI.length],
+      color: FISH_COLORS[Math.floor(rngI() * FISH_COLORS.length)],
+    }));
+    rounds.push({ expr: `${a} - ${b}`, ans, fishPool: shuffleSeeded(fishPool, seededRng(2300 + tier * 53 + i * 911)) });
+  }
+  return rounds;
+}
 
 export const OceanFishingGame: React.FC<{ onExit: () => void }> = ({ onExit }) => {
-  const [qIdx, setQIdx] = useState(0);
-  const [score, setScore] = useState(0);
-  const [isGameOver, setIsGameOver] = useState(false);
+  const roundsPerTier = useMemo(() => defaultRoundsPerTier(), []);
+  const stage = useGameStage({ gameId: 'ocean_fishing', roundsPerTier, advanceDelayMs: 1400 });
   const [hookedFish, setHookedFish] = useState<number | null>(null);
 
-  const current = FISH_QUESTIONS[qIdx];
+  const rounds = useMemo(() => buildFishRounds(stage.tier), [stage.tier]);
+  const current = rounds[stage.roundIdx];
 
   const handleCatchFish = (val: number) => {
+    if (stage.locked) return;
     if (val === current.ans) {
       sound.playCorrect();
       sound.speak(`Cắn câu rồi! ${current.expr} bằng ${current.ans}!`);
       setHookedFish(val);
-      const newScore = score + 1;
-      setScore(newScore);
-
-      setTimeout(() => {
-        setHookedFish(null);
-        if (qIdx + 1 < FISH_QUESTIONS.length) {
-          setQIdx(qIdx + 1);
-        } else {
-          setIsGameOver(true);
-        }
-      }, 1400);
+      stage.submitCorrect();
+      window.setTimeout(() => setHookedFish(null), 1400);
     } else {
       sound.playWrong();
       sound.speak(`Chú cá mang số ${val} chưa đúng phép tính rồi, bé thử lại nhé!`);
+      stage.submitWrong();
     }
-  };
-
-  const restartGame = () => {
-    setQIdx(0);
-    setScore(0);
-    setHookedFish(null);
-    setIsGameOver(false);
   };
 
   return (
@@ -98,10 +69,20 @@ export const OceanFishingGame: React.FC<{ onExit: () => void }> = ({ onExit }) =
       title="Câu Cá Đại Dương Xanh"
       subtitle="Thả cần câu bắt chú cá mang kết quả đúng của phép trừ"
       mascotEmoji="🎣"
-      score={score}
-      maxScore={FISH_QUESTIONS.length}
-      isGameOver={isGameOver}
-      onRestart={restartGame}
+      score={stage.score}
+      isGameOver={stage.isGameOver}
+      phase={stage.phase}
+      tier={stage.tier}
+      tierMeta={stage.tierMeta}
+      tierCount={stage.tierCount}
+      roundNumber={stage.roundNumber}
+      roundTotal={stage.roundTotal}
+      starsEarned={stage.starsEarned}
+      nextTierMeta={stage.tier + 1 <= stage.tierCount ? getTierMeta(stage.tier + 1) : undefined}
+      onNextTier={stage.startNextTier}
+      earnedXp={stage.xpEarned}
+      earnedStars={1}
+      onRestart={stage.restartGame}
       onExit={onExit}
       instructions={`Tính phép trừ: ${current.expr} = ?`}
       audioInstruction={`${current.expr} bằng mấy`}
@@ -144,12 +125,13 @@ export const OceanFishingGame: React.FC<{ onExit: () => void }> = ({ onExit }) =
             <button
               key={idx}
               onClick={() => handleCatchFish(fish.val)}
+              disabled={stage.locked}
               className={`p-4 bg-white/90 hover:bg-white rounded-3xl shadow-xl border-3 border-blue-300 hover:border-amber-400 flex flex-col items-center justify-center gap-1 transition-all active:scale-95 cursor-pointer min-w-[110px] md:min-w-[130px] ${
                 hookedFish === fish.val ? 'scale-125 -translate-y-8 bg-amber-100 border-amber-500' : 'hover:scale-105'
-              }`}
+              } ${stage.locked ? 'opacity-80' : ''}`}
             >
               <span className="text-5xl md:text-6xl animate-pulse-subtle">{fish.emoji}</span>
-              <span className="px-3 py-1 bg-amber-400 text-amber-950 font-black text-xl rounded-xl shadow-sm">
+              <span className={`px-3 py-1 bg-amber-400 text-amber-950 font-black text-xl rounded-xl shadow-sm ${fish.color}`}>
                 Số {fish.val}
               </span>
               <span className="text-[10px] text-blue-700 font-bold">Chạm để câu</span>

@@ -1,6 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { GameModalWrapper } from './GameModalWrapper';
 import { sound } from '../../services/sound';
+import { useGameStage } from '../../hooks/useGameStage';
+import { defaultRoundsPerTier, getTierMeta } from '../../data/gameLevels';
 
 interface FallingBall {
   id: number;
@@ -13,56 +15,76 @@ interface FallingBall {
 
 const BALL_COLORS = ['bg-rose-500', 'bg-blue-500', 'bg-emerald-500', 'bg-amber-500', 'bg-purple-500'];
 
+interface Condition {
+  text: string;
+  check: (n: number) => boolean;
+  speech: string;
+}
+
+const TIER_CONFIG: { condition: Condition; maxVal: number; spawnMs: number; speedMin: number; speedMax: number }[] = [
+  {
+    condition: { text: 'LỚN HƠN 5 (> 5)', check: (n) => n > 5, speech: 'Hứng các quả bóng có số lớn hơn năm' },
+    maxVal: 10, spawnMs: 1100, speedMin: 0.35, speedMax: 0.6,
+  },
+  {
+    condition: { text: 'SỐ CHẴN', check: (n) => n % 2 === 0, speech: 'Hứng các quả bóng mang số chẵn' },
+    maxVal: 10, spawnMs: 1000, speedMin: 0.35, speedMax: 0.62,
+  },
+  {
+    condition: { text: 'BÉ HƠN 7 (< 7)', check: (n) => n < 7, speech: 'Hứng các quả bóng có số bé hơn bảy' },
+    maxVal: 12, spawnMs: 900, speedMin: 0.38, speedMax: 0.68,
+  },
+  {
+    condition: { text: 'LỚN HƠN 10 (> 10)', check: (n) => n > 10, speech: 'Hứng các quả bóng có số lớn hơn mười' },
+    maxVal: 20, spawnMs: 850, speedMin: 0.4, speedMax: 0.72,
+  },
+  {
+    condition: { text: 'SỐ CHẴN 1–20', check: (n) => n % 2 === 0, speech: 'Hứng các quả bóng mang số chẵn từ một đến hai mươi' },
+    maxVal: 20, spawnMs: 750, speedMin: 0.42, speedMax: 0.78,
+  },
+  {
+    condition: { text: 'SỐ CHIA HẾT CHO 5', check: (n) => n % 5 === 0, speech: 'Hứng các quả bóng mang số chia hết cho năm' },
+    maxVal: 20, spawnMs: 650, speedMin: 0.46, speedMax: 0.86,
+  },
+];
+
 export const FallingNumbersMathGame: React.FC<{ onExit: () => void }> = ({ onExit }) => {
-  const [condition, setCondition] = useState<{ text: string; check: (n: number) => boolean; speech: string }>({
-    text: 'LỚN HƠN 5 (> 5)',
-    check: (n) => n > 5,
-    speech: 'Hứng các quả bóng có số lớn hơn năm',
-  });
-  const [score, setScore] = useState(0);
+  const roundsPerTier = useMemo(() => defaultRoundsPerTier(), []);
+  const stage = useGameStage({ gameId: 'falling_numbers', roundsPerTier, advanceDelayMs: 1000 });
   const [balls, setBalls] = useState<FallingBall[]>([]);
-  const [isGameOver, setIsGameOver] = useState(false);
   const nextId = useRef(1);
 
-  const initGame = () => {
-    setScore(0);
-    setIsGameOver(false);
-    setBalls([]);
-    setCondition({
-      text: 'LỚN HƠN 5 (> 5)',
-      check: (n) => n > 5,
-      speech: 'Hứng các quả bóng có số lớn hơn năm',
-    });
-    sound.speak('Hãy hứng các quả bóng có số lớn hơn năm nhé!');
-  };
+  const config = TIER_CONFIG[Math.min(stage.tier - 1, TIER_CONFIG.length - 1)];
+  const condition = config.condition;
 
   useEffect(() => {
-    initGame();
-  }, []);
+    setBalls([]);
+    sound.speak(condition.speech);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stage.tier]);
 
   // Spawn falling balls
   useEffect(() => {
-    if (isGameOver) return;
-
+    if (stage.phase !== 'playing') return;
     const timer = setInterval(() => {
-      const val = Math.floor(Math.random() * 10) + 1; // 1 to 10
+      const val = Math.floor(Math.random() * config.maxVal) + 1;
       const newBall: FallingBall = {
         id: nextId.current++,
         val,
         x: Math.floor(Math.random() * 75) + 12,
         y: -10,
-        speed: Math.random() * 0.4 + 0.35,
+        speed: Math.random() * (config.speedMax - config.speedMin) + config.speedMin,
         color: BALL_COLORS[Math.floor(Math.random() * BALL_COLORS.length)],
       };
       setBalls((prev) => [...prev.slice(-10), newBall]);
-    }, 1100);
+    }, config.spawnMs);
 
     return () => clearInterval(timer);
-  }, [isGameOver]);
+  }, [stage.phase, stage.tier, config]);
 
   // Falling animation
   useEffect(() => {
-    if (isGameOver) return;
+    if (stage.phase !== 'playing') return;
 
     const animTimer = setInterval(() => {
       setBalls((prev) =>
@@ -73,30 +95,18 @@ export const FallingNumbersMathGame: React.FC<{ onExit: () => void }> = ({ onExi
     }, 40);
 
     return () => clearInterval(animTimer);
-  }, [isGameOver]);
+  }, [stage.phase, stage.tier]);
 
   const handleBallClick = (ball: FallingBall) => {
+    if (stage.locked || stage.phase !== 'playing') return;
     if (condition.check(ball.val)) {
       sound.playCorrect();
-      const newScore = score + 1;
-      setScore(newScore);
-
       setBalls((prev) => prev.filter((b) => b.id !== ball.id));
-
-      if (newScore >= 6) {
-        setIsGameOver(true);
-      } else if (newScore === 3) {
-        // Change condition to Keep interest high!
-        setCondition({
-          text: 'BÉ HƠN 6 (< 6)',
-          check: (n) => n < 6,
-          speech: 'Bây giờ hứng các số bé hơn sáu nhé',
-        });
-        sound.speak('Giỏi lắm! Bây giờ hãy hứng các quả bóng có số bé hơn sáu nhé!');
-      }
+      stage.submitCorrect();
     } else {
       sound.playWrong();
       sound.speak(`Số ${ball.val} không thỏa mãn điều kiện, bé tìm lại nhé!`);
+      stage.submitWrong();
     }
   };
 
@@ -105,10 +115,20 @@ export const FallingNumbersMathGame: React.FC<{ onExit: () => void }> = ({ onExi
       title="Hứng Số Rơi Rộn Ràng"
       subtitle="Bé nhanh tay chạm vào các quả bóng số đúng yêu cầu"
       mascotEmoji="🦊"
-      score={score}
-      maxScore={6}
-      isGameOver={isGameOver}
-      onRestart={initGame}
+      score={stage.score}
+      isGameOver={stage.isGameOver}
+      phase={stage.phase}
+      tier={stage.tier}
+      tierMeta={stage.tierMeta}
+      tierCount={stage.tierCount}
+      roundNumber={stage.roundNumber}
+      roundTotal={stage.roundTotal}
+      starsEarned={stage.starsEarned}
+      nextTierMeta={stage.tier + 1 <= stage.tierCount ? getTierMeta(stage.tier + 1) : undefined}
+      onNextTier={stage.startNextTier}
+      earnedXp={stage.xpEarned}
+      earnedStars={1}
+      onRestart={stage.restartGame}
       onExit={onExit}
       instructions={`Bé ơi! Hãy chạm vào các bóng có số: [ ${condition.text} ]`}
       audioInstruction={condition.speech}

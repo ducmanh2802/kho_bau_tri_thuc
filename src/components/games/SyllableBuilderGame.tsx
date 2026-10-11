@@ -1,36 +1,114 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { GameModalWrapper } from './GameModalWrapper';
 import { sound } from '../../services/sound';
 import { Volume2, CheckCircle2 } from 'lucide-react';
+import { useGameStage } from '../../hooks/useGameStage';
+import { defaultRoundsPerTier, getTierMeta, seededRng, shuffleSeeded } from '../../data/gameLevels';
 
 interface SyllablePuzzle {
   word: string;
   emoji: string;
   initial: string;
   vowel: string;
-  tone: string; // 'ngang' | 'sắc' | 'huyền' | 'hỏi' | 'ngã' | 'nặng'
+  tone: string;
   toneSymbol: string;
   readAloud: string;
 }
 
-const PUZZLES: SyllablePuzzle[] = [
-  { word: 'cá', emoji: '🐟', initial: 'c', vowel: 'a', tone: 'sắc', toneSymbol: '´', readAloud: 'c - a - ca - sắc - cá' },
-  { word: 'gà', emoji: '🐓', initial: 'g', vowel: 'a', tone: 'huyền', toneSymbol: '`', readAloud: 'g - a - ga - huyền - gà' },
-  { word: 'mẹ', emoji: '👩', initial: 'm', vowel: 'e', tone: 'nặng', toneSymbol: '.', readAloud: 'm - e - me - nặng - mẹ' },
-  { word: 'bà', emoji: '👵', initial: 'b', vowel: 'a', tone: 'huyền', toneSymbol: '`', readAloud: 'b - a - ba - huyền - bà' },
-  { word: 'thỏ', emoji: '🐰', initial: 'th', vowel: 'o', tone: 'hỏi', toneSymbol: '?', readAloud: 'th - o - tho - hỏi - thỏ' },
+interface SyllableSeed {
+  w: string;
+  i: string;
+  v: string;
+  t: string;
+  sym: string;
+  emoji: string;
+}
+
+const TONE_NAMES: Record<string, string> = {
+  ngang: 'ngang', sắc: 'sắc', huyền: 'huyền', hỏi: 'hỏi', ngã: 'ngã', nặng: 'nặng',
+};
+
+function seed(v: SyllableSeed): SyllablePuzzle {
+  return {
+    word: v.w,
+    emoji: v.emoji,
+    initial: v.i,
+    vowel: v.v,
+    tone: v.t,
+    toneSymbol: v.sym,
+    readAloud: `${v.i} - ${v.v} - ${v.i}${v.v} - ${TONE_NAMES[v.t]} - ${v.w}`,
+  };
+}
+
+const POOL_BY_TIER: SyllableSeed[][] = [
+  [
+    { w: 'cá', i: 'c', v: 'a', t: 'sắc', sym: '´', emoji: '🐟' },
+    { w: 'gà', i: 'g', v: 'a', t: 'huyền', sym: '`', emoji: '🐓' },
+    { w: 'bé', i: 'b', v: 'e', t: 'sắc', sym: '´', emoji: '👶' },
+    { w: 'bà', i: 'b', v: 'a', t: 'huyền', sym: '`', emoji: '👵' },
+    { w: 'mẹ', i: 'm', v: 'e', t: 'nặng', sym: '.', emoji: '👩' },
+    { w: 'thỏ', i: 'th', v: 'o', t: 'hỏi', sym: '?', emoji: '🐰' },
+  ],
+  [
+    { w: 'cò', i: 'c', v: 'o', t: 'huyền', sym: '`', emoji: '🦩' },
+    { w: 'bò', i: 'b', v: 'o', t: 'huyền', sym: '`', emoji: '🐮' },
+    { w: 'bí', i: 'b', v: 'i', t: 'sắc', sym: '´', emoji: '🎃' },
+    { w: 'dê', i: 'd', v: 'ê', t: 'ngang', sym: '-', emoji: '🐐' },
+    { w: 'mì', i: 'm', v: 'i', t: 'huyền', sym: '`', emoji: '🍜' },
+    { w: 'cọ', i: 'c', v: 'o', t: 'nặng', sym: '.', emoji: '🧹' },
+  ],
+  [
+    { w: 'thả', i: 'th', v: 'a', t: 'hỏi', sym: '?', emoji: '🪂' },
+    { w: 'dạ', i: 'd', v: 'a', t: 'nặng', sym: '.', emoji: '👋' },
+    { w: 'thù', i: 'th', v: 'u', t: 'huyền', sym: '`', emoji: '😾' },
+    { w: 'mả', i: 'm', v: 'a', t: 'hỏi', sym: '?', emoji: '🗿' },
+    { w: 'gò', i: 'g', v: 'o', t: 'huyền', sym: '`', emoji: '⛰️' },
+    { w: 'bú', i: 'b', v: 'u', t: 'sắc', sym: '´', emoji: '🍼' },
+  ],
+  [
+    { w: 'thê', i: 'th', v: 'ê', t: 'ngang', sym: '-', emoji: '👰' },
+    { w: 'mề', i: 'm', v: 'ê', t: 'huyền', sym: '`', emoji: '🐔' },
+    { w: 'thu', i: 'th', v: 'u', t: 'ngang', sym: '-', emoji: '🍂' },
+    { w: 'gù', i: 'g', v: 'u', t: 'huyền', sym: '`', emoji: '🕊️' },
+    { w: 'thị', i: 'th', v: 'i', t: 'nặng', sym: '.', emoji: '🛒' },
+    { w: 'củ', i: 'c', v: 'u', t: 'hỏi', sym: '?', emoji: '🥔' },
+  ],
+  [
+    { w: 'dạ', i: 'd', v: 'a', t: 'nặng', sym: '.', emoji: '🙋' },
+    { w: 'mộ', i: 'm', v: 'o', t: 'nặng', sym: '.', emoji: '🪦' },
+    { w: 'cù', i: 'c', v: 'u', t: 'huyền', sym: '`', emoji: '🪃' },
+    { w: 'gì', i: 'g', v: 'i', t: 'huyền', sym: '`', emoji: '❓' },
+    { w: 'bì', i: 'b', v: 'i', t: 'huyền', sym: '`', emoji: '🎒' },
+    { w: 'thạ', i: 'th', v: 'a', t: 'nặng', sym: '.', emoji: '🪨' },
+  ],
+  [
+    { w: 'thì', i: 'th', v: 'i', t: 'huyền', sym: '`', emoji: '⏳' },
+    { w: 'mò', i: 'm', v: 'o', t: 'huyền', sym: '`', emoji: '🔎' },
+    { w: 'gả', i: 'g', v: 'a', t: 'hỏi', sym: '?', emoji: '💍' },
+    { w: 'bẻ', i: 'b', v: 'e', t: 'hỏi', sym: '?', emoji: '🥖' },
+    { w: 'thủ', i: 'th', v: 'u', t: 'hỏi', sym: '?', emoji: '🚢' },
+    { w: 'mạ', i: 'm', v: 'a', t: 'nặng', sym: '.', emoji: '🌾' },
+  ],
 ];
 
+function buildSyllableRounds(tier: number): SyllablePuzzle[] {
+  const roundsPerTier = defaultRoundsPerTier();
+  const count = roundsPerTier[tier - 1];
+  const pool = POOL_BY_TIER[Math.min(tier - 1, POOL_BY_TIER.length - 1)];
+  const shuffled = shuffleSeeded(pool, seededRng(8900 + tier * 53));
+  return Array.from({ length: count }, (_, i) => seed(shuffled[i % shuffled.length]));
+}
+
 export const SyllableBuilderGame: React.FC<{ onExit: () => void }> = ({ onExit }) => {
-  const [puzzleIndex, setPuzzleIndex] = useState(0);
+  const roundsPerTier = useMemo(() => defaultRoundsPerTier(), []);
+  const stage = useGameStage({ gameId: 'syllable_builder', roundsPerTier, advanceDelayMs: 1500 });
   const [selectedInitial, setSelectedInitial] = useState<string>('');
   const [selectedVowel, setSelectedVowel] = useState<string>('');
   const [selectedTone, setSelectedTone] = useState<string>('');
-  const [score, setScore] = useState(0);
-  const [isGameOver, setIsGameOver] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
 
-  const current = PUZZLES[puzzleIndex];
+  const rounds = useMemo(() => buildSyllableRounds(stage.tier), [stage.tier]);
+  const current = rounds[stage.roundIdx];
 
   const INITIAL_OPTIONS = ['c', 'b', 'g', 'm', 'th', 'd'];
   const VOWEL_OPTIONS = ['a', 'e', 'o', 'u', 'i', 'ê'];
@@ -44,6 +122,7 @@ export const SyllableBuilderGame: React.FC<{ onExit: () => void }> = ({ onExit }
   ];
 
   const handleCheck = () => {
+    if (stage.locked) return;
     if (!selectedInitial || !selectedVowel || !selectedTone) {
       sound.speak('Bé hãy chọn đủ âm đầu, vần và dấu thanh nhé!');
       return;
@@ -57,36 +136,18 @@ export const SyllableBuilderGame: React.FC<{ onExit: () => void }> = ({ onExit }
       sound.playCorrect();
       sound.speak(current.readAloud);
       setFeedback(`Đúng rồi! ${current.word.toUpperCase()}!`);
-      const newScore = score + 1;
-      setScore(newScore);
-
-      setTimeout(() => {
-        setFeedback(null);
-        setSelectedInitial('');
-        setSelectedVowel('');
-        setSelectedTone('');
-        if (puzzleIndex + 1 < PUZZLES.length) {
-          setPuzzleIndex(puzzleIndex + 1);
-        } else {
-          setIsGameOver(true);
-        }
-      }, 1500);
+      setSelectedInitial('');
+      setSelectedVowel('');
+      setSelectedTone('');
+      stage.submitCorrect();
+      window.setTimeout(() => setFeedback(null), 1500);
     } else {
       sound.playWrong();
       sound.speak(`Chưa đúng rồi! Bé thử chọn lại nhé.`);
       setFeedback('Chưa đúng rồi, bé thử lại nào!');
-      setTimeout(() => setFeedback(null), 1200);
+      stage.submitWrong();
+      window.setTimeout(() => setFeedback(null), 1200);
     }
-  };
-
-  const restartGame = () => {
-    setPuzzleIndex(0);
-    setScore(0);
-    setSelectedInitial('');
-    setSelectedVowel('');
-    setSelectedTone('');
-    setIsGameOver(false);
-    setFeedback(null);
   };
 
   return (
@@ -94,10 +155,20 @@ export const SyllableBuilderGame: React.FC<{ onExit: () => void }> = ({ onExit }
       title="Xưởng Ghép Tiếng Lớp 1"
       subtitle="Ghép các mảnh âm đầu, vần và dấu thanh để tạo thành từ đúng"
       mascotEmoji="🦊"
-      score={score}
-      maxScore={PUZZLES.length}
-      isGameOver={isGameOver}
-      onRestart={restartGame}
+      score={stage.score}
+      isGameOver={stage.isGameOver}
+      phase={stage.phase}
+      tier={stage.tier}
+      tierMeta={stage.tierMeta}
+      tierCount={stage.tierCount}
+      roundNumber={stage.roundNumber}
+      roundTotal={stage.roundTotal}
+      starsEarned={stage.starsEarned}
+      nextTierMeta={stage.tier + 1 <= stage.tierCount ? getTierMeta(stage.tier + 1) : undefined}
+      onNextTier={stage.startNextTier}
+      earnedXp={stage.xpEarned}
+      earnedStars={1}
+      onRestart={stage.restartGame}
       onExit={onExit}
       instructions={`Bé hãy ghép thành từ: "${current.word}"`}
       audioInstruction={`Hãy ghép thành từ ${current.word}`}
@@ -237,6 +308,7 @@ export const SyllableBuilderGame: React.FC<{ onExit: () => void }> = ({ onExit }
         {/* Action Button */}
         <button
           onClick={handleCheck}
+          disabled={stage.locked}
           className="mt-4 px-8 py-3 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-black text-base md:text-lg rounded-2xl shadow-lg transition-transform active:scale-95 flex items-center gap-2"
         >
           Kiểm tra kết quả 🎯

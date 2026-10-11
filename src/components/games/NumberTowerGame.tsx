@@ -1,57 +1,58 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { GameModalWrapper } from './GameModalWrapper';
 import { sound } from '../../services/sound';
+import { useGameStage } from '../../hooks/useGameStage';
+import { defaultRoundsPerTier, getTierMeta, numericOptions, seededRng } from '../../data/gameLevels';
 
-interface TowerLevel {
-  id: number;
+interface TowerRound {
   part1: number;
   total: number;
   missing: number;
   options: number[];
 }
 
-const TOWER_LEVELS: TowerLevel[] = [
-  { id: 1, part1: 7, total: 10, missing: 3, options: [3, 2, 4, 1] },
-  { id: 2, part1: 4, total: 8, missing: 4, options: [4, 5, 3, 2] },
-  { id: 3, part1: 2, total: 7, missing: 5, options: [5, 6, 4, 3] },
-  { id: 4, part1: 6, total: 10, missing: 4, options: [4, 3, 5, 2] },
-  { id: 5, part1: 5, total: 9, missing: 4, options: [4, 3, 5, 6] },
-];
+function buildTowerRounds(tier: number): TowerRound[] {
+  const rng = seededRng(1300 + tier * 37);
+  const roundsPerTier = defaultRoundsPerTier();
+  const count = roundsPerTier[tier - 1];
+  const maxTotal = tier <= 1 ? 5 : tier <= 3 ? 10 : 20;
+  const rounds: TowerRound[] = [];
+  for (let i = 0; i < count; i++) {
+    const total = Math.floor(rng() * (maxTotal - 1)) + 2;
+    const part1 = Math.floor(rng() * (total === 0 ? 1 : total));
+    const missing = total - part1;
+    const floor = tier >= 3 ? 1 : 0;
+    const options = numericOptions(missing, 4, seededRng(1300 + tier * 37 + i * 131), floor, maxTotal);
+    rounds.push({ part1, total, missing, options });
+  }
+  return rounds;
+}
 
 export const NumberTowerGame: React.FC<{ onExit: () => void }> = ({ onExit }) => {
-  const [levelIdx, setLevelIdx] = useState(0);
-  const [score, setScore] = useState(0);
+  const roundsPerTier = useMemo(() => defaultRoundsPerTier(), []);
+  const stage = useGameStage({ gameId: 'number_tower', roundsPerTier, advanceDelayMs: 1200 });
   const [towerBlocks, setTowerBlocks] = useState<number[]>([]);
-  const [isGameOver, setIsGameOver] = useState(false);
 
-  const current = TOWER_LEVELS[levelIdx];
+  const rounds = useMemo(() => buildTowerRounds(stage.tier), [stage.tier]);
+  const current = rounds[stage.roundIdx];
+  const maxTotal = stage.tier <= 1 ? 5 : stage.tier <= 3 ? 10 : 20;
+
+  useEffect(() => {
+    setTowerBlocks([]);
+  }, [stage.tier]);
 
   const handlePickBrick = (num: number) => {
+    if (stage.locked) return;
     if (num === current.missing) {
       sound.playCorrect();
       sound.speak(`Đúng rồi! ${current.part1} cộng ${num} bằng ${current.total}!`);
-      const newScore = score + 1;
-      setScore(newScore);
       setTowerBlocks((prev) => [...prev, num]);
-
-      setTimeout(() => {
-        if (levelIdx + 1 < TOWER_LEVELS.length) {
-          setLevelIdx(levelIdx + 1);
-        } else {
-          setIsGameOver(true);
-        }
-      }, 1200);
+      stage.submitCorrect();
     } else {
       sound.playWrong();
       sound.speak(`Chưa đúng rồi! ${current.part1} cộng ${num} chưa bằng ${current.total}, bé tính lại nhé!`);
+      stage.submitWrong();
     }
-  };
-
-  const restartGame = () => {
-    setLevelIdx(0);
-    setScore(0);
-    setTowerBlocks([]);
-    setIsGameOver(false);
   };
 
   return (
@@ -59,10 +60,20 @@ export const NumberTowerGame: React.FC<{ onExit: () => void }> = ({ onExit }) =>
       title="Xây Tháp Số Lên Mây"
       subtitle="Tìm viên gạch số còn thiếu để tháp số cao vút chạm cầu vồng"
       mascotEmoji="🏰"
-      score={score}
-      maxScore={TOWER_LEVELS.length}
-      isGameOver={isGameOver}
-      onRestart={restartGame}
+      score={stage.score}
+      isGameOver={stage.isGameOver}
+      phase={stage.phase}
+      tier={stage.tier}
+      tierMeta={stage.tierMeta}
+      tierCount={stage.tierCount}
+      roundNumber={stage.roundNumber}
+      roundTotal={stage.roundTotal}
+      starsEarned={stage.starsEarned}
+      nextTierMeta={stage.tier + 1 <= stage.tierCount ? getTierMeta(stage.tier + 1) : undefined}
+      onNextTier={stage.startNextTier}
+      earnedXp={stage.xpEarned}
+      earnedStars={1}
+      onRestart={stage.restartGame}
       onExit={onExit}
       instructions={`Tìm viên gạch thích hợp: ${current.part1} + ? = ${current.total}`}
       audioInstruction={`${current.part1} cộng mấy để bằng ${current.total}`}
@@ -104,14 +115,17 @@ export const NumberTowerGame: React.FC<{ onExit: () => void }> = ({ onExit }) =>
         {/* Choice of Bricks */}
         <div className="w-full max-w-md">
           <span className="text-xs font-bold text-slate-700 block text-center mb-2">
-            Chọn viên gạch số đúng để xếp lên tháp:
+            Số trong khoảng 0–{maxTotal}. Chọn viên gạch số đúng để xếp lên tháp:
           </span>
           <div className="grid grid-cols-4 gap-3">
             {current.options.map((opt) => (
               <button
                 key={opt}
                 onClick={() => handlePickBrick(opt)}
-                className="py-3 bg-white hover:bg-amber-100 border-3 border-amber-400 text-amber-950 font-black text-2xl rounded-2xl shadow-lg active:scale-95 transition-all cursor-pointer font-display"
+                disabled={stage.locked}
+                className={`py-3 border-3 border-amber-400 text-amber-950 font-black text-2xl rounded-2xl shadow-lg active:scale-95 transition-all cursor-pointer font-display ${
+                  stage.locked ? 'opacity-50 bg-amber-50' : 'bg-white hover:bg-amber-100'
+                }`}
               >
                 {opt}
               </button>

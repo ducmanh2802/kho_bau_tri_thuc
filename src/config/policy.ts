@@ -571,6 +571,54 @@ export const CURRICULUM_POLICY = {
 } as const;
 
 /**
+ * GAME LEVEL POLICY — 6-tier difficulty ladder for the mini-game arcade.
+ *
+ * Every mini-game is playable level-by-level from a gentle warm-up (🐣) to a
+ * "super hard" crown tier (👑). Finishing a tier unlocks the next one, gives
+ * instant XP/stars, and the child always resumes at the highest unlocked tier.
+ *
+ * Design rules encoded (mirrors the Adaptive Learning increment):
+ *  - Difficulty rises per tier, never per global setting — a 6-year-old always
+ *    starts at tier 1 regardless of other subjects.
+ *  - 3 stars require a flawless tier; 2 stars allow a couple of slips; 1 star
+ *    still rewards finishing so a struggling child is never punished (§9).
+ *  - Rewards are granted once per tier completion, never on entry.
+ *  - Content builders must be deterministic so a tier is reproducible in tests.
+ *
+ * Tests in tests/game-levels.test.ts reference every constant below.
+ */
+export const GAME_LEVEL_POLICY = {
+  POLICY_VERSION: 'GAMES-v1',
+
+  /** Number of difficulty tiers per game. */
+  MAX_TIER: 6,
+
+  /** Tier identity shown in the level map and HUD (index 0 = tier 1). */
+  TIERS: [
+    { id: 1, name: 'Khởi Động', emoji: '🐣', color: '#34D399', blurb: 'Làm quen thật nhẹ nhàng' },
+    { id: 2, name: 'Vững Vàng', emoji: '🐥', color: '#FBBF24', blurb: 'Bé đã quen tay rồi!' },
+    { id: 3, name: 'Nhanh Nhẹn', emoji: '🦊', color: '#FB923C', blurb: 'Thử thách nhanh hơn nhé' },
+    { id: 4, name: 'Thông Thái', emoji: '🦉', color: '#60A5FA', blurb: 'Cần suy nghĩ kỹ đấy' },
+    { id: 5, name: 'Siêu Sao', emoji: '🌟', color: '#A78BFA', blurb: 'Dành cho siêu nhân nhí' },
+    { id: 6, name: 'Vua Trò Chơi', emoji: '👑', color: '#F472B6', blurb: 'Đỉnh cao của trò chơi!' },
+  ],
+
+  /** XP granted when a tier is finished (index 0 = tier 1). */
+  XP_PER_TIER: [10, 15, 20, 25, 30, 40] as const,
+
+  /** Stars granted when a tier is finished (index 0 = tier 1). */
+  STARS_PER_TIER: [1, 1, 2, 2, 3, 3] as const,
+
+  /** Mistakes allowed while still earning a perfect (3-star) tier. */
+  STAR_THREE_MAX_MISTAKES: 0,
+  /** Mistakes allowed while still earning a 2-star tier. */
+  STAR_TWO_MAX_MISTAKES: 2,
+
+  /** Default number of rounds/objectives inside each tier. */
+  ROUNDS_PER_TIER: [5, 6, 6, 7, 8, 8] as const,
+} as const;
+
+/**
  * Skill prerequisite graph for session composition (foundation questions).
  *
  * Each key is a skillId; the value is an array of skillIds that must be

@@ -1,6 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { GameModalWrapper } from './GameModalWrapper';
 import { sound } from '../../services/sound';
+import { useGameStage } from '../../hooks/useGameStage';
+import { defaultRoundsPerTier, getTierMeta } from '../../data/gameLevels';
 
 interface FallingBubble {
   id: number;
@@ -11,63 +13,65 @@ interface FallingBubble {
   color: string;
 }
 
-const LETTERS_POOL = ['A', 'B', 'C', 'D', 'Đ', 'E', 'Ê', 'G', 'H', 'I', 'K', 'L', 'M', 'N', 'O', 'Ô', 'Ơ', 'U', 'Ư'];
 const BUBBLE_COLORS = ['bg-rose-400', 'bg-amber-400', 'bg-emerald-400', 'bg-sky-400', 'bg-purple-400', 'bg-pink-400'];
 
+const TIER_CONFIG: { pool: string[]; spawnMs: number; speedMin: number; speedMax: number }[] = [
+  { pool: ['A', 'B', 'C', 'D', 'E'], spawnMs: 1300, speedMin: 0.3, speedMax: 0.55 },
+  { pool: ['A', 'B', 'C', 'D', 'E', 'G', 'H', 'I'], spawnMs: 1150, speedMin: 0.32, speedMax: 0.6 },
+  { pool: ['A', 'B', 'C', 'D', 'Đ', 'E', 'G', 'H', 'I', 'K', 'L', 'M'], spawnMs: 1000, speedMin: 0.35, speedMax: 0.65 },
+  { pool: ['A', 'B', 'C', 'D', 'Đ', 'E', 'Ê', 'G', 'H', 'I', 'K', 'L', 'M', 'N', 'O', 'Ô'], spawnMs: 850, speedMin: 0.38, speedMax: 0.72 },
+  { pool: ['A', 'B', 'C', 'D', 'Đ', 'E', 'Ê', 'G', 'H', 'I', 'K', 'L', 'M', 'N', 'O', 'Ô', 'Ơ', 'U'], spawnMs: 700, speedMin: 0.42, speedMax: 0.8 },
+  { pool: ['A', 'B', 'C', 'D', 'Đ', 'E', 'Ê', 'G', 'H', 'I', 'K', 'L', 'M', 'N', 'O', 'Ô', 'Ơ', 'U', 'Ư', 'V'], spawnMs: 600, speedMin: 0.46, speedMax: 0.9 },
+];
+
 export const CatchFallingLettersGame: React.FC<{ onExit: () => void }> = ({ onExit }) => {
+  const roundsPerTier = useMemo(() => defaultRoundsPerTier(), []);
+  const stage = useGameStage({ gameId: 'catch_letters', roundsPerTier, advanceDelayMs: 1000 });
   const [targetChar, setTargetChar] = useState<string>('A');
-  const [score, setScore] = useState(0);
   const [bubbles, setBubbles] = useState<FallingBubble[]>([]);
-  const [isGameOver, setIsGameOver] = useState(false);
   const nextId = useRef(1);
 
-  // Pick new target
+  const config = TIER_CONFIG[Math.min(stage.tier - 1, TIER_CONFIG.length - 1)];
+
   const pickNewTarget = () => {
-    const randomChar = LETTERS_POOL[Math.floor(Math.random() * LETTERS_POOL.length)];
+    const pool = config.pool;
+    const randomChar = pool[Math.floor(Math.random() * pool.length)];
     setTargetChar(randomChar);
     sound.speak(`Hãy tìm và bắt chữ ${randomChar} nhé!`);
   };
 
-  const initGame = () => {
-    setScore(0);
-    setIsGameOver(false);
+  useEffect(() => {
     setBubbles([]);
     pickNewTarget();
-  };
-
-  useEffect(() => {
-    initGame();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stage.tier]);
 
   // Spawn bubbles periodically
   useEffect(() => {
-    if (isGameOver) return;
-
+    if (stage.phase !== 'playing') return;
+    const pool = config.pool;
     const spawnTimer = setInterval(() => {
-      // 40% chance of spawning the target character
       const isTarget = Math.random() < 0.45;
       const char = isTarget
         ? targetChar
-        : LETTERS_POOL[Math.floor(Math.random() * LETTERS_POOL.length)];
-
+        : pool[Math.floor(Math.random() * pool.length)];
       const newBubble: FallingBubble = {
         id: nextId.current++,
         char,
         x: Math.floor(Math.random() * 75) + 10,
         y: -10,
-        speed: Math.random() * 0.4 + 0.35,
+        speed: Math.random() * (config.speedMax - config.speedMin) + config.speedMin,
         color: BUBBLE_COLORS[Math.floor(Math.random() * BUBBLE_COLORS.length)],
       };
-
       setBubbles((prev) => [...prev.slice(-12), newBubble]);
-    }, 1100);
+    }, config.spawnMs);
 
     return () => clearInterval(spawnTimer);
-  }, [isGameOver, targetChar]);
+  }, [stage.phase, stage.tier, targetChar, config]);
 
   // Bubble animation loop
   useEffect(() => {
-    if (isGameOver) return;
+    if (stage.phase !== 'playing') return;
 
     const animTimer = setInterval(() => {
       setBubbles((prev) =>
@@ -78,28 +82,21 @@ export const CatchFallingLettersGame: React.FC<{ onExit: () => void }> = ({ onEx
     }, 40);
 
     return () => clearInterval(animTimer);
-  }, [isGameOver]);
+  }, [stage.phase, stage.tier]);
 
   const handleBubbleClick = (bubble: FallingBubble) => {
+    if (stage.locked || stage.phase !== 'playing') return;
     if (bubble.char === targetChar) {
       sound.playCorrect();
-      const newScore = score + 1;
-      setScore(newScore);
-
-      // Pop effect: remove clicked bubble
       setBubbles((prev) => prev.filter((b) => b.id !== bubble.id));
-
-      if (newScore >= 6) {
-        setIsGameOver(true);
-      } else {
-        // Change target every 2 successful catches
-        if (newScore % 2 === 0) {
-          pickNewTarget();
-        }
+      if ((stage.roundNumber + 1) % 2 === 0) {
+        pickNewTarget();
       }
+      stage.submitCorrect();
     } else {
       sound.playWrong();
       sound.speak(`Đây là chữ ${bubble.char}, bé tìm chữ ${targetChar} nhé!`);
+      stage.submitWrong();
     }
   };
 
@@ -108,10 +105,20 @@ export const CatchFallingLettersGame: React.FC<{ onExit: () => void }> = ({ onEx
       title="Bắt Chữ Cái Bay"
       subtitle="Bé nhanh tay chạm vào đúng chữ cái được yêu cầu nhé!"
       mascotEmoji="🐻"
-      score={score}
-      maxScore={6}
-      isGameOver={isGameOver}
-      onRestart={initGame}
+      score={stage.score}
+      isGameOver={stage.isGameOver}
+      phase={stage.phase}
+      tier={stage.tier}
+      tierMeta={stage.tierMeta}
+      tierCount={stage.tierCount}
+      roundNumber={stage.roundNumber}
+      roundTotal={stage.roundTotal}
+      starsEarned={stage.starsEarned}
+      nextTierMeta={stage.tier + 1 <= stage.tierCount ? getTierMeta(stage.tier + 1) : undefined}
+      onNextTier={stage.startNextTier}
+      earnedXp={stage.xpEarned}
+      earnedStars={1}
+      onRestart={stage.restartGame}
       onExit={onExit}
       instructions={`Bé ơi! Hãy chạm vào các bóng bóng mang chữ: [ ${targetChar} ]`}
       audioInstruction={`Hãy chạm vào các bong bóng mang chữ ${targetChar}`}

@@ -1,6 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { GameModalWrapper } from './GameModalWrapper';
 import { sound } from '../../services/sound';
+import { useGameStage } from '../../hooks/useGameStage';
+import { getTierMeta, seededRng, shuffleSeeded } from '../../data/gameLevels';
 
 interface CardItem {
   id: number;
@@ -11,49 +13,63 @@ interface CardItem {
   isMatched: boolean;
 }
 
-const PAIRS = [
+const PAIR_POOL = [
   { pairId: 1, label: 'Quả táo', emoji: '🍎' },
   { pairId: 2, label: 'Mèo con', emoji: '🐱' },
   { pairId: 3, label: 'Cún cưng', emoji: '🐶' },
   { pairId: 4, label: 'Ngôi sao', emoji: '⭐' },
   { pairId: 5, label: 'Bông hoa', emoji: '🌸' },
   { pairId: 6, label: 'Mặt trời', emoji: '☀️' },
+  { pairId: 7, label: 'Chiếc ô tô', emoji: '🚗' },
+  { pairId: 8, label: 'Chú bướm', emoji: '🦋' },
+  { pairId: 9, label: 'Quả dâu', emoji: '🍓' },
+  { pairId: 10, label: 'Mặt trăng', emoji: '🌙' },
+  { pairId: 11, label: 'Chú ếch', emoji: '🐸' },
+  { pairId: 12, label: 'Quả chuối', emoji: '🍌' },
+  { pairId: 13, label: 'Con thuyền', emoji: '⛵' },
+  { pairId: 14, label: 'Ngôi nhà', emoji: '🏠' },
+  { pairId: 15, label: 'Trái tim', emoji: '💖' },
+  { pairId: 16, label: 'Chiếc bánh', emoji: '🍰' },
 ];
 
+const GOALS_PER_TIER = [3, 4, 5, 6, 7, 8];
+const ROUNDS_PER_TIER = GOALS_PER_TIER.map(() => 1);
+
 export const MemoryCardsGame: React.FC<{ onExit: () => void }> = ({ onExit }) => {
+  const stage = useGameStage({ gameId: 'memory_cards', roundsPerTier: ROUNDS_PER_TIER, advanceDelayMs: 900 });
   const [cards, setCards] = useState<CardItem[]>([]);
   const [flippedIds, setFlippedIds] = useState<number[]>([]);
   const [matchedPairs, setMatchedPairs] = useState(0);
   const [moves, setMoves] = useState(0);
-  const [isGameOver, setIsGameOver] = useState(false);
+  const submittedRef = useRef(false);
+
+  const goalPairs = GOALS_PER_TIER[Math.min(stage.tier - 1, GOALS_PER_TIER.length - 1)];
+  const pool = PAIR_POOL.slice(0, goalPairs);
 
   const initGame = () => {
-    // Duplicate and shuffle
     const deck: CardItem[] = [];
     let idCounter = 1;
-    PAIRS.forEach((p) => {
+    const shuffledPool = shuffleSeeded(pool, seededRng(10000 + stage.tier * 133));
+    shuffledPool.forEach((p) => {
       deck.push({ id: idCounter++, pairId: p.pairId, label: p.label, emoji: p.emoji, isFlipped: false, isMatched: false });
       deck.push({ id: idCounter++, pairId: p.pairId, label: p.label, emoji: p.emoji, isFlipped: false, isMatched: false });
     });
+    const shuffledDeck = shuffleSeeded(deck, seededRng(10000 + stage.tier * 133 + 17));
 
-    // Shuffle
-    for (let i = deck.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [deck[i], deck[j]] = [deck[j], deck[i]];
-    }
-
-    setCards(deck);
+    setCards(shuffledDeck);
     setFlippedIds([]);
     setMatchedPairs(0);
     setMoves(0);
-    setIsGameOver(false);
+    submittedRef.current = false;
   };
 
   useEffect(() => {
     initGame();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stage.tier]);
 
   const handleCardClick = (id: number) => {
+    if (stage.locked || stage.phase !== 'playing') return;
     if (flippedIds.length === 2) return;
     const clickedCard = cards.find((c) => c.id === id);
     if (!clickedCard || clickedCard.isFlipped || clickedCard.isMatched) return;
@@ -61,11 +77,7 @@ export const MemoryCardsGame: React.FC<{ onExit: () => void }> = ({ onExit }) =>
     sound.playClick();
     const nextFlipped = [...flippedIds, id];
     setFlippedIds(nextFlipped);
-
-    // Flip this card
-    setCards((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, isFlipped: true } : c))
-    );
+    setCards((prev) => prev.map((c) => (c.id === id ? { ...c, isFlipped: true } : c)));
 
     if (nextFlipped.length === 2) {
       setMoves((m) => m + 1);
@@ -74,7 +86,6 @@ export const MemoryCardsGame: React.FC<{ onExit: () => void }> = ({ onExit }) =>
       const second = cards.find((c) => c.id === secondId);
 
       if (first && second && first.pairId === second.pairId) {
-        // Matched!
         sound.playCorrect();
         sound.speak(`Cặp ${first.label}!`);
         setCards((prev) =>
@@ -86,12 +97,13 @@ export const MemoryCardsGame: React.FC<{ onExit: () => void }> = ({ onExit }) =>
         setMatchedPairs(newMatched);
         setFlippedIds([]);
 
-        if (newMatched >= PAIRS.length) {
-          setIsGameOver(true);
+        if (newMatched >= goalPairs && !submittedRef.current) {
+          submittedRef.current = true;
+          stage.submitCorrect();
         }
       } else {
-        // Not match
         sound.playWrong();
+        stage.submitWrong();
         setTimeout(() => {
           setCards((prev) =>
             prev.map((c) =>
@@ -109,21 +121,31 @@ export const MemoryCardsGame: React.FC<{ onExit: () => void }> = ({ onExit }) =>
       title="Lật Thẻ Trí Nhớ Vàng"
       subtitle="Tìm và ghép đúng các cặp hình giống nhau"
       mascotEmoji="🧠"
-      score={matchedPairs}
-      maxScore={PAIRS.length}
-      isGameOver={isGameOver}
-      onRestart={initGame}
+      score={stage.score}
+      isGameOver={stage.isGameOver}
+      phase={stage.phase}
+      tier={stage.tier}
+      tierMeta={stage.tierMeta}
+      tierCount={stage.tierCount}
+      roundNumber={stage.roundNumber}
+      roundTotal={stage.roundTotal}
+      starsEarned={stage.starsEarned}
+      nextTierMeta={stage.tier + 1 <= stage.tierCount ? getTierMeta(stage.tier + 1) : undefined}
+      onNextTier={stage.startNextTier}
+      earnedXp={stage.xpEarned}
+      earnedStars={1}
+      onRestart={stage.restartGame}
       onExit={onExit}
-      instructions="Bé hãy lật từng thẻ để tìm hai hình giống hệt nhau nhé!"
-      audioInstruction="Hãy lật các thẻ để tìm hai hình giống nhau"
+      instructions={`Bé hãy lật từng thẻ để tìm ${goalPairs} cặp hình giống hệt nhau nhé!`}
+      audioInstruction={`Hãy lật các thẻ để tìm ${goalPairs} cặp hình giống nhau`}
     >
       <div className="w-full max-w-xl flex flex-col items-center justify-between p-2 md:p-4 select-none">
         {/* Moves Counter */}
         <div className="mb-3 px-4 py-1.5 bg-amber-100 rounded-full border border-amber-300 text-xs md:text-sm font-bold text-amber-900">
-          Đã thử: <span className="font-black">{moves}</span> lượt · Đã tìm: <span className="font-black">{matchedPairs}/{PAIRS.length}</span> cặp
+          Đã thử: <span className="font-black">{moves}</span> lượt · Đã tìm: <span className="font-black">{matchedPairs}/{goalPairs}</span> cặp
         </div>
 
-        {/* 12 Cards Grid */}
+        {/* Cards Grid */}
         <div className="grid grid-cols-3 sm:grid-cols-4 gap-3 w-full">
           {cards.map((card) => {
             const showFace = card.isFlipped || card.isMatched;

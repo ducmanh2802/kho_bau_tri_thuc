@@ -5,6 +5,8 @@ import {
   CompetitionHistoryStore,
   DailyPlan,
   DailyQuest,
+  GameLevelProgress,
+  GameProgressStore,
   KnowledgeState,
   LearningAnalytics,
   LearningEvidence,
@@ -23,6 +25,7 @@ import { CompetitionEngine } from './competitionEngine';
 import { getBlueprintById } from '../data/competitionBlueprints';
 import {
   ADAPTIVE_DIFFICULTY_POLICY,
+  GAME_LEVEL_POLICY,
   LEGACY_MASTERY_POLICY,
   READING_POLICY,
   SESSION_PROFILE_POLICY,
@@ -48,6 +51,7 @@ const STORAGE_KEYS = {
   LEARNING_OS_STORE: 'kho_bau_learning_os_store',
   READING_STORE: 'kho_bau_reading_store',
   KIDBOX_STORE: 'kho_bau_kidbox_store',
+  GAME_PROGRESS: 'kho_bau_game_progress',
 };
 
 /**
@@ -66,6 +70,9 @@ const STORAGE_KEYS = {
  *    payloads are backfilled by the sanitizer, so no learning history is reset.
  */
 export const STORAGE_SCHEMA_VERSION = 'P41-v1';
+
+/** Schema version for the game-progress store (separate key from the Learning OS). */
+export const GAME_PROGRESS_SCHEMA_VERSION = 1;
 
 /**
  * Ordered migration chain. Key = target schema version, value = upgrade function.
@@ -1181,6 +1188,119 @@ if (data) {
 
     // Check achievements
     StorageService.checkAchievements();
+  }
+
+  // --- Game level progression -------------------------------------------
+  private static sanitizeGameProgress(raw: unknown): GameLevelProgress {
+    const empty: GameLevelProgress = {
+      unlockedTier: 1,
+      starsByTier: {},
+      bestScoreByTier: {},
+      updatedAt: new Date().toISOString(),
+    };
+    if (!raw || typeof raw !== 'object') return empty;
+    const r = raw as Record<string, unknown>;
+    const clampTier = (t: unknown): number =>
+      typeof t === 'number' && Number.isFinite(t) ? Math.min(Math.max(Math.round(t), 1), GAME_LEVEL_POLICY.MAX_TIER) : 1;
+    const record = (v: unknown): Record<number, number> => {
+      const out: Record<number, number> = {};
+      if (v && typeof v === 'object') {
+        for (const [k, val] of Object.entries(v as Record<string, unknown>)) {
+          const n = Number(k);
+          if (Number.isFinite(n) && typeof val === 'number' && Number.isFinite(val)) out[n] = val;
+        }
+      }
+      return out;
+    };
+    return {
+      unlockedTier: clampTier(r.unlockedTier),
+      starsByTier: record(r.starsByTier),
+      bestScoreByTier: record(r.bestScoreByTier),
+      updatedAt: typeof r.updatedAt === 'string' ? r.updatedAt : empty.updatedAt,
+    };
+  }
+
+  public static getGameProgressStore(): GameProgressStore {
+    const emptyStore: GameProgressStore = {
+      version: GAME_PROGRESS_SCHEMA_VERSION,
+      games: {},
+      updatedAt: new Date().toISOString(),
+    };
+    try {
+      const raw = localStorage.getItem(STORAGE_KEYS.GAME_PROGRESS);
+      if (!raw) return emptyStore;
+      const parsed = JSON.parse(raw) as Record<string, unknown>;
+      const games: Record<string, GameLevelProgress> = {};
+      if (parsed.games && typeof parsed.games === 'object') {
+        for (const [id, val] of Object.entries(parsed.games as Record<string, unknown>)) {
+          games[id] = StorageService.sanitizeGameProgress(val);
+        }
+      }
+      return {
+        version: typeof parsed.version === 'number' ? parsed.version : GAME_PROGRESS_SCHEMA_VERSION,
+        games,
+        updatedAt: typeof parsed.updatedAt === 'string' ? parsed.updatedAt : emptyStore.updatedAt,
+      };
+    } catch {
+      return emptyStore;
+    }
+  }
+
+  public static saveGameProgressStore(store: GameProgressStore) {
+    try {
+      localStorage.setItem(STORAGE_KEYS.GAME_PROGRESS, JSON.stringify(store));
+    } catch {
+      // Ignore
+    }
+  }
+
+  /** Highest tier a child may currently start for a game (defaults to 1). */
+  public static getGameProgress(gameId: string): GameLevelProgress {
+    const store = StorageService.getGameProgressStore();
+    return store.games[gameId] ?? {
+      unlockedTier: 1,
+      starsByTier: {},
+      bestScoreByTier: {},
+      updatedAt: new Date().toISOString(),
+    };
+  }
+
+  /**
+   * Record a finished tier. Only ever improves progress: stars and best score
+   * are kept at their best values, and the next tier unlocks (up to MAX_TIER).
+   */
+  public static completeGameTier(gameId: string, tier: number, stars: number, score = 0): GameLevelProgress {
+    const store = StorageService.getGameProgressStore();
+    const current = store.games[gameId] ?? {
+      unlockedTier: 1,
+      starsByTier: {},
+      bestScoreByTier: {},
+      updatedAt: new Date().toISOString(),
+    };
+    const safeTier = Math.min(Math.max(Math.round(tier), 1), GAME_LEVEL_POLICY.MAX_TIER);
+    const safeStars = Math.min(Math.max(Math.round(stars), 1), 3);
+    const next: GameLevelProgress = {
+      unlockedTier: Math.max(current.unlockedTier, Math.min(safeTier + 1, GAME_LEVEL_POLICY.MAX_TIER)),
+      starsByTier: { ...current.starsByTier, [safeTier]: Math.max(current.starsByTier[safeTier] ?? 0, safeStars) },
+      bestScoreByTier: { ...current.bestScoreByTier, [safeTier]: Math.max(current.bestScoreByTier[safeTier] ?? 0, Math.round(score)) },
+      updatedAt: new Date().toISOString(),
+    };
+    store.games[gameId] = next;
+    store.updatedAt = next.updatedAt;
+    StorageService.saveGameProgressStore(store);
+    return next;
+  }
+
+  /** Reset one (or all) games back to fresh level-1 progress. */
+  public static resetGameProgress(gameId?: string) {
+    const store = StorageService.getGameProgressStore();
+    if (gameId) {
+      delete store.games[gameId];
+    } else {
+      store.games = {};
+    }
+    store.updatedAt = new Date().toISOString();
+    StorageService.saveGameProgressStore(store);
   }
 
   // Record played mini game

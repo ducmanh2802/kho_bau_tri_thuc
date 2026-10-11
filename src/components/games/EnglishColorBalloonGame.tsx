@@ -1,7 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { GameModalWrapper } from './GameModalWrapper';
 import { sound } from '../../services/sound';
 import { Volume2 } from 'lucide-react';
+import { useGameStage } from '../../hooks/useGameStage';
+import { GAME_LEVEL_POLICY } from '../../config/policy';
+import { getTierMeta } from '../../data/gameLevels';
 
 interface ColorTarget {
   name: string;
@@ -16,7 +19,16 @@ const COLOR_TARGETS: ColorTarget[] = [
   { name: 'GREEN', vietnamese: 'Màu xanh lá', cssColor: 'bg-emerald-500', hex: '#10B981' },
   { name: 'YELLOW', vietnamese: 'Màu vàng', cssColor: 'bg-amber-400', hex: '#FBBF24' },
   { name: 'PURPLE', vietnamese: 'Màu tím', cssColor: 'bg-purple-500', hex: '#8B5CF6' },
+  { name: 'ORANGE', vietnamese: 'Màu cam', cssColor: 'bg-orange-500', hex: '#F97316' },
+  { name: 'PINK', vietnamese: 'Màu hồng', cssColor: 'bg-pink-500', hex: '#EC4899' },
+  { name: 'BLACK', vietnamese: 'Màu đen', cssColor: 'bg-slate-900', hex: '#1F2937' },
+  { name: 'BROWN', vietnamese: 'Màu nâu', cssColor: 'bg-amber-900', hex: '#78350F' },
+  { name: 'GRAY', vietnamese: 'Màu xám', cssColor: 'bg-slate-500', hex: '#6B7280' },
+  { name: 'TURQUOISE', vietnamese: 'Màu ngọc lam', cssColor: 'bg-teal-500', hex: '#14B8A6' },
+  { name: 'LIME', vietnamese: 'Màu chanh', cssColor: 'bg-lime-500', hex: '#84CC16' },
 ];
+
+const TIER_GOALS = GAME_LEVEL_POLICY.TIERS.map((t, i) => 5 + (i < 3 ? i : 3));
 
 interface Balloon {
   id: number;
@@ -27,32 +39,44 @@ interface Balloon {
   speed: number;
 }
 
-export const EnglishColorBalloonGame: React.FC<{ onExit: () => void }> = ({ onExit }) => {
-  const [targetIdx, setTargetIdx] = useState(0);
-  const [score, setScore] = useState(0);
-  const [balloons, setBalloons] = useState<Balloon[]>([]);
-  const [isGameOver, setIsGameOver] = useState(false);
+const TIER_CONFIG: { colorCount: number; spawnMs: number; speedMin: number; speedMax: number }[] = [
+  { colorCount: 5, spawnMs: 1100, speedMin: 0.4, speedMax: 0.55 },
+  { colorCount: 7, spawnMs: 1000, speedMin: 0.42, speedMax: 0.6 },
+  { colorCount: 8, spawnMs: 900, speedMin: 0.44, speedMax: 0.66 },
+  { colorCount: 10, spawnMs: 820, speedMin: 0.46, speedMax: 0.7 },
+  { colorCount: 11, spawnMs: 720, speedMin: 0.5, speedMax: 0.78 },
+  { colorCount: 12, spawnMs: 620, speedMin: 0.54, speedMax: 0.9 },
+];
 
-  const currentTarget = COLOR_TARGETS[targetIdx];
+export const EnglishColorBalloonGame: React.FC<{ onExit: () => void }> = ({ onExit }) => {
+  const roundsPerTier = useMemo(() => TIER_GOALS, []);
+  const stage = useGameStage({ gameId: 'color_balloon', roundsPerTier, advanceDelayMs: 900 });
+  const [targetIdx, setTargetIdx] = useState(0);
+  const [balloons, setBalloons] = useState<Balloon[]>([]);
+
+  const config = TIER_CONFIG[Math.min(stage.tier - 1, TIER_CONFIG.length - 1)];
+  const palette = COLOR_TARGETS.slice(0, config.colorCount);
+  const currentTarget = palette[targetIdx % palette.length];
 
   const playVoice = () => {
     sound.speak(`Pop the ${currentTarget.name} balloon!`, 'en-GB');
   };
 
   useEffect(() => {
-    playVoice();
-  }, [targetIdx]);
+    setBalloons([]);
+    setTargetIdx(0);
+    window.setTimeout(playVoice, 300);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stage.tier]);
 
   // Spawn balloons
   useEffect(() => {
-    if (isGameOver) return;
-
+    if (stage.phase !== 'playing') return;
     const timer = setInterval(() => {
-      // 50% chance of target color
       const isTarget = Math.random() < 0.5;
       const chosenColor = isTarget
         ? currentTarget
-        : COLOR_TARGETS[Math.floor(Math.random() * COLOR_TARGETS.length)];
+        : palette[Math.floor(Math.random() * palette.length)];
 
       const newBalloon: Balloon = {
         id: Date.now() + Math.random(),
@@ -60,18 +84,18 @@ export const EnglishColorBalloonGame: React.FC<{ onExit: () => void }> = ({ onEx
         cssColor: chosenColor.cssColor,
         x: Math.floor(Math.random() * 70) + 15,
         y: 110,
-        speed: Math.random() * 0.4 + 0.4,
+        speed: Math.random() * (config.speedMax - config.speedMin) + config.speedMin,
       };
 
       setBalloons((prev) => [...prev.slice(-10), newBalloon]);
-    }, 1100);
+    }, config.spawnMs);
 
     return () => clearInterval(timer);
-  }, [isGameOver, currentTarget]);
+  }, [stage.phase, stage.tier, currentTarget, config]);
 
   // Float balloons upwards
   useEffect(() => {
-    if (isGameOver) return;
+    if (stage.phase !== 'playing') return;
 
     const animTimer = setInterval(() => {
       setBalloons((prev) =>
@@ -82,35 +106,24 @@ export const EnglishColorBalloonGame: React.FC<{ onExit: () => void }> = ({ onEx
     }, 40);
 
     return () => clearInterval(animTimer);
-  }, [isGameOver]);
+  }, [stage.phase, stage.tier]);
 
   const handleBalloonPop = (b: Balloon) => {
+    if (stage.locked || stage.phase !== 'playing') return;
     sound.playPop();
 
     if (b.colorName === currentTarget.name) {
       sound.playCorrect();
-      const newScore = score + 1;
-      setScore(newScore);
-
       setBalloons((prev) => prev.filter((item) => item.id !== b.id));
-
-      if (newScore >= 6) {
-        setIsGameOver(true);
-      } else if (newScore % 2 === 0) {
-        // Change color target
-        setTargetIdx((targetIdx + 1) % COLOR_TARGETS.length);
+      if (stage.roundNumber % 2 === 0) {
+        setTargetIdx((ti) => (ti + 1) % palette.length);
       }
+      stage.submitCorrect();
     } else {
       sound.playWrong();
       sound.speak(`That is ${b.colorName}. Touch ${currentTarget.name}!`, 'en-GB');
+      stage.submitWrong();
     }
-  };
-
-  const restartGame = () => {
-    setTargetIdx(0);
-    setScore(0);
-    setBalloons([]);
-    setIsGameOver(false);
   };
 
   return (
@@ -118,10 +131,20 @@ export const EnglishColorBalloonGame: React.FC<{ onExit: () => void }> = ({ onEx
       title="Pop The Color Balloons!"
       subtitle="Đập vỡ những quả bóng bay đúng màu sắc tiếng Anh"
       mascotEmoji="🎈"
-      score={score}
-      maxScore={6}
-      isGameOver={isGameOver}
-      onRestart={restartGame}
+      score={stage.score}
+      isGameOver={stage.isGameOver}
+      phase={stage.phase}
+      tier={stage.tier}
+      tierMeta={stage.tierMeta}
+      tierCount={stage.tierCount}
+      roundNumber={stage.roundNumber}
+      roundTotal={stage.roundTotal}
+      starsEarned={stage.starsEarned}
+      nextTierMeta={stage.tier + 1 <= stage.tierCount ? getTierMeta(stage.tier + 1) : undefined}
+      onNextTier={stage.startNextTier}
+      earnedXp={stage.xpEarned}
+      earnedStars={1}
+      onRestart={stage.restartGame}
       onExit={onExit}
       instructions={`Touch & Pop: [ ${currentTarget.name} ] (${currentTarget.vietnamese})`}
       audioInstruction={`Pop the ${currentTarget.name} balloon`}

@@ -174,6 +174,25 @@ export interface ParentSettings {
   optionalBreaks: boolean;
 }
 
+/**
+ * Per-game level progression (mini-game arcade). `unlockedTier` is the highest
+ * tier the child may start, `starsByTier` records the best star result per tier
+ * (keyed by tier id, 1..GAME_LEVEL_POLICY.MAX_TIER).
+ */
+export interface GameLevelProgress {
+  unlockedTier: number;
+  starsByTier: Record<number, number>;
+  bestScoreByTier: Record<number, number>;
+  updatedAt: string;
+}
+
+/** Versioned store for every game's level progress (own localStorage key). */
+export interface GameProgressStore {
+  version: number;
+  games: Record<string, GameLevelProgress>;
+  updatedAt: string;
+}
+
 export type ActiveScreen =
   | 'home'
   | 'world_map'

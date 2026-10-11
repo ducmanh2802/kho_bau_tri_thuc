@@ -1,63 +1,61 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { GameModalWrapper } from './GameModalWrapper';
 import { sound } from '../../services/sound';
 import { Zap } from 'lucide-react';
+import { useGameStage } from '../../hooks/useGameStage';
+import { defaultRoundsPerTier, getTierMeta, numericOptions, seededRng } from '../../data/gameLevels';
 
 interface MathQuestion {
-  id: number;
   expr: string;
   ans: number;
   options: number[];
 }
 
-const QUESTIONS: MathQuestion[] = [
-  { id: 1, expr: '3 + 4', ans: 7, options: [7, 6, 8, 5] },
-  { id: 2, expr: '8 - 3', ans: 5, options: [5, 4, 6, 3] },
-  { id: 3, expr: '6 + 2', ans: 8, options: [8, 9, 7, 10] },
-  { id: 4, expr: '10 - 4', ans: 6, options: [6, 5, 7, 8] },
-  { id: 5, expr: '5 + 5', ans: 10, options: [10, 9, 11, 8] },
-];
+function buildRaceQuestions(tier: number): MathQuestion[] {
+  const roundsPerTier = defaultRoundsPerTier();
+  const count = roundsPerTier[tier - 1];
+  const max = tier <= 1 ? 5 : tier <= 3 ? 10 : tier === 4 ? 15 : 20;
+  const questions: MathQuestion[] = [];
+  for (let i = 0; i < count; i++) {
+    const rng = seededRng(3400 + tier * 71 + i * 229);
+    const useSub = rng() < (tier >= 2 ? 0.45 : 0.2);
+    if (useSub) {
+      const a = Math.max(2, Math.floor(rng() * max) + 1);
+      const b = Math.max(1, Math.floor(rng() * a));
+      const ans = a - b;
+      questions.push({ expr: `${a} - ${b}`, ans, options: numericOptions(ans, 4, rng, 0, max) });
+    } else {
+      const a = Math.floor(rng() * max) + 1;
+      const b = max - a > 0 ? Math.floor(rng() * (max - a)) + 1 : 1;
+      const ans = a + b;
+      questions.push({ expr: `${a} + ${b}`, ans, options: numericOptions(ans, 4, rng, 0, max) });
+    }
+  }
+  return questions;
+}
 
 export const MathSpeedRacingGame: React.FC<{ onExit: () => void }> = ({ onExit }) => {
-  const [qIdx, setQIdx] = useState(0);
-  const [score, setScore] = useState(0);
-  const [carProgress, setCarProgress] = useState(10); // percentage 10% to 90%
-  const [isGameOver, setIsGameOver] = useState(false);
+  const roundsPerTier = useMemo(() => defaultRoundsPerTier(), []);
+  const stage = useGameStage({ gameId: 'speed_racing', roundsPerTier, advanceDelayMs: 1200 });
   const [turboActive, setTurboActive] = useState(false);
 
-  const current = QUESTIONS[qIdx];
+  const questions = useMemo(() => buildRaceQuestions(stage.tier), [stage.tier]);
+  const current = questions[stage.roundIdx];
+  const carProgress = 10 + (Math.min(stage.roundNumber, stage.roundTotal) / stage.roundTotal) * 80;
 
   const handleSelectOption = (num: number) => {
+    if (stage.locked) return;
     if (num === current.ans) {
       sound.playCorrect();
       sound.speak(`Chính xác! ${current.expr} bằng ${current.ans}!`);
       setTurboActive(true);
-      const newScore = score + 1;
-      setScore(newScore);
-
-      const nextProg = 10 + (newScore / QUESTIONS.length) * 80;
-      setCarProgress(nextProg);
-
-      setTimeout(() => {
-        setTurboActive(false);
-        if (qIdx + 1 < QUESTIONS.length) {
-          setQIdx(qIdx + 1);
-        } else {
-          setIsGameOver(true);
-        }
-      }, 1200);
+      window.setTimeout(() => setTurboActive(false), 700);
+      stage.submitCorrect();
     } else {
       sound.playWrong();
       sound.speak(`Chưa đúng rồi! Bé thử tính lại nhé!`);
+      stage.submitWrong();
     }
-  };
-
-  const restartGame = () => {
-    setQIdx(0);
-    setScore(0);
-    setCarProgress(10);
-    setIsGameOver(false);
-    setTurboActive(false);
   };
 
   return (
@@ -65,10 +63,20 @@ export const MathSpeedRacingGame: React.FC<{ onExit: () => void }> = ({ onExit }
       title="Đường Đua Toán Học Thần Tốc"
       subtitle="Giải nhanh các phép tính để xe đua phóng vút về đích"
       mascotEmoji="🏎️"
-      score={score}
-      maxScore={QUESTIONS.length}
-      isGameOver={isGameOver}
-      onRestart={restartGame}
+      score={stage.score}
+      isGameOver={stage.isGameOver}
+      phase={stage.phase}
+      tier={stage.tier}
+      tierMeta={stage.tierMeta}
+      tierCount={stage.tierCount}
+      roundNumber={stage.roundNumber}
+      roundTotal={stage.roundTotal}
+      starsEarned={stage.starsEarned}
+      nextTierMeta={stage.tier + 1 <= stage.tierCount ? getTierMeta(stage.tier + 1) : undefined}
+      onNextTier={stage.startNextTier}
+      earnedXp={stage.xpEarned}
+      earnedStars={1}
+      onRestart={stage.restartGame}
       onExit={onExit}
       instructions="Bé hãy chọn kết quả đúng của phép tính để nạp năng lượng Nitro cho xe đua!"
       audioInstruction="Hãy chọn kết quả đúng của phép tính để xe đua phóng nhanh về đích"
@@ -100,7 +108,7 @@ export const MathSpeedRacingGame: React.FC<{ onExit: () => void }> = ({ onExit }
           <div className="flex items-center gap-2 mb-2">
             <Zap className={`w-6 h-6 ${turboActive ? 'text-amber-400 fill-amber-400 animate-bounce' : 'text-slate-400'}`} />
             <span className="text-xs md:text-sm font-bold text-amber-300 uppercase tracking-widest">
-              Vòng đua {qIdx + 1} / {QUESTIONS.length}
+              Vòng đua {stage.roundNumber} / {stage.roundTotal}
             </span>
           </div>
 
@@ -124,7 +132,10 @@ export const MathSpeedRacingGame: React.FC<{ onExit: () => void }> = ({ onExit }
             <button
               key={opt}
               onClick={() => handleSelectOption(opt)}
-              className="py-4 px-6 bg-gradient-to-b from-amber-400 to-orange-500 hover:from-amber-300 hover:to-orange-400 text-slate-950 font-black text-3xl rounded-2xl shadow-xl border-2 border-white/50 active:scale-95 transition-all cursor-pointer font-display"
+              disabled={stage.locked}
+              className={`py-4 px-6 bg-gradient-to-b from-amber-400 to-orange-500 hover:from-amber-300 hover:to-orange-400 text-slate-950 font-black text-3xl rounded-2xl shadow-xl border-2 border-white/50 active:scale-95 transition-all cursor-pointer font-display ${
+                stage.locked ? 'opacity-60' : ''
+              }`}
             >
               {opt}
             </button>

@@ -2,6 +2,8 @@ import React, { useRef, useState, useEffect } from 'react';
 import { GameModalWrapper } from './GameModalWrapper';
 import { sound } from '../../services/sound';
 import { Eraser, Trash2, CheckCircle, Palette } from 'lucide-react';
+import { useGameStage } from '../../hooks/useGameStage';
+import { getTierMeta } from '../../data/gameLevels';
 
 const COLORS = [
   '#EF4444', // Red
@@ -21,7 +23,11 @@ const TEMPLATES = [
   { name: 'Chú Gấu Nhí', emoji: '🐻' },
   { name: 'Bông Hoa Rực Rỡ', emoji: '🌸' },
   { name: 'Quả Táo Ngọt Ngào', emoji: '🍎' },
+  { name: 'Chú Cá Đáng Yêu', emoji: '🐠' },
+  { name: 'Chiếc Bánh Sinh Nhật', emoji: '🎂' },
 ];
+
+const ROUNDS_PER_TIER = TEMPLATES.map(() => 1);
 
 export const ColoringCanvasGame: React.FC<{ onExit: () => void }> = ({ onExit }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -29,9 +35,15 @@ export const ColoringCanvasGame: React.FC<{ onExit: () => void }> = ({ onExit })
   const [brushSize, setBrushSize] = useState(8);
   const [isEraser, setIsEraser] = useState(false);
   const [isDrawing, setIsDrawing] = useState(false);
-  const [score, setScore] = useState(0);
-  const [isGameOver, setIsGameOver] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState(TEMPLATES[0]);
+
+  const stage = useGameStage({ gameId: 'coloring_canvas', roundsPerTier: ROUNDS_PER_TIER, advanceDelayMs: 900 });
+  const missionTemplate = TEMPLATES[Math.min(stage.tier - 1, TEMPLATES.length - 1)];
+
+  // Each tier is a new themed masterpiece.
+  useEffect(() => {
+    setSelectedTemplate(missionTemplate);
+  }, [stage.tier, missionTemplate]);
 
   // Canvas context setup
   useEffect(() => {
@@ -137,30 +149,40 @@ export const ColoringCanvasGame: React.FC<{ onExit: () => void }> = ({ onExit })
   };
 
   const finishPainting = () => {
+    if (stage.locked) return;
     sound.playCorrect();
     sound.speak('Bức tranh của bé đẹp tuyệt vời!');
-    setScore(5);
-    setIsGameOver(true);
+    setSelectedColor(COLORS[0]);
+    stage.submitCorrect();
   };
 
   const restartGame = () => {
-    setScore(0);
-    setIsGameOver(false);
+    stage.restartGame();
     clearCanvas();
   };
 
   return (
     <GameModalWrapper
       title="Bé Tập Vẽ & Tô Màu Diệu Kỳ"
-      subtitle="Thỏa sức sáng tạo sắc màu cùng cọ vẽ và hình dán đáng yêu"
+      subtitle={`Mỗi màn là một tác phẩm mới — màn này: "${missionTemplate.name}"`}
       mascotEmoji="🎨"
-      score={score}
-      maxScore={5}
-      isGameOver={isGameOver}
+      score={stage.score}
+      isGameOver={stage.isGameOver}
+      phase={stage.phase}
+      tier={stage.tier}
+      tierMeta={stage.tierMeta}
+      tierCount={stage.tierCount}
+      roundNumber={stage.roundNumber}
+      roundTotal={stage.roundTotal}
+      starsEarned={stage.starsEarned}
+      nextTierMeta={stage.tier + 1 <= stage.tierCount ? getTierMeta(stage.tier + 1) : undefined}
+      onNextTier={stage.startNextTier}
+      earnedXp={stage.xpEarned}
+      earnedStars={1}
       onRestart={restartGame}
       onExit={onExit}
-      instructions="Bé hãy chọn màu yêu thích và vẽ lên khung tranh nhé!"
-      audioInstruction="Hãy chọn màu yêu thích và vẽ lên khung tranh"
+      instructions={`Hãy tô màu cho "${missionTemplate.name}" (${missionTemplate.emoji}) thật đẹp rồi bấm Hoàn thành nhé!`}
+      audioInstruction={`Hãy tô màu cho ${missionTemplate.name} rồi bấm Hoàn thành`}
     >
       <div className="w-full h-full flex flex-col justify-between items-center bg-amber-50/50 rounded-3xl p-3 md:p-5 select-none">
         {/* Template Picker & Tools Top Bar */}

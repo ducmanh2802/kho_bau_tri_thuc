@@ -1,6 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { sound } from '../../services/sound';
-import { ArrowLeft, Play, Gamepad2 } from 'lucide-react';
+import { ArrowLeft, Play, Gamepad2, Star, Sparkles, Crown } from 'lucide-react';
+import { StorageService } from '../../services/storage';
+import { GAME_LEVEL_POLICY } from '../../config/policy';
+import { getTierMeta } from '../../data/gameLevels';
 import { CatchFallingLettersGame } from './CatchFallingLettersGame';
 import { SyllableBuilderGame } from './SyllableBuilderGame';
 import { RhymeHunterGame } from './RhymeHunterGame';
@@ -308,6 +311,12 @@ export const GamesHubScreen: React.FC<{ onBack: () => void; onProfileUpdate: () 
                 <span className="text-[11px] font-bold text-amber-800 bg-amber-50 px-2.5 py-0.5 rounded-lg border border-amber-200">
                   🎯 {game.skillTag}
                 </span>
+                {game.id && (
+                  <div className="mt-2 flex items-center gap-1 text-[10px] text-slate-500">
+                    <span>{getTierMeta(StorageService.getGameProgress(game.id).unlockedTier).emoji}</span>
+                    <span>Màn {StorageService.getGameProgress(game.id).unlockedTier}</span>
+                  </div>
+                )}
               </div>
             </div>
 

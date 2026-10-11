@@ -1,9 +1,19 @@
 import React from 'react';
-import { Volume2, VolumeX, X, Trophy, Star, Sparkles, RotateCcw } from 'lucide-react';
+import { Volume2, VolumeX, X, Trophy, Star, Sparkles, RotateCcw, Rocket, Lock } from 'lucide-react';
 import { sound } from '../../services/sound';
 import { fireCelebrationConfetti } from '../../services/confetti';
 import { StorageService } from '../../services/storage';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
+
+export interface GameTierMetaProp {
+  id: number;
+  name: string;
+  emoji: string;
+  color: string;
+  blurb: string;
+}
+
+export type GamePhaseProp = 'playing' | 'tierComplete' | 'allComplete';
 
 interface GameModalWrapperProps {
   title: string;
@@ -21,6 +31,16 @@ interface GameModalWrapperProps {
   audioLang?: 'vi-VN' | 'en-US' | 'en-GB';
   earnedXp?: number;
   earnedStars?: number;
+  /** Level-progression fields (omit to use the simple free-play layout). */
+  tier?: number;
+  tierMeta?: GameTierMetaProp;
+  tierCount?: number;
+  phase?: GamePhaseProp;
+  roundNumber?: number;
+  roundTotal?: number;
+  starsEarned?: number;
+  nextTierMeta?: GameTierMetaProp;
+  onNextTier?: () => void;
 }
 
 export const GameModalWrapper: React.FC<GameModalWrapperProps> = ({
@@ -38,10 +58,38 @@ export const GameModalWrapper: React.FC<GameModalWrapperProps> = ({
   audioLang = 'vi-VN',
   earnedXp = 25,
   earnedStars = 2,
+  tier,
+  tierMeta,
+  tierCount,
+  phase = 'playing',
+  roundNumber,
+  roundTotal,
+  starsEarned,
+  nextTierMeta,
+  onNextTier,
 }) => {
   const [isMuted, setIsMuted] = React.useState(sound.getMuted());
-  const [hasClaimed, setHasClaimed] = React.useState(false);
+  const claimedKeys = React.useRef<Set<string>>(new Set());
   const dialogRef = useFocusTrap<HTMLDivElement>(true);
+
+  const isLevelGame = tier !== undefined && tierMeta !== undefined;
+  const rewardKey = `${tier ?? 1}-${phase}`;
+
+  /** Award XP/stars once per tier finish (tierComplete and the last allComplete). */
+  React.useEffect(() => {
+    const finished = phase === 'tierComplete' || phase === 'allComplete';
+    if (isLevelGame && finished && !claimedKeys.current.has(rewardKey)) {
+      claimedKeys.current.add(rewardKey);
+      sound.playLevelUp();
+      fireCelebrationConfetti();
+      StorageService.recordGamePlayed(earnedXp, earnedStars);
+    } else if (!isLevelGame && isGameOver && !claimedKeys.current.has('legacy')) {
+      claimedKeys.current.add('legacy');
+      sound.playLevelUp();
+      fireCelebrationConfetti();
+      StorageService.recordGamePlayed(earnedXp, earnedStars);
+    }
+  }, [isLevelGame, phase, isGameOver, rewardKey, earnedXp, earnedStars]);
 
   const toggleSound = () => {
     const next = !isMuted;
@@ -60,19 +108,16 @@ export const GameModalWrapper: React.FC<GameModalWrapperProps> = ({
     }
   }, [instructions, audioInstruction, audioLang]);
 
-  React.useEffect(() => {
-    if (isGameOver && !hasClaimed) {
-      sound.playLevelUp();
-      fireCelebrationConfetti();
-      StorageService.recordGamePlayed(earnedXp, earnedStars);
-      setHasClaimed(true);
-    }
-  }, [isGameOver, hasClaimed, earnedXp, earnedStars]);
-
   const handleRestart = () => {
-    setHasClaimed(false);
+    claimedKeys.current.clear();
     onRestart();
   };
+
+  const handleNextTier = () => {
+    onNextTier?.();
+  };
+
+  const showOverlay = isLevelGame ? phase !== 'playing' : isGameOver;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 md:p-6 bg-slate-900/70 backdrop-blur-sm animate-pop">
@@ -97,13 +142,34 @@ export const GameModalWrapper: React.FC<GameModalWrapperProps> = ({
           </div>
 
           <div className="flex items-center gap-2">
-            {/* Score pill */}
-            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-100 rounded-full border border-amber-300">
-              <Star className="w-4 h-4 fill-amber-500 text-amber-500" />
-              <span className="text-sm font-black text-amber-900">
-                {score} / {maxScore}
-              </span>
-            </div>
+            {/* Level HUD */}
+            {isLevelGame && (
+              <div
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border-2 bg-white shadow-sm"
+                style={{ borderColor: tierMeta.color }}
+              >
+                <span className="text-sm">{tierMeta.emoji}</span>
+                <span className="text-xs font-black text-slate-800">
+                  Màn {tier}/{tierCount} · {tierMeta.name}
+                </span>
+              </div>
+            )}
+
+            {isLevelGame && roundTotal !== undefined ? (
+              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-100 rounded-full border border-purple-200">
+                <Rocket className="w-4 h-4 text-purple-600" />
+                <span className="text-xs font-black text-purple-900">
+                  Câu {roundNumber ?? 1}/{roundTotal}
+                </span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-100 rounded-full border border-amber-300">
+                <Star className="w-4 h-4 fill-amber-500 text-amber-500" />
+                <span className="text-sm font-black text-amber-900">
+                  {score} / {maxScore}
+                </span>
+              </div>
+            )}
 
             {/* Read instruction button */}
             <button
@@ -157,49 +223,119 @@ export const GameModalWrapper: React.FC<GameModalWrapperProps> = ({
         <div className="flex-1 relative overflow-hidden p-3 md:p-6 flex flex-col items-center justify-center">
           {children}
 
-          {/* Victory Modal Overlay */}
-          {isGameOver && (
+          {showOverlay && (
             <div className="absolute inset-0 z-30 bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4 animate-pop">
-              <div className="w-full max-w-md bg-white rounded-3xl p-6 md:p-8 text-center shadow-2xl border-4 border-yellow-400">
-                <div className="w-20 h-20 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4 animate-bounce">
-                  <Trophy className="w-12 h-12 text-amber-500 fill-amber-400" />
-                </div>
-                <h3 className="text-2xl md:text-3xl font-black text-amber-900 mb-2 font-display">
-                  HOAN HÔ BÉ YÊU!
-                </h3>
-                <p className="text-slate-600 text-sm md:text-base font-semibold mb-6">
-                  Bé đã xuất sắc hoàn thành thử thách với điểm số{' '}
-                  <span className="text-amber-600 font-black">{score}</span> điểm!
-                </p>
-
-                {/* Rewards preview */}
-                <div className="flex items-center justify-center gap-4 py-3 px-4 bg-amber-50 rounded-2xl border-2 border-amber-200 mb-6">
-                  <div className="flex items-center gap-2 text-amber-700 font-black text-base">
-                    <Star className="w-6 h-6 fill-amber-400 text-amber-500" />
-                    <span>+{earnedStars} Sao</span>
+              {/* Tier-complete overlay (not the last tier) */}
+              {isLevelGame && phase === 'tierComplete' ? (
+                <div className="w-full max-w-md bg-white rounded-3xl p-6 md:p-8 text-center shadow-2xl border-4 border-yellow-400">
+                  <div className="w-20 h-20 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-3 animate-bounce">
+                    <Trophy className="w-12 h-12 text-amber-500 fill-amber-400" />
                   </div>
-                  <div className="flex items-center gap-2 text-purple-700 font-black text-base">
-                    <Sparkles className="w-6 h-6 text-purple-500" />
-                    <span>+{earnedXp} XP</span>
+                  <h3 className="text-2xl md:text-3xl font-black text-amber-900 mb-1 font-display">
+                    VƯỢT QUA MÀN {tier}!
+                  </h3>
+                  <p className="text-sm font-bold text-slate-500 mb-3">
+                    {tierMeta.emoji} Màn «{tierMeta.name}» đã hoàn thành
+                  </p>
+
+                  {/* Stars earned */}
+                  <div className="flex items-center justify-center gap-2 mb-4">
+                    {[1, 2, 3].map((i) => (
+                      <Star
+                        key={i}
+                        className={`w-10 h-10 ${i <= (starsEarned ?? 1) ? 'fill-amber-400 text-amber-500' : 'fill-slate-200 text-slate-300'}`}
+                      />
+                    ))}
+                  </div>
+
+                  <div className="flex items-center justify-center gap-4 py-3 px-4 bg-amber-50 rounded-2xl border-2 border-amber-200 mb-5">
+                    <div className="flex items-center gap-2 text-amber-700 font-black text-base">
+                      <Star className="w-6 h-6 fill-amber-400 text-amber-500" />
+                      <span>+{earnedStars} Sao</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-purple-700 font-black text-base">
+                      <Sparkles className="w-6 h-6 text-purple-500" />
+                      <span>+{earnedXp} XP</span>
+                    </div>
+                  </div>
+
+                  {/* Next tier unlock preview */}
+                  {nextTierMeta && (
+                    <div className="flex items-center justify-center gap-2 px-4 py-2 mb-5 bg-blue-50 rounded-2xl border border-blue-200">
+                      <Lock className="w-4 h-4 text-blue-500" />
+                      <span className="text-xs font-black text-blue-800">
+                        Màn tiếp theo đã mở khóa:
+                      </span>
+                      <span className="text-sm font-black text-blue-900">
+                        {nextTierMeta.emoji} {nextTierMeta.name}
+                      </span>
+                      <span className="text-[11px] text-blue-600 font-bold">{nextTierMeta.blurb}</span>
+                    </div>
+                  )}
+
+                  <button
+                    onClick={handleNextTier}
+                    className="w-full py-3 px-4 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-black rounded-2xl shadow-lg transition-transform active:scale-95 text-base md:text-lg flex items-center justify-center gap-2"
+                  >
+                    <Rocket className="w-5 h-5" />
+                    Màn tiếp theo ▶
+                  </button>
+                </div>
+              ) : (
+                /* Victory overlay (free-play games or the final crown tier) */
+                <div className="w-full max-w-md bg-white rounded-3xl p-6 md:p-8 text-center shadow-2xl border-4 border-yellow-400">
+                  <div className="w-20 h-20 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4 animate-bounce">
+                    <Trophy className="w-12 h-12 text-amber-500 fill-amber-400" />
+                  </div>
+                  <h3 className="text-2xl md:text-3xl font-black text-amber-900 mb-2 font-display">
+                    {isLevelGame ? 'HOÀN THÀNH TẤT CẢ MÀN!' : 'HOAN HÔ BÉ YÊU!'}
+                  </h3>
+                  <p className="text-slate-600 text-sm md:text-base font-semibold mb-6">
+                    {isLevelGame
+                      ? `Bé đã vượt qua cả ${tierCount} màn của trò chơi với ${score} điểm!`
+                      : `Bé đã xuất sắc hoàn thành thử thách với điểm số ${score} điểm!`}
+                  </p>
+
+                  {isLevelGame && (
+                    <div className="flex items-center justify-center gap-2 mb-4">
+                      {[1, 2, 3].map((i) => (
+                        <Star
+                          key={i}
+                          className={`w-10 h-10 ${i <= (starsEarned ?? 1) ? 'fill-amber-400 text-amber-500' : 'fill-slate-200 text-slate-300'}`}
+                        />
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Rewards preview */}
+                  <div className="flex items-center justify-center gap-4 py-3 px-4 bg-amber-50 rounded-2xl border-2 border-amber-200 mb-6">
+                    <div className="flex items-center gap-2 text-amber-700 font-black text-base">
+                      <Star className="w-6 h-6 fill-amber-400 text-amber-500" />
+                      <span>+{earnedStars} Sao</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-purple-700 font-black text-base">
+                      <Sparkles className="w-6 h-6 text-purple-500" />
+                      <span>+{earnedXp} XP</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={handleRestart}
+                      className="flex-1 py-3 px-4 bg-amber-100 hover:bg-amber-200 text-amber-900 font-bold rounded-2xl flex items-center justify-center gap-2 transition-transform active:scale-95 text-sm md:text-base"
+                    >
+                      <RotateCcw className="w-4 h-4" />
+                      Chơi lại
+                    </button>
+                    <button
+                      onClick={onExit}
+                      className="flex-1 py-3 px-4 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-black rounded-2xl shadow-lg transition-transform active:scale-95 text-sm md:text-base"
+                    >
+                      Tiếp tục học
+                    </button>
                   </div>
                 </div>
-
-                <div className="flex items-center gap-3">
-                  <button
-                    onClick={handleRestart}
-                    className="flex-1 py-3 px-4 bg-amber-100 hover:bg-amber-200 text-amber-900 font-bold rounded-2xl flex items-center justify-center gap-2 transition-transform active:scale-95 text-sm md:text-base"
-                  >
-                    <RotateCcw className="w-4 h-4" />
-                    Chơi lại
-                  </button>
-                  <button
-                    onClick={onExit}
-                    className="flex-1 py-3 px-4 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-black rounded-2xl shadow-lg transition-transform active:scale-95 text-sm md:text-base"
-                  >
-                    Tiếp tục học
-                  </button>
-                </div>
-              </div>
+              )}
             </div>
           )}
         </div>
