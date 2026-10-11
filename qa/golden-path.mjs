@@ -91,13 +91,14 @@ async function body(page, ui) {
   await page.waitForSelector('text=Xin chào', { timeout: 20000 });
 
   const homeText = await page.evaluate(() => document.body.innerText);
+  const nextBestAction = /Hôm Nay Bé Nên Học Gì|Bé Nên Làm Gì Tiếp Theo/.test(homeText);
   log('home', {
     readingCard: homeText.includes('Luyện Đọc'),
     competitionCard: homeText.includes('Đấu Trường'),
-    nextBestAction: homeText.includes('Bé Nên Làm Gì Tiếp Theo'),
+    nextBestAction,
     readingHeadline: /Bé đang|Bé đọc|Mình bắt đầu luyện đọc/.test(homeText),
   });
-  if (!homeText.includes('Bé Nên Làm Gì Tiếp Theo')) fail('Next Best Action card missing on home');
+  if (!nextBestAction) fail('Next Best Action card missing on home');
 
   const xpBefore = await page.evaluate(
     () => JSON.parse(localStorage.getItem('kho_bau_child_profile') || '{}').xp

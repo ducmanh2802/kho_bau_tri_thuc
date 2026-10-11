@@ -2,6 +2,9 @@ export type SubjectType = 'tieng-viet' | 'toan' | 'english';
 
 export type MasteryStatus = 'NOT_STARTED' | 'LEARNING' | 'PRACTICING' | 'MASTERED' | 'NEEDS_REVIEW';
 
+/** Session profiles for the adaptive practice engine. */
+export type SessionProfileKind = 'QUICK' | 'STANDARD' | 'DEEP' | 'EXTENDED';
+
 export type QuestionType =
   | 'multiple-choice'
   | 'drag-drop'
@@ -157,6 +160,18 @@ export interface ParentSettings {
    * user-initiated "Nghe câu hỏi" button. Mute / voice-off still wins.
    */
   questionAutoplay: boolean;
+  /**
+   * Default practice-session length offered to the child (Adaptive Learning
+   * Upgrade). QUICK ≈ 8-10 câu, STANDARD ≈ 15-20, DEEP ≈ 25-30, EXTENDED ≈ 35-40.
+   * The child can always pick a shorter session; a parent can lower the default.
+   */
+  defaultSessionProfile: SessionProfileKind;
+  /** Allow L4-L5 challenge questions once prerequisites are demonstrated. */
+  allowAdvancedQuestions: boolean;
+  /** How much spaced review a session mixes in. */
+  reviewIntensity: 'light' | 'standard' | 'intensive';
+  /** Offer an explicit break/pause inside long sessions (never force a 6-year-old). */
+  optionalBreaks: boolean;
 }
 
 export type ActiveScreen =

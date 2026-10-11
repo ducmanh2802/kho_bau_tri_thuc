@@ -1,7 +1,7 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
-import {defineConfig} from 'vite';
+import {defineConfig} from 'vitest/config';
 
 export default defineConfig(() => {
   return {
@@ -12,6 +12,11 @@ export default defineConfig(() => {
         // which is what Vite's native config loader expects.
         '@': path.resolve(import.meta.dirname, '.'),
       },
+    },
+    test: {
+      // The competition near-duplicate scan is O(n^2) over the bank; under
+      // parallel worker startup it can exceed the 5s default. Give it headroom.
+      testTimeout: 20000,
     },
     server: {
       // HMR is disabled in AI Studio via DISABLE_HMR env var.

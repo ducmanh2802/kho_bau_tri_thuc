@@ -129,7 +129,7 @@ export default async function run(page, ui) {
       hasGreeting: offlineText.includes('Xin chào'),
       hasReadingCard: offlineText.includes('Luyện Đọc'),
       hasCompetitionCard: offlineText.includes('Đấu Trường'),
-      hasNextBestAction: offlineText.includes('Bé Nên Làm Gì Tiếp Theo'),
+      hasNextBestAction: /Hôm Nay Bé Nên Học Gì|Bé Nên Làm Gì Tiếp Theo/.test(offlineText),
     });
 
     // Core learning must still work offline: complete a question's feedback loop.

@@ -12,6 +12,7 @@ import {
   MasteryStatus,
   ParentSettings,
   SessionFatigueState,
+  SessionProfileKind,
   SkillMastery,
   SubjectType,
 } from '../types';
@@ -20,8 +21,17 @@ import { LearningOS, LEARNING_OS_POLICY } from './learningOS';
 import { ReadingEngine } from './readingEngine';
 import { CompetitionEngine } from './competitionEngine';
 import { getBlueprintById } from '../data/competitionBlueprints';
-import { LEGACY_MASTERY_POLICY, READING_POLICY } from '../config/policy';
-import type { EvidenceDifficulty } from '../types/learningOS';
+import {
+  ADAPTIVE_DIFFICULTY_POLICY,
+  LEGACY_MASTERY_POLICY,
+  READING_POLICY,
+  SESSION_PROFILE_POLICY,
+} from '../config/policy';
+import type {
+  AdaptiveLevel,
+  EvidenceDifficulty,
+  SessionState,
+} from '../types/learningOS';
 import type { CompetitionExamResult, ErrorCategory, QuestionResponse } from '../types/competition';
 import type { ReadingMetrics, ReadingProfile, ReadingSkillState, ReadingStage, ReadingStageState } from '../types/reading';
 
@@ -47,8 +57,15 @@ const STORAGE_KEYS = {
  * P30-v1 adds the Kid's Box Companion store. It lives in its own localStorage
  * key, so P29-v2 payloads keep working untouched — the migration only records
  * that the child has no Kid's Box course state yet.
+ *
+ * P41-v1 (Adaptive Learning Upgrade) adds:
+ *  - `sessionState` — the resumable practice session (profile, question ids,
+ *    progress, pause flag) inside the Learning OS store.
+ *  - expanded `KnowledgeState` adaptive fields (per-skill level, independence
+ *    counters, misconception map, retention evidence). Missing fields on older
+ *    payloads are backfilled by the sanitizer, so no learning history is reset.
  */
-export const STORAGE_SCHEMA_VERSION = 'P30-v1';
+export const STORAGE_SCHEMA_VERSION = 'P41-v1';
 
 /**
  * Ordered migration chain. Key = target schema version, value = upgrade function.
@@ -69,17 +86,20 @@ const MIGRATIONS: Record<string, (raw: Record<string, unknown>) => Record<string
   // Kid's Box Companion state arrives in a separate key, so this step only has
   // to guarantee the Learning OS payload stays structurally valid.
   'P30-v1': (raw) => ({ ...raw }),
+  // Adaptive Learning Upgrade: a resumable session slot plus the per-skill
+  // adaptive fields. Existing states are backfilled by the sanitizer with
+  // level 1 and empty counters — historical evidence is never re-scored here,
+  // it simply starts accruing adaptive signals from the next answer.
+  'P41-v1': (raw) => ({
+    ...raw,
+    sessionState: raw.sessionState ?? null,
+  }),
 };
 
-/**
- * Ordered migration chain, oldest target version first. A payload stored under
- * an older (or unknown, or missing) version is replayed through every step it
- * has not seen yet.
- */
-const MIGRATION_ORDER = ['P29-v2', 'P30-v1'] as const;
-
 /** Every schema version the app has ever written, oldest first. */
-const SCHEMA_HISTORY = ['P28-v1', 'P29-v2', 'P30-v1'] as const;
+const SCHEMA_HISTORY = ['P28-v1', 'P29-v2', 'P30-v1', 'P41-v1'] as const;
+
+const SESSION_PROFILE_KINDS: SessionProfileKind[] = ['QUICK', 'STANDARD', 'DEEP', 'EXTENDED'];
 
 const MAX_RECENT_EVIDENCES = 200;
 
@@ -100,6 +120,7 @@ function createEmptyLearningOSStore(now: number = Date.now()): LearningOSStore {
     recentEvidences: [],
     dailyPlan: null,
     fatigue: createDefaultFatigue(now),
+    sessionState: null,
     recommendationHistory: [],
     processedEvidenceIds: [],
   };
@@ -316,6 +337,10 @@ const DEFAULT_PARENT_SETTINGS: ParentSettings = {
   voiceEnabled: true,
   difficultyScale: 'normal',
   questionAutoplay: true, // pre-readers need to hear questions; parents can switch off
+  defaultSessionProfile: 'STANDARD',
+  allowAdvancedQuestions: false,
+  reviewIntensity: 'standard',
+  optionalBreaks: true,
 };
 
 function getTodayString(): string {
@@ -621,6 +646,44 @@ export class StorageService {
           correctCount: count(v.correctCount),
           consecutiveCorrect: count(v.consecutiveCorrect),
           consecutiveIncorrect: count(v.consecutiveIncorrect),
+          // Adaptive Learning Upgrade fields. A legacy payload simply has none
+          // of them, so every field falls back to its pristine default —
+          // historical evidence is preserved, never re-scored or reset.
+          independentAttempts: count(v.independentAttempts),
+          independentCorrect: count(v.independentCorrect),
+          assistedAttempts: count(v.assistedAttempts),
+          assistedCorrect: count(v.assistedCorrect),
+          hintCount: count(v.hintCount),
+          currentLevel: ([1, 2, 3, 4, 5] as const).includes(v.currentLevel as never)
+            ? (v.currentLevel as AdaptiveLevel)
+            : ADAPTIVE_DIFFICULTY_POLICY.DEFAULT_STARTING_LEVEL,
+          levelHistory: Array.isArray(v.levelHistory)
+            ? (v.levelHistory as unknown[])
+                .filter(
+                  (h): h is { level: AdaptiveLevel; timestamp: number; reason: string } =>
+                    !!h &&
+                    typeof h === 'object' &&
+                    ([1, 2, 3, 4, 5] as const).includes((h as { level: AdaptiveLevel }).level) &&
+                    typeof (h as { timestamp: number }).timestamp === 'number' &&
+                    typeof (h as { reason: string }).reason === 'string'
+                )
+                .slice(-20)
+            : [],
+          misconceptionCategories:
+            v.misconceptionCategories && typeof v.misconceptionCategories === 'object' && !Array.isArray(v.misconceptionCategories)
+              ? Object.fromEntries(
+                  Object.entries(v.misconceptionCategories as Record<string, unknown>)
+                    .filter(([, n]) => typeof n === 'number' && Number.isFinite(n) && n > 0)
+                    .map(([k, n]) => [k, Math.round(n as number)])
+                )
+              : {},
+          retentionEvidence:
+            v.retentionEvidence && typeof v.retentionEvidence === 'object' && !Array.isArray(v.retentionEvidence)
+              ? {
+                  correctOnReview: count((v.retentionEvidence as { correctOnReview?: unknown }).correctOnReview),
+                  totalReviews: count((v.retentionEvidence as { totalReviews?: unknown }).totalReviews),
+                }
+              : { correctOnReview: 0, totalReviews: 0 },
           lastPracticedAt: typeof v.lastPracticedAt === 'number' ? v.lastPracticedAt : undefined,
           lastCorrectAt: typeof v.lastCorrectAt === 'number' ? v.lastCorrectAt : undefined,
           lastIncorrectAt: typeof v.lastIncorrectAt === 'number' ? v.lastIncorrectAt : undefined,
@@ -694,7 +757,60 @@ export class StorageService {
         .slice(0, 100);
     }
 
+    // Resumable practice session. A malformed or hostile payload degrades to
+    // "no session" instead of blocking the child from starting a fresh one.
+    const session = raw.sessionState;
+    if (session && typeof session === 'object' && !Array.isArray(session)) {
+      const s = session as Partial<SessionState>;
+      const questions = Array.isArray(s.questions)
+        ? (s.questions as unknown[]).filter((id): id is string => typeof id === 'string').slice(0, 60)
+        : [];
+      const currentIndex = Math.max(0, Math.min(questions.length, Math.round(Number(s.currentIndex) || 0)));
+      store.sessionState = {
+        profileKind: SESSION_PROFILE_KINDS.includes(s.profileKind as SessionProfileKind)
+          ? (s.profileKind as SessionProfileKind)
+          : 'QUICK',
+        questions,
+        currentIndex,
+        correctCount: Math.max(0, Math.min(currentIndex, Math.round(Number(s.correctCount) || 0))),
+        incorrectCount: Math.max(0, Math.min(currentIndex, Math.round(Number(s.incorrectCount) || 0))),
+        hintsUsed: Math.max(0, Math.round(Number(s.hintsUsed) || 0)),
+        startedAt: typeof s.startedAt === 'number' ? s.startedAt : now,
+        lastUpdatedAt: typeof s.lastUpdatedAt === 'number' ? s.lastUpdatedAt : now,
+        isPaused: s.isPaused === true,
+        isCompleted: s.isCompleted === true,
+        checkpointResults: Array.isArray(s.checkpointResults)
+          ? (s.checkpointResults as unknown[])
+              .filter(
+                (c): c is { afterQuestion: number; correctCount: number; totalSoFar: number } =>
+                  !!c &&
+                  typeof c === 'object' &&
+                  typeof (c as { afterQuestion: number }).afterQuestion === 'number' &&
+                  typeof (c as { correctCount: number }).correctCount === 'number' &&
+                  typeof (c as { totalSoFar: number }).totalSoFar === 'number'
+              )
+              .slice(-20)
+          : [],
+      };
+    }
+
     return store;
+  }
+
+  // ==========================================================
+  // Resumable practice session (adaptive learning sessions)
+  // ==========================================================
+
+  /** Current session or null when the child is not inside a practice session. */
+  public static getSessionState(): SessionState | null {
+    return StorageService.getLearningOSStore().sessionState;
+  }
+
+  /** Persists the session after every answer so a refresh never loses progress. */
+  public static saveSessionState(state: SessionState | null): void {
+    const store = StorageService.getLearningOSStore();
+    store.sessionState = state;
+    StorageService.saveLearningOSStore(store);
   }
 
   public static getChildProfile(): ChildProfile {
@@ -775,22 +891,30 @@ export class StorageService {
   public static getParentSettings(): ParentSettings {
     try {
       const data = localStorage.getItem(STORAGE_KEYS.PARENT_SETTINGS);
-      if (data) {
-        const parsed = JSON.parse(data);
-        if (parsed && typeof parsed === 'object') {
-          return {
-            dailyLimitMinutes: typeof parsed.dailyLimitMinutes === 'number' ? parsed.dailyLimitMinutes : 20,
-            soundEnabled: typeof parsed.soundEnabled === 'boolean' ? parsed.soundEnabled : true,
-            musicEnabled: typeof parsed.musicEnabled === 'boolean' ? parsed.musicEnabled : true,
-            voiceEnabled: typeof parsed.voiceEnabled === 'boolean' ? parsed.voiceEnabled : true,
-            difficultyScale: ['easy', 'normal', 'advanced'].includes(parsed.difficultyScale)
-              ? parsed.difficultyScale
-              : 'normal',
-            questionAutoplay:
-              typeof parsed.questionAutoplay === 'boolean' ? parsed.questionAutoplay : true,
-          };
-        }
+if (data) {
+      const parsed = JSON.parse(data);
+      if (parsed && typeof parsed === 'object') {
+        return {
+          dailyLimitMinutes: typeof parsed.dailyLimitMinutes === 'number' ? parsed.dailyLimitMinutes : 20,
+          soundEnabled: typeof parsed.soundEnabled === 'boolean' ? parsed.soundEnabled : true,
+          musicEnabled: typeof parsed.musicEnabled === 'boolean' ? parsed.musicEnabled : true,
+          voiceEnabled: typeof parsed.voiceEnabled === 'boolean' ? parsed.voiceEnabled : true,
+          difficultyScale: ['easy', 'normal', 'advanced'].includes(parsed.difficultyScale)
+            ? parsed.difficultyScale
+            : 'normal',
+          questionAutoplay:
+            typeof parsed.questionAutoplay === 'boolean' ? parsed.questionAutoplay : true,
+          defaultSessionProfile: ['QUICK', 'STANDARD', 'DEEP', 'EXTENDED'].includes(parsed.defaultSessionProfile)
+            ? parsed.defaultSessionProfile
+            : 'STANDARD',
+          allowAdvancedQuestions: parsed.allowAdvancedQuestions === true,
+          reviewIntensity: ['light', 'standard', 'intensive'].includes(parsed.reviewIntensity)
+            ? parsed.reviewIntensity
+            : 'standard',
+          optionalBreaks: parsed.optionalBreaks === true,
+        };
       }
+    }
     } catch {
       // Ignore
     }
@@ -929,6 +1053,8 @@ export class StorageService {
       source?: LearningEvidence['source'];
       /** Stable id so retries of the same item never double-count evidence. */
       evidenceId?: string;
+      /** Whether the child used a hint before answering (assisted, not independent). */
+      usedHint?: boolean;
     } = {}
   ) {
     const analytics = StorageService.getAnalytics();
@@ -960,6 +1086,7 @@ export class StorageService {
       responseTimeMs: options.responseTimeMs,
       difficulty: options.difficulty,
       errorType: options.errorType,
+      usedHint: options.usedHint,
     });
 
     let mastery = analytics.skillMastery[skillId];

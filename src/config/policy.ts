@@ -1,3 +1,5 @@
+import { EvidenceDifficulty } from '../types/learningOS';
+
 /**
  * CENTRAL THRESHOLD POLICY — single source of truth for every magic number in the app.
  *
@@ -431,5 +433,197 @@ export const SPEECH_REPORTING_POLICY = {
   BANNED_CLAIMS: ['pronunciation =', 'pronunciation score', 'phát âm chuẩn', 'pronunciation quality'],
   /** Voice preference chain (§7). */
   VOICE_PREFERENCE: ['en-GB', 'en-GB-*', 'en-*'],
+} as const;
+
+/**
+ * ADAPTIVE DIFFICULTY POLICY — 5-level skill-specific progression system.
+ *
+ * Difficulty is per-skill, not global. Each skill tracks its own demonstrated
+ * level (L1-L5) based on independent accuracy, hint usage, and misconception
+ * patterns. Progression requires repeated independent success, not lucky
+ * guesses or hinted answers.
+ *
+ * Tests in tests/adaptive-difficulty.test.ts reference every constant.
+ */
+export const ADAPTIVE_DIFFICULTY_POLICY = {
+  POLICY_VERSION: 'P41-v1',
+
+  /** Minimum independent correct answers before considering level increase. */
+  MIN_INDEPENDENT_FOR_PROGRESSION: 3,
+
+  /** Accuracy threshold (0-100) for progression consideration. */
+  PROGRESSION_ACCURACY_THRESHOLD: 80,
+
+  /** Accuracy threshold (0-100) below which difficulty decreases. */
+  REGRESSION_ACCURACY_THRESHOLD: 50,
+
+  /** Consecutive incorrect answers before triggering support (not punishment). */
+  SUPPORT_TRIGGER_CONSECUTIVE_INCORRECT: 2,
+
+  /** Maximum level decrease from a single mistake — never drops more than 1. */
+  MAX_LEVEL_DROP_PER_EVENT: 1,
+
+  /** Minimum attempts at current level before allowing progression. */
+  MIN_ATTEMPTS_AT_LEVEL: 4,
+
+  /** Hint usage that counts as assisted (not independent). */
+  HINT_ASSIST_THRESHOLD: 1,
+
+  /** Sessions before a mastered skill gets spaced review. */
+  SPACED_REVIEW_INTERVAL_DAYS: [1, 3, 7, 14, 30] as const,
+
+  /** Accuracy (0-100) on spaced review counts as retention. */
+  RETENTION_ACCURACY_THRESHOLD: 70,
+
+  /** Maximum adaptive level — never exceeds 5. */
+  MAX_LEVEL: 5 as const,
+
+  /** Starting level for new skills. */
+  DEFAULT_STARTING_LEVEL: 1 as const,
+
+  /** Levels map to evidence difficulty. */
+  LEVEL_TO_EVIDENCE: {
+    1: 'EASY',
+    2: 'EASY',
+    3: 'MEDIUM',
+    4: 'HARD',
+    5: 'CHALLENGE',
+  } as Record<number, EvidenceDifficulty>,
+} as const;
+
+/**
+ * SESSION PROFILE POLICY — 4 configurable session types.
+ *
+ * Each profile defines target question count, composition percentages,
+ * checkpoint intervals, and early-finish behavior. Parents can configure
+ * default session length in Parent Mode.
+ *
+ * Tests in tests/session-composer.test.ts reference every constant.
+ */
+export const SESSION_PROFILE_POLICY = {
+  POLICY_VERSION: 'P41-v1',
+
+  QUICK: {
+    targetQuestions: 9,
+    minQuestions: 8,
+    maxQuestions: 10,
+    composition: { foundation: 0.2, currentSkill: 0.35, challenging: 0.25, spacedReview: 0.2 },
+    checkpointInterval: 5,
+    allowEarlyFinish: true,
+    parentConfigurable: true,
+  },
+
+  STANDARD: {
+    targetQuestions: 18,
+    minQuestions: 15,
+    maxQuestions: 20,
+    composition: { foundation: 0.2, currentSkill: 0.35, challenging: 0.25, spacedReview: 0.2 },
+    checkpointInterval: 8,
+    allowEarlyFinish: true,
+    parentConfigurable: true,
+  },
+
+  DEEP: {
+    targetQuestions: 28,
+    minQuestions: 25,
+    maxQuestions: 30,
+    composition: { foundation: 0.2, currentSkill: 0.35, challenging: 0.25, spacedReview: 0.2 },
+    checkpointInterval: 10,
+    allowEarlyFinish: true,
+    parentConfigurable: true,
+  },
+
+  EXTENDED: {
+    targetQuestions: 38,
+    minQuestions: 35,
+    maxQuestions: 40,
+    composition: { foundation: 0.2, currentSkill: 0.35, challenging: 0.25, spacedReview: 0.2 },
+    checkpointInterval: 12,
+    allowEarlyFinish: true,
+    parentConfigurable: true,
+  },
+} as const;
+
+/**
+ * P41 CURRICULUM QUALITY POLICY (lesson bank).
+ *
+ * The lesson bank (Vietnamese/Math/English) is separate from the competition
+ * bank and previously had no distribution gate. Forensic basis (Oct 2026 audit,
+ * post Adaptive-Learning increment):
+ *  - answer-position bias: 80/84 choice items placed the correct answer at
+ *    options[0] (95%) — fixed by deterministic rotation (optionBalance.ts)
+ *  - four skills (vn_alphabet_matching, vn_rhyme_am_ap, vn_word_building,
+ *    vn_orthography_ng_ngh) had ZERO questions
+ *  - Vietnamese had no difficulty-3 item; English had none either
+ *
+ * Every threshold is referenced by tests/curriculum-quality-p41.test.ts.
+ */
+export const CURRICULUM_POLICY = {
+  POLICY_VERSION: 'P41-v1',
+  /** Minimum distinct questions per active lesson-bank skill. */
+  MIN_QUESTIONS_PER_SKILL: 2,
+  /** Grade-1 choice items should offer at least this many options. */
+  MIN_OPTIONS: 3,
+  /** No single answer position may exceed this share across a subject. */
+  MAX_ANSWER_POSITION_SHARE: 0.5,
+  /** Every subject must reach up to this difficulty band. */
+  MIN_DIFFICULTY_LEVELS: 3,
+} as const;
+
+/**
+ * Skill prerequisite graph for session composition (foundation questions).
+ *
+ * Each key is a skillId; the value is an array of skillIds that must be
+ * learned before it. Used by SessionComposer to select foundation (prerequisite)
+ * reinforcement questions. Empty array = no specific prerequisite.
+ *
+ * Based on the Vietnamese Grade 1 curriculum sequence:
+ * - Letters/phonics → Syllable building → Reading comprehension
+ * - Counting → Number recognition → Comparison → Addition → Subtraction → Word problems
+ * - English alphabet → Vocabulary themes
+ */
+export const SKILL_PREREQUISITES: Record<string, string[]> = {
+  // Vietnamese
+  vn_alphabet_vowel: [],
+  vn_alphabet_consonant: ['vn_alphabet_vowel'],
+  vn_alphabet_matching: ['vn_alphabet_vowel', 'vn_alphabet_consonant'],
+  vn_tone_recognition: ['vn_alphabet_vowel'],
+  vn_tone_application: ['vn_tone_recognition'],
+  vn_rhyme_an_at: ['vn_tone_recognition'],
+  vn_rhyme_am_ap: ['vn_tone_recognition'],
+  vn_syllable_blending: ['vn_alphabet_vowel', 'vn_alphabet_consonant'],
+  vn_word_building: ['vn_syllable_blending'],
+  vn_orthography_c_k: ['vn_syllable_blending'],
+  vn_orthography_g_gh: ['vn_syllable_blending'],
+  vn_orthography_ng_ngh: ['vn_syllable_blending'],
+  vn_vocab_objects: ['vn_syllable_blending'],
+  vn_vocab_action: ['vn_syllable_blending'],
+  vn_vocab_people: ['vn_syllable_blending'],
+  vn_sentence_ordering: ['vn_syllable_blending', 'vn_vocab_objects'],
+  vn_reading_comprehension: ['vn_sentence_ordering', 'vn_vocab_objects'],
+
+  // Mathematics
+  math_counting_10: [],
+  math_number_recognition: ['math_counting_10'],
+  math_comparison: ['math_number_recognition'],
+  math_addition_10: ['math_comparison'],
+  math_subtraction_10: ['math_addition_10'],
+  math_geometry_shapes: ['math_number_recognition'],
+  math_measurement: ['math_number_recognition'],
+  math_numbers_20: ['math_addition_10'],
+  math_calc_20: ['math_addition_10', 'math_subtraction_10'],
+  math_word_problems: ['math_addition_10', 'math_subtraction_10'],
+
+  // English (core curriculum)
+  eng_letters_phonics: [],
+  eng_numbers_10: ['eng_letters_phonics'],
+  eng_vocab_colors: ['eng_letters_phonics'],
+  eng_vocab_animals: ['eng_letters_phonics'],
+  eng_vocab_family: ['eng_letters_phonics'],
+  eng_vocab_school: ['eng_letters_phonics'],
+  eng_vocab_body: ['eng_letters_phonics'],
+  eng_vocab_food: ['eng_letters_phonics'],
+  eng_vocab_toys: ['eng_letters_phonics'],
+  eng_greetings: ['eng_letters_phonics'],
 } as const;
 

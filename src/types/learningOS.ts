@@ -1,4 +1,4 @@
-import { SubjectType } from './index';
+import { SessionProfileKind, SubjectType } from './index';
 import { ErrorCategory } from './competition';
 
 export type EvidenceSource =
@@ -10,6 +10,16 @@ export type EvidenceSource =
   | 'REVIEW';
 
 export type EvidenceDifficulty = 'EASY' | 'MEDIUM' | 'HARD' | 'CHALLENGE';
+
+export type AdaptiveLevel = 1 | 2 | 3 | 4 | 5;
+
+export const ADAPTIVE_LEVEL_LABELS: Record<AdaptiveLevel, string> = {
+  1: 'Nền tảng',
+  2: 'Vận dụng cơ bản',
+  3: 'Thử thách',
+  4: 'Nâng cao',
+  5: 'Bậc thầy',
+} as const;
 
 export interface LearningEvidence {
   id: string;
@@ -23,6 +33,8 @@ export interface LearningEvidence {
   responseTimeMs?: number;
   difficulty?: EvidenceDifficulty;
   errorType?: ErrorCategory;
+  usedHint?: boolean;
+  attemptNumber?: number;
 }
 
 export type KnowledgeStatus =
@@ -48,6 +60,31 @@ export interface ErrorProfile {
   unclassified: number;
 }
 
+export interface SkillLevelChange {
+  level: AdaptiveLevel;
+  timestamp: number;
+  reason: string;
+}
+
+/**
+ * Explainable record of one adaptive-progression decision. Every level change
+ * carries its own evidence so Parent Mode can show WHY a skill moved.
+ */
+export interface ProgressionDecision {
+  skillId: string;
+  previousLevel: AdaptiveLevel;
+  newLevel: AdaptiveLevel;
+  reason: string;
+  evidence: string[];
+  timestamp: number;
+}
+
+/** Result of folding one evidence event, including the progression decision. */
+export interface EvidenceReductionResult {
+  newState: KnowledgeState;
+  progression: ProgressionDecision | null;
+}
+
 export interface KnowledgeState {
   skillId: string;
   skillName: string;
@@ -61,6 +98,18 @@ export interface KnowledgeState {
   correctCount: number;
   consecutiveCorrect: number;
   consecutiveIncorrect: number;
+  /** Answers given without a hint — the only evidence that can raise a level. */
+  independentAttempts: number;
+  independentCorrect: number;
+  /** Answers given after a hint — tracked, never counted as independence. */
+  assistedAttempts: number;
+  assistedCorrect: number;
+  hintCount: number;
+  /** Current demonstrated adaptive level (L1-L5) for THIS skill only. */
+  currentLevel: AdaptiveLevel;
+  levelHistory: SkillLevelChange[];
+  misconceptionCategories: Record<string, number>;
+  retentionEvidence: { correctOnReview: number; totalReviews: number };
   lastPracticedAt?: number;
   lastCorrectAt?: number;
   lastIncorrectAt?: number;
@@ -144,12 +193,43 @@ export interface RecommendationExplanation {
   expectedGoal: string;
 }
 
+export interface SessionProfile {
+  kind: SessionProfileKind;
+  targetQuestions: number;
+  minQuestions: number;
+  maxQuestions: number;
+  composition: {
+    foundation: number;
+    currentSkill: number;
+    challenging: number;
+    spacedReview: number;
+  };
+  checkpointInterval: number;
+  allowEarlyFinish: boolean;
+  parentConfigurable: boolean;
+}
+
+export interface SessionState {
+  profileKind: SessionProfileKind;
+  questions: string[];
+  currentIndex: number;
+  correctCount: number;
+  incorrectCount: number;
+  hintsUsed: number;
+  startedAt: number;
+  lastUpdatedAt: number;
+  isPaused: boolean;
+  isCompleted: boolean;
+  checkpointResults: { afterQuestion: number; correctCount: number; totalSoFar: number }[];
+}
+
 export interface LearningOSStore {
   schemaVersion: string;
   knowledgeStates: Record<string, KnowledgeState>;
   recentEvidences: LearningEvidence[];
   dailyPlan: DailyPlan | null;
   fatigue: SessionFatigueState;
+  sessionState: SessionState | null;
   recommendationHistory: {
     timestamp: number;
     actionId: string;

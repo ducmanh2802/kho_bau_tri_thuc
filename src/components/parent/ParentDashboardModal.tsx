@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { StorageService } from '../../services/storage';
 import { AdaptiveService, ParentDiagnosticReport, ReadingProgressReport } from '../../services/adaptive';
 import { DecisionEngine } from '../../services/decisionEngine';
-import type { DecisionOutput } from '../../types';
+import { adaptiveDifficulty, describeLevel } from '../../services/adaptiveDifficulty';
+import type { DecisionOutput, KnowledgeState, SessionProfileKind } from '../../types';
 import { ParentSettings } from '../../types';
 import { sound } from '../../services/sound';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
@@ -10,6 +11,7 @@ import {
   Lock,
   X,
   Clock,
+  Timer,
   BookOpen,
   CheckCircle,
   AlertTriangle,
@@ -47,11 +49,24 @@ export const ParentDashboardModal: React.FC<ParentDashboardModalProps> = ({
   const [report, setReport] = useState<ParentDiagnosticReport | null>(null);
   const [readingReport, setReadingReport] = useState<ReadingProgressReport | null>(null);
   const [decisionReport, setDecisionReport] = useState<DecisionOutput | null>(null);
-  const [activeTab, setActiveTab] = useState<
+const [activeTab, setActiveTab] = useState<
     'progress' | 'reading' | 'insights' | 'competition' | 'kidbox' | 'settings'
   >('progress');
   const [showSeedConfirm, setShowSeedConfirm] = useState(false);
   const dialogRef = useFocusTrap<HTMLDivElement>(isOpen);
+
+  // Per-skill adaptive profiles for the insights tab
+  const skillProfiles = useMemo(() => {
+    const knowledgeMap = StorageService.getKnowledgeStates();
+    const profiles: Record<string, ReturnType<typeof adaptiveDifficulty.getSkillProfile>> = {};
+    for (const [skillId, state] of Object.entries(knowledgeMap)) {
+      if (state.attemptCount > 0) {
+        const profile = adaptiveDifficulty.getSkillProfile(skillId, knowledgeMap);
+        if (profile) profiles[skillId] = profile;
+      }
+    }
+    return profiles;
+  }, [decisionReport, report]);
 
   /**
    * When the gate screen is replaced by the dashboard, the focused submit button
@@ -116,6 +131,34 @@ export const ParentDashboardModal: React.FC<ParentDashboardModalProps> = ({
 
   const handleToggleAutoplay = () => {
     const next = { ...settings, questionAutoplay: !settings.questionAutoplay };
+    setSettings(next);
+    StorageService.saveParentSettings(next);
+    sound.playClick();
+  };
+
+  const handleUpdateSessionProfile = (profile: SessionProfileKind) => {
+    const next = { ...settings, defaultSessionProfile: profile };
+    setSettings(next);
+    StorageService.saveParentSettings(next);
+    sound.playClick();
+  };
+
+  const handleToggleAdvancedQuestions = () => {
+    const next = { ...settings, allowAdvancedQuestions: !settings.allowAdvancedQuestions };
+    setSettings(next);
+    StorageService.saveParentSettings(next);
+    sound.playClick();
+  };
+
+  const handleUpdateReviewIntensity = (intensity: 'light' | 'standard' | 'intensive') => {
+    const next = { ...settings, reviewIntensity: intensity };
+    setSettings(next);
+    StorageService.saveParentSettings(next);
+    sound.playClick();
+  };
+
+  const handleToggleOptionalBreaks = () => {
+    const next = { ...settings, optionalBreaks: !settings.optionalBreaks };
     setSettings(next);
     StorageService.saveParentSettings(next);
     sound.playClick();
@@ -563,6 +606,49 @@ export const ParentDashboardModal: React.FC<ParentDashboardModalProps> = ({
                     </div>
                   )}
 
+                  {/* Per-Skill Adaptive Level Display */}
+                  <div className="p-5 bg-white border border-slate-200 rounded-2xl">
+                    <h4 className="text-sm font-black text-slate-900 mb-3 flex items-center gap-2">
+                      <Target className="w-5 h-5 text-blue-600" />
+                      Độ Khó Thích Ứng Theo Kỹ Năng
+                    </h4>
+                    <p className="text-xs text-slate-500 mb-3">
+                      Mỗi kỹ năng có độ khó riêng (L1–L5). Độ khó tăng khi bé trả lời ĐỘC LẬP đạt chuẩn; giảm tạm thời khi cần hỗ trợ.
+                    </p>
+                    <div className="space-y-2 max-h-64 overflow-y-auto">
+{Object.entries(skillProfiles)
+                        .filter(([, profile]) => profile !== null)
+                        .map(([skillId, profile]) => {
+                          const p = profile!;
+                          return (
+                            <div key={skillId} className="p-3 bg-slate-50 border border-slate-200 rounded-xl flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-xs">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-bold text-slate-900">{p.skillName}</span>
+                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
+                                  p.currentLevel <= 2 ? 'bg-blue-100 text-blue-800' :
+                                  p.currentLevel === 3 ? 'bg-amber-100 text-amber-800' :
+                                  p.currentLevel === 4 ? 'bg-orange-100 text-orange-800' :
+                                  'bg-red-100 text-red-800'
+                                }`}>
+                                  L{p.currentLevel} — {describeLevel(p.currentLevel)}
+                                </span>
+                              </div>
+                              <div className="flex flex-wrap items-center gap-3 text-[10px] font-medium text-slate-600">
+                                <span>Độc lập: {p.independentAccuracy}% ({p.independentCorrect}/{p.independentAttempts})</span>
+                                <span>Hỗ trợ: {p.assistedAccuracy}% ({p.assistedCorrect}/{p.assistedAttempts})</span>
+                                <span>Gợi ý: {p.hintUsage}</span>
+                                <span>Thử: {p.totalAttempts}</span>
+                                <span>Giữ vững: {p.retentionEvidence.totalReviews > 0 ? Math.round((p.retentionEvidence.correctOnReview / p.retentionEvidence.totalReviews) * 100) : 0}%</span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      {Object.keys(skillProfiles).length === 0 && (
+                        <p className="text-xs text-slate-500 text-center py-4">Bé chưa có dữ liệu luyện tập nào. Hãy bắt đầu một bài học để xem phân tích!</p>
+                      )}
+                    </div>
+                  </div>
+
                   {/* Pedagogical Advice */}
                   <div className="p-5 bg-amber-50 border border-amber-200 rounded-2xl">
                     <h4 className="text-sm font-black text-amber-900 mb-3 flex items-center gap-2">
@@ -898,6 +984,82 @@ export const ParentDashboardModal: React.FC<ParentDashboardModalProps> = ({
                       >
                         {settings.questionAutoplay ? 'Bật' : 'Tắt'}
                       </button>
+                    </div>
+                  </div>
+
+                  {/* Session Profile Settings */}
+                  <div className="p-5 bg-slate-50 border border-slate-200 rounded-2xl space-y-3">
+                    <h4 className="text-sm font-black text-slate-800 mb-2 flex items-center gap-2">
+                      <Timer className="w-5 h-5 text-amber-600" />
+                      Cấu Hình Phiên Luyện Tập (Adaptive Learning)
+                    </h4>
+                    <p className="text-xs text-slate-500 mb-2">
+                      Chọn độ dài mặc định của phiên học. Bé có thể chọn phiên ngắn hơn khi bắt đầu.
+                    </p>
+
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between py-2 border-b border-slate-200 text-xs">
+                        <div>
+                          <span className="font-bold text-slate-800 block">Độ dài phiên mặc định</span>
+                          <span className="text-slate-500">Số câu hỏi mỗi lần luyện tập</span>
+                        </div>
+                        <select
+                          value={settings.defaultSessionProfile}
+                          onChange={(e) => handleUpdateSessionProfile(e.target.value as SessionProfileKind)}
+                          className="px-3 py-1.5 rounded-lg border border-slate-300 bg-white text-slate-800 text-xs font-bold cursor-pointer"
+                        >
+                          <option value="QUICK">Nhanh (8-10 câu)</option>
+                          <option value="STANDARD">Tiêu chuẩn (15-20 câu)</option>
+                          <option value="DEEP">Sâu (25-30 câu)</option>
+                          <option value="EXTENDED">Mở rộng (35-40 câu)</option>
+                        </select>
+                      </div>
+
+                      <div className="flex items-center justify-between py-2 text-xs">
+                        <div>
+                          <span className="font-bold text-slate-800 block">Cho phép câu hỏi nâng cao (L4-L5)</span>
+                          <span className="text-slate-500">Bật sau khi bé đã nắm vững cơ bản</span>
+                        </div>
+                        <button
+                          onClick={handleToggleAdvancedQuestions}
+                          className={`px-3 py-1.5 rounded-lg font-bold text-xs ${
+                            settings.allowAdvancedQuestions ? 'bg-emerald-600 text-white' : 'bg-slate-300 text-slate-700'
+                          }`}
+                        >
+                          {settings.allowAdvancedQuestions ? 'Bật' : 'Tắt'}
+                        </button>
+                      </div>
+
+                      <div className="flex items-center justify-between py-2 text-xs">
+                        <div>
+                          <span className="font-bold text-slate-800 block">Cường độ ôn tập khoảng cách</span>
+                          <span className="text-slate-500">Mức độ trộn câu hỏi ôn lại vào phiên</span>
+                        </div>
+                        <select
+                          value={settings.reviewIntensity}
+                          onChange={(e) => handleUpdateReviewIntensity(e.target.value as 'light' | 'standard' | 'intensive')}
+                          className="px-3 py-1.5 rounded-lg border border-slate-300 bg-white text-slate-800 text-xs font-bold cursor-pointer"
+                        >
+                          <option value="light">Nhẹ (ít ôn tập hơn)</option>
+                          <option value="standard">Tiêu chuẩn</option>
+                          <option value="intensive">Tăng cường (nhiều ôn tập hơn)</option>
+                        </select>
+                      </div>
+
+                      <div className="flex items-center justify-between py-2 text-xs">
+                        <div>
+                          <span className="font-bold text-slate-800 block">Cho phép nghỉ giải lao</span>
+                          <span className="text-slate-500">Hiện nút tạm dừng trong phiên dài (không ép bé học liên tục)</span>
+                        </div>
+                        <button
+                          onClick={handleToggleOptionalBreaks}
+                          className={`px-3 py-1.5 rounded-lg font-bold text-xs ${
+                            settings.optionalBreaks ? 'bg-emerald-600 text-white' : 'bg-slate-300 text-slate-700'
+                          }`}
+                        >
+                          {settings.optionalBreaks ? 'Bật' : 'Tắt'}
+                        </button>
+                      </div>
                     </div>
                   </div>
 

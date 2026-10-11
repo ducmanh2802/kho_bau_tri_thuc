@@ -1,22 +1,25 @@
 import {
   ActionType,
+  AdaptiveLevel,
   DailyPlan,
   DailyPlanItem,
   EvidenceDifficulty,
+  EvidenceReductionResult,
   KnowledgeState,
   KnowledgeStatus,
   LearningAction,
   LearningEvidence,
+  ProgressionDecision,
   RecommendationExplanation,
   SessionFatigueState,
 } from '../types/learningOS';
-import { SubjectType } from '../types';
+import { SessionProfileKind, SubjectType } from '../types';
 import { getAllSkills } from '../data/curriculum';
 import { COMPETITION_SKILLS } from '../data/competitionTaxonomy';
-import { SPEED_POLICY } from '../config/policy';
+import { ADAPTIVE_DIFFICULTY_POLICY, SPEED_POLICY } from '../config/policy';
 
 export const LEARNING_OS_POLICY = {
-  POLICY_VERSION: 'P28-v1',
+  POLICY_VERSION: 'P41-v1',
   MIN_DAILY_MINUTES: 10,
   MAX_DAILY_MINUTES: 20,
   DEFAULT_DAILY_ITEMS: 3,
@@ -27,12 +30,21 @@ export const LEARNING_OS_POLICY = {
   OVERPRACTICE_THRESHOLD: 15,
   MASTERY_HIGH_THRESHOLD: 85,
   MASTERY_LOW_THRESHOLD: 60,
-  SPACED_INTERVAL_DAYS: 3,
+  /** Expanding spaced-review ladder in days (retention evidence moves up it). */
+  SPACED_INTERVAL_DAYS: ADAPTIVE_DIFFICULTY_POLICY.SPACED_REVIEW_INTERVAL_DAYS,
+  /** Consecutive successful reviews that pull the ladder index forward. */
+  RETENTION_STRENGTHEN_AFTER: 2,
 };
+
+const DAY_MS = 24 * 3600 * 1000;
 
 export class LearningOS {
   /**
    * Initializes a pristine default knowledge state for a skill.
+   *
+   * The adaptive fields (level, independence counters, misconception map,
+   * retention evidence) start empty on purpose: difficulty only ever moves on
+   * real demonstrated evidence, never on a fresh profile.
    */
   public static createInitialKnowledgeState(
     skillId: string,
@@ -52,6 +64,15 @@ export class LearningOS {
       correctCount: 0,
       consecutiveCorrect: 0,
       consecutiveIncorrect: 0,
+      independentAttempts: 0,
+      independentCorrect: 0,
+      assistedAttempts: 0,
+      assistedCorrect: 0,
+      hintCount: 0,
+      currentLevel: ADAPTIVE_DIFFICULTY_POLICY.DEFAULT_STARTING_LEVEL,
+      levelHistory: [],
+      misconceptionCategories: {},
+      retentionEvidence: { correctOnReview: 0, totalReviews: 0 },
       difficultyPerformance: {
         easy: { attempts: 0, correct: 0 },
         medium: { attempts: 0, correct: 0 },
@@ -73,12 +94,33 @@ export class LearningOS {
   /**
    * Pure deterministic reducer: consumes an existing KnowledgeState and a new LearningEvidence
    * and computes the updated KnowledgeState.
+   *
+   * This is the single canonical fold for the whole app — lessons, games,
+   * review and competition evidence all arrive here, so per-skill adaptive
+   * difficulty, mastery and review scheduling stay consistent everywhere.
+   * Use {@link LearningOS.reduceEvidenceDetailed} when the caller also needs
+   * the explainable progression decision.
    */
   public static reduceEvidence(
     prev: KnowledgeState,
     evidence: LearningEvidence
   ): KnowledgeState {
+    return LearningOS.reduceEvidenceDetailed(prev, evidence).newState;
+  }
+
+  /**
+   * Same deterministic fold as `reduceEvidence`, but also returns the adaptive
+   * progression decision (level up / level down / support) that the evidence
+   * triggered, so callers can explain it to parents and children.
+   */
+  public static reduceEvidenceDetailed(
+    prev: KnowledgeState,
+    evidence: LearningEvidence
+  ): EvidenceReductionResult {
     const isCorrect = evidence.correct;
+    // An answer given after a hint is assistance, not independence. Only
+    // independent answers can ever raise the demonstrated level.
+    const isIndependent = evidence.usedHint !== true;
     const attemptCount = prev.attemptCount + 1;
     const correctCount = isCorrect ? prev.correctCount + 1 : prev.correctCount;
     const consecutiveCorrect = isCorrect ? prev.consecutiveCorrect + 1 : 0;
@@ -106,7 +148,13 @@ export class LearningOS {
       else errorProfile.unclassified += 1;
     }
 
-    // Response time rolling average
+    // Misconception categories drive distractor design and remediation
+    const misconceptionCategories = { ...prev.misconceptionCategories };
+    if (!isCorrect && evidence.errorType) {
+      misconceptionCategories[evidence.errorType] = (misconceptionCategories[evidence.errorType] || 0) + 1;
+    }
+
+    // Response time rolling average (never used to punish a slow reader)
     let averageResponseTimeMs = prev.averageResponseTimeMs;
     if (evidence.responseTimeMs && evidence.responseTimeMs > 0) {
       if (!averageResponseTimeMs) {
@@ -159,13 +207,60 @@ export class LearningOS {
       status = 'LEARNING';
     }
 
-    // Schedule spaced review if mastered
-    let nextReviewAt = prev.nextReviewAt;
-    if (status === 'MASTERED') {
-      nextReviewAt = evidence.timestamp + LEARNING_OS_POLICY.SPACED_INTERVAL_DAYS * 24 * 3600 * 1000;
+    // ==========================================================
+    // ADAPTIVE DIFFICULTY (per skill, evidence-driven)
+    // ==========================================================
+    const independentAttempts = isIndependent ? prev.independentAttempts + 1 : prev.independentAttempts;
+    const independentCorrect = isIndependent && isCorrect ? prev.independentCorrect + 1 : prev.independentCorrect;
+    const assistedAttempts = isIndependent ? prev.assistedAttempts : prev.assistedAttempts + 1;
+    const assistedCorrect = !isIndependent && isCorrect ? prev.assistedCorrect + 1 : prev.assistedCorrect;
+    const hintCount = evidence.usedHint ? prev.hintCount + 1 : prev.hintCount;
+
+    // Retention evidence is only counted from real review events, so spaced
+    // retrieval can prove that knowledge survived, not just that it existed.
+    const isReviewEvidence = evidence.source === 'REVIEW';
+    const retentionEvidence = isReviewEvidence
+      ? {
+          correctOnReview: prev.retentionEvidence.correctOnReview + (isCorrect ? 1 : 0),
+          totalReviews: prev.retentionEvidence.totalReviews + 1,
+        }
+      : prev.retentionEvidence;
+
+    const levelHistory: KnowledgeState['levelHistory'] = [...prev.levelHistory];
+    const needsSupport =
+      consecutiveIncorrect >= ADAPTIVE_DIFFICULTY_POLICY.SUPPORT_TRIGGER_CONSECUTIVE_INCORRECT ||
+      (independentAttempts >= ADAPTIVE_DIFFICULTY_POLICY.MIN_ATTEMPTS_AT_LEVEL &&
+        recentAccuracy < ADAPTIVE_DIFFICULTY_POLICY.REGRESSION_ACCURACY_THRESHOLD);
+
+    const progression = LearningOS.evaluateProgression({
+      state: prev,
+      independentCorrect,
+      independentAttempts,
+      recentAccuracy,
+      consecutiveCorrect,
+      needsSupport,
+      timestamp: evidence.timestamp,
+    });
+
+    let currentLevel = prev.currentLevel;
+    if (progression) {
+      currentLevel = progression.newLevel;
+      levelHistory.push({ level: progression.newLevel, timestamp: evidence.timestamp, reason: progression.reason });
     }
 
-    return {
+    // Schedule spaced review with an expanding interval. A mastered skill is
+    // re-checked sooner the first time and later once retention is proven.
+    let nextReviewAt = prev.nextReviewAt;
+    if (status === 'MASTERED') {
+      const strengthening =
+        retentionEvidence.totalReviews > 0 &&
+        retentionEvidence.correctOnReview >= LEARNING_OS_POLICY.RETENTION_STRENGTHEN_AFTER;
+      const ladder = LEARNING_OS_POLICY.SPACED_INTERVAL_DAYS;
+      const index = strengthening ? Math.min(ladder.length - 1, 2) : 0;
+      nextReviewAt = evidence.timestamp + ladder[index] * DAY_MS;
+    }
+
+    const newState: KnowledgeState = {
       skillId: prev.skillId,
       skillName: prev.skillName,
       subject: prev.subject,
@@ -178,6 +273,15 @@ export class LearningOS {
       correctCount,
       consecutiveCorrect,
       consecutiveIncorrect,
+      independentAttempts,
+      independentCorrect,
+      assistedAttempts,
+      assistedCorrect,
+      hintCount,
+      currentLevel,
+      levelHistory,
+      misconceptionCategories,
+      retentionEvidence,
       lastPracticedAt: evidence.timestamp,
       lastCorrectAt: isCorrect ? evidence.timestamp : prev.lastCorrectAt,
       lastIncorrectAt: !isCorrect ? evidence.timestamp : prev.lastIncorrectAt,
@@ -187,7 +291,122 @@ export class LearningOS {
       nextReviewAt,
       evidenceVersion: prev.evidenceVersion + 1,
     };
+
+    return { newState, progression };
   }
+
+  /**
+   * Adaptive progression rules for one skill.
+   *
+   * Rules (all configurable in ADAPTIVE_DIFFICULTY_POLICY):
+   *  - Level rises only after repeated INDEPENDENT success across different
+   *    questions (hinted answers never count), with accuracy above the
+   *    progression threshold and enough attempts at the current level.
+   *  - Level drops by at most one step and only for support (consecutive
+   *    failures or accuracy collapse) — a single mistake never demotes.
+   *  - A skill that just changed level must practise at it before moving again,
+   *    so levels cannot oscillate.
+   */
+  private static evaluateProgression(input: {
+    state: KnowledgeState;
+    independentCorrect: number;
+    independentAttempts: number;
+    recentAccuracy: number;
+    consecutiveCorrect: number;
+    needsSupport: boolean;
+    timestamp: number;
+  }): ProgressionDecision | null {
+    const {
+      state,
+      independentCorrect,
+      independentAttempts,
+      recentAccuracy,
+      consecutiveCorrect,
+      needsSupport,
+      timestamp,
+    } = input;
+    const policy = ADAPTIVE_DIFFICULTY_POLICY;
+    const currentLevel = state.currentLevel;
+    const reasons: string[] = [];
+    reasons.push(`${state.attemptCount + 1} lượt làm bài`);
+    reasons.push(`Chính xác gần đây ${recentAccuracy}%`);
+
+    // Support first: never punish, only scaffold.
+    if (needsSupport && currentLevel > policy.DEFAULT_STARTING_LEVEL) {
+      const newLevel = Math.max(
+        policy.DEFAULT_STARTING_LEVEL,
+        currentLevel - policy.MAX_LEVEL_DROP_PER_EVENT
+      ) as AdaptiveLevel;
+      return {
+        skillId: state.skillId,
+        previousLevel: currentLevel,
+        newLevel,
+        reason: 'Cần hỗ trợ — tạm thời giảm độ khó để củng cố',
+        evidence: [...reasons, `${state.consecutiveIncorrect + 1} lần chưa đúng gần đây`],
+        timestamp,
+      };
+    }
+
+    // Enough practice at the current level before it may change.
+    // Use the NEW attempt count (state.attemptCount + 1) since progression
+    // is evaluated after folding in the current evidence.
+    const newAttemptCount = state.attemptCount + 1;
+    const attemptsAtLevel = LearningOS.attemptsAtCurrentLevel(state, newAttemptCount);
+    if (attemptsAtLevel < policy.MIN_ATTEMPTS_AT_LEVEL) return null;
+    if (independentAttempts < policy.MIN_ATTEMPTS_AT_LEVEL) return null;
+    if (independentCorrect < policy.MIN_INDEPENDENT_FOR_PROGRESSION) return null;
+    if (consecutiveCorrect < policy.MIN_INDEPENDENT_FOR_PROGRESSION) return null;
+    if (recentAccuracy < policy.PROGRESSION_ACCURACY_THRESHOLD) return null;
+    if (currentLevel >= policy.MAX_LEVEL) return null;
+
+    const newLevel = Math.min(policy.MAX_LEVEL, currentLevel + 1) as AdaptiveLevel;
+    return {
+      skillId: state.skillId,
+      previousLevel: currentLevel,
+      newLevel,
+      reason: 'Tăng độ khó — bé trả lời độc lập đạt chuẩn',
+      evidence: [
+        ...reasons,
+        `${independentCorrect}/${independentAttempts} câu đúng không cần gợi ý`,
+        `${consecutiveCorrect} câu đúng liên tiếp`,
+      ],
+      timestamp,
+    };
+  }
+
+  /**
+   * Attempts spent at the current level. A fresh level (or a level that was
+   * just entered) requires MIN_ATTEMPTS_AT_LEVEL new evidence before the next
+   * change, which is what prevents level oscillation.
+   *
+   * @param state The knowledge state BEFORE the current evidence is applied
+   * @param newAttemptCount The attempt count AFTER the current evidence (state.attemptCount + 1)
+   */
+  private static attemptsAtCurrentLevel(state: KnowledgeState, newAttemptCount: number): number {
+    const history = state.levelHistory;
+    if (history.length === 0) return newAttemptCount;
+    const lastChange = history[history.length - 1];
+    if (lastChange.level === state.currentLevel) {
+      // Approximate the boundary by attempt volume: each level change is only
+      // granted after MIN_ATTEMPTS_AT_LEVEL attempts, so the attempts recorded
+      // after the last change are the ones at the current level.
+      return Math.max(0, newAttemptCount - history.length * ADAPTIVE_DIFFICULTY_POLICY.MIN_ATTEMPTS_AT_LEVEL);
+    }
+    return newAttemptCount;
+  }
+
+  /** Independent accuracy (0-100): answers without any hint. */
+  public static independentAccuracy(state: KnowledgeState): number {
+    if (state.independentAttempts === 0) return 0;
+    return Math.round((state.independentCorrect / state.independentAttempts) * 100);
+  }
+
+  /** Assisted accuracy (0-100): answers given after a hint. */
+  public static assistedAccuracy(state: KnowledgeState): number {
+    if (state.assistedAttempts === 0) return 0;
+    return Math.round((state.assistedCorrect / state.assistedAttempts) * 100);
+  }
+
 
   /**
    * Generates prioritized list of Next Best Actions based on knowledge states, fatigue, and policy.

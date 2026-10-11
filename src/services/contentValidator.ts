@@ -3,7 +3,7 @@ import { COMPETITION_QUESTIONS, COMPETITION_BANK_VERSION } from '../data/competi
 import { COMPETITION_SKILLS } from '../data/competitionTaxonomy';
 import { EXAM_BLUEPRINTS } from '../data/competitionBlueprints';
 import { READING_QUESTIONS, READING_PASSAGES, READING_SKILLS } from '../data/readingContent';
-import { CONTENT_POLICY } from '../config/policy';
+import { CONTENT_POLICY, CURRICULUM_POLICY } from '../config/policy';
 import { getAllQuestions as getCurriculumQuestions } from '../data/curriculum';
 import type { Question } from '../types';
 import { runKidBoxContentValidation } from './kidBoxValidator';
@@ -285,6 +285,27 @@ function validateCurriculumQuestion(q: Question): ValidationIssue[] {
 
   if (!q.prompt?.trim()) push('EMPTY_PROMPT', 'Câu hỏi thiếu nội dung.');
   if (!q.skillId) push('MISSING_SKILL', 'Câu hỏi thiếu skillId.');
+  if (![1, 2, 3].includes(q.difficulty)) push('INVALID_DIFFICULTY', `difficulty phải là 1, 2 hoặc 3, nhận được ${q.difficulty}.`);
+  if (!q.explanation?.trim()) push('MISSING_EXPLANATION', 'Câu hỏi thiếu giải thích (explanation).', 'WARNING');
+  if (!q.hint?.trim()) push('MISSING_HINT', 'Câu hỏi thiếu gợi ý (hint).', 'WARNING');
+
+  // Answer leak detection: parenthetical in prompt containing the correct answer
+  if (q.type === 'fill-blank' && q.prompt) {
+    const leakMatch = q.prompt.match(/\(([^)]+)\)/);
+    if (leakMatch && leakMatch[1].trim().toLowerCase() === String(q.correctAnswer).trim().toLowerCase()) {
+      push('ANSWER_LEAK_IN_PROMPT', 'Prompt chứa đáp án đúng trong ngoặc đơn — học sinh có thể đoán được.', 'ERROR');
+    }
+  }
+
+  // Hint revealing answer
+  if (q.hint && q.correctAnswer) {
+    const hintLower = q.hint.toLowerCase();
+    const answerLower = String(q.correctAnswer).toLowerCase();
+    if (hintLower.includes(answerLower) && answerLower.length > 1) {
+      push('HINT_REVEALS_ANSWER', 'Gợi ý (hint) chứa đáp án đúng — hãy dùng gợi ý mang tính định hướng.', 'WARNING');
+    }
+  }
+
   if (Array.isArray(q.correctAnswer)) {
     for (const item of q.correctAnswer) {
       if (!q.options?.includes(item)) push('ANSWER_NOT_IN_OPTIONS', `Đáp án "${item}" không có trong options.`);
@@ -294,7 +315,66 @@ function validateCurriculumQuestion(q: Question): ValidationIssue[] {
   }
   if (q.options && new Set(q.options).size !== q.options.length)
     push('DUPLICATE_OPTIONS', 'Options bị trùng.');
+
+  // Choice types should have at least 3 options for Grade 1 (2 is too easy to guess)
+  if (q.options && ['multiple-choice', 'image-choice', 'audio-choice', 'fill-blank'].includes(q.type)) {
+    if (q.options.length < 3) {
+      push('FEW_OPTIONS', `Loại ${q.type} nên có ít nhất 3 phương án (hiện có ${q.options.length}).`, 'WARNING');
+    }
+  }
+
   return issues;
+}
+
+const CHOICE_LIKE_CURRICULUM_TYPES = ['multiple-choice', 'image-choice', 'audio-choice', 'fill-blank'];
+
+export interface CurriculumPositionStat {
+  total: number;
+  positions: Record<number, number>;
+  maxShare: number;
+}
+
+export interface CurriculumPositionReport {
+  bySubject: Record<string, CurriculumPositionStat>;
+  overall: CurriculumPositionStat;
+}
+
+/**
+ * P41 §5 — answer-position distribution across the whole lesson bank. Before the
+ * optionBalance agent this read 80/84 at index 0 (95%); the gate now keeps every
+ * subject under CURRICULUM_POLICY.MAX_ANSWER_POSITION_SHARE.
+ */
+export function buildCurriculumAnswerPositionReport(): CurriculumPositionReport {
+  const subjects = ['tieng-viet', 'toan', 'english'];
+  const bySubject: Record<string, CurriculumPositionStat> = {};
+  const overall: Record<number, number> = {};
+  let overallTotal = 0;
+
+  for (const subject of subjects) {
+    const positions: Record<number, number> = {};
+    let total = 0;
+    for (const q of getCurriculumQuestions()) {
+      if (q.subject !== subject) continue;
+      if (!CHOICE_LIKE_CURRICULUM_TYPES.includes(q.type)) continue;
+      if (typeof q.correctAnswer !== 'string') continue;
+      if (!q.options) continue;
+      const idx = q.options.indexOf(q.correctAnswer);
+      if (idx < 0) continue;
+      positions[idx] = (positions[idx] ?? 0) + 1;
+      overall[idx] = (overall[idx] ?? 0) + 1;
+      total += 1;
+      overallTotal += 1;
+    }
+    bySubject[subject] = { total, positions, maxShare: maxShareOf(positions, total) };
+  }
+
+  return { bySubject, overall: { total: overallTotal, positions: overall, maxShare: maxShareOf(overall, overallTotal) } };
+}
+
+function maxShareOf(positions: Record<number, number>, total: number): number {
+  if (total === 0) return 0;
+  const max = Math.max(...Object.values(positions));
+  return Math.round((max / total) * 100) / 100;
 }
 
 /** Builds the coverage matrix (Subject → Topic → Skill → Difficulty → Type). */
@@ -422,7 +502,79 @@ export function runContentValidation(): ValidationReport {
   }
 
   // --- Curriculum bank -----------------------------------------------------
-  for (const q of getCurriculumQuestions()) issues.push(...validateCurriculumQuestion(q));
+  const curriculumQuestions = getCurriculumQuestions();
+  for (const q of curriculumQuestions) issues.push(...validateCurriculumQuestion(q));
+
+  // Curriculum near-duplicate detection (within subject)
+  const seenCurriculumPrompts: { id: string; prompt: string }[] = [];
+  for (const q of curriculumQuestions) {
+    for (const prev of seenCurriculumPrompts) {
+      if (prev.id === q.id) continue;
+      const sim = semanticSimilarity(prev.prompt, q.prompt);
+      if (sim >= CONTENT_POLICY.DUPLICATE_PROMPT_SIMILARITY) {
+        issues.push({
+          severity: 'ERROR',
+          scope: `curriculum:${q.id}`,
+          code: 'SEMANTIC_DUPLICATE',
+          message: `Câu hỏi chương trình trùng ý với "${prev.id}" (độ tương đồng ${sim.toFixed(2)}).`,
+        });
+      } else if (sim >= 0.75) {
+        issues.push({
+          severity: 'WARNING',
+          scope: `curriculum:${q.id}`,
+          code: 'NEAR_DUPLICATE',
+          message: `Câu hỏi chương trình gần giống "${prev.id}" (độ tương đồng ${sim.toFixed(2)}).`,
+        });
+      }
+    }
+    seenCurriculumPrompts.push({ id: q.id, prompt: q.prompt });
+  }
+
+  // Curriculum skill depth check (each skill should have >= 2 questions)
+  const skillCounts: Record<string, number> = {};
+  for (const q of curriculumQuestions) {
+    skillCounts[q.skillId] = (skillCounts[q.skillId] || 0) + 1;
+  }
+  for (const [skillId, count] of Object.entries(skillCounts)) {
+    if (count < 2) {
+      issues.push({
+        severity: 'WARNING',
+        scope: `curriculum:skill:${skillId}`,
+        code: 'SKILL_UNDER_SUPPLIED',
+        message: `Kỹ năng "${skillId}" chỉ có ${count} câu hỏi (khuyến nghị ≥ 2).`,
+      });
+    }
+  }
+
+  // Curriculum difficulty spread per subject
+  const subjectDifficulty: Record<string, Set<number>> = { 'tieng-viet': new Set(), toan: new Set(), english: new Set() };
+  for (const q of curriculumQuestions) {
+    subjectDifficulty[q.subject].add(q.difficulty);
+  }
+  for (const [subject, diffs] of Object.entries(subjectDifficulty)) {
+    if (!diffs.has(3)) {
+      issues.push({
+        severity: 'WARNING',
+        scope: `curriculum:subject:${subject}`,
+        code: 'MISSING_DIFFICULTY_3',
+        message: `Môn ${subject} thiếu câu hỏi difficulty 3 (thử thách).`,
+      });
+    }
+  }
+
+  // Curriculum answer-position bias (P41 §5) — correct answer must not always
+  // sit at the same option index. Kept as ERROR so the gate cannot regress.
+  const positionReport = buildCurriculumAnswerPositionReport();
+  for (const [subject, stat] of Object.entries(positionReport.bySubject)) {
+    if (stat.total > 0 && stat.maxShare > CURRICULUM_POLICY.MAX_ANSWER_POSITION_SHARE) {
+      issues.push({
+        severity: 'ERROR',
+        scope: `curriculum:subject:${subject}`,
+        code: 'ANSWER_POSITION_BIAS',
+        message: `Môn ${subject}: vị trí đáp án đúng tập trung ${(stat.maxShare * 100).toFixed(0)}% tại một ô (giới hạn ${(CURRICULUM_POLICY.MAX_ANSWER_POSITION_SHARE * 100).toFixed(0)}%).`,
+      });
+    }
+  }
 
   // --- Kid's Box Companion (§28) ------------------------------------------
   // The companion track reuses this report format so there is exactly one
