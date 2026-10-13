@@ -2,8 +2,8 @@ import { describe, it, expect } from 'vitest';
 import { ENGLISH_TOPICS } from '../src/data/englishCurriculum';
 
 describe('English Curriculum Quality & Pedagogical Invariants', () => {
-  it('contains 10 age-appropriate topics for primary Grade 1 English learners', () => {
-    expect(ENGLISH_TOPICS.length).toBe(10);
+  it('contains 11 age-appropriate topics for primary Grade 1 English learners', () => {
+    expect(ENGLISH_TOPICS.length).toBe(11);
     const expectedIds = [
       'eng-alphabet',
       'eng-numbers',
@@ -15,6 +15,7 @@ describe('English Curriculum Quality & Pedagogical Invariants', () => {
       'eng-food',
       'eng-toys',
       'eng-greetings',
+      'eng-phonics-advanced',
     ];
     for (const id of expectedIds) {
       const topic = ENGLISH_TOPICS.find((t) => t.id === id);

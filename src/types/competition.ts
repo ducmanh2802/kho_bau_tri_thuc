@@ -63,7 +63,7 @@ export interface CompetitionQuestion {
   version: number;
 }
 
-export type ExamMode = 'mini_test' | 'full_mock' | 'speed_trial' | 'skill_practice';
+export type ExamMode = 'mini_test' | 'full_mock' | 'speed_trial' | 'skill_practice' | 'tournament';
 
 export interface ExamSection {
   id: string;

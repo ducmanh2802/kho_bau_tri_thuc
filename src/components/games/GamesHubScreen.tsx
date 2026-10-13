@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useMemo, useState } from 'react';
 import { sound } from '../../services/sound';
-import { ArrowLeft, Play, Gamepad2, Star, Sparkles, Crown } from 'lucide-react';
+import { ArrowLeft, Play, Gamepad2, Star } from 'lucide-react';
 import { StorageService } from '../../services/storage';
 import { GAME_LEVEL_POLICY } from '../../config/policy';
 import { getTierMeta } from '../../data/gameLevels';
@@ -9,13 +9,17 @@ import { SyllableBuilderGame } from './SyllableBuilderGame';
 import { RhymeHunterGame } from './RhymeHunterGame';
 import { SentenceScrambleGame } from './SentenceScrambleGame';
 import { ListenPickPhonicsGame } from './ListenPickPhonicsGame';
+import { SpellingDuelGame } from './SpellingDuelGame';
 import { FallingNumbersMathGame } from './FallingNumbersMathGame';
 import { MathSpeedRacingGame } from './MathSpeedRacingGame';
 import { NumberTowerGame } from './NumberTowerGame';
 import { OceanFishingGame } from './OceanFishingGame';
 import { ShapeSortingGame } from './ShapeSortingGame';
+import { ClockMoneyGame } from './ClockMoneyGame';
+import { WordStoryGame } from './WordStoryGame';
 import { EnglishAnimalSoundGame } from './EnglishAnimalSoundGame';
 import { EnglishColorBalloonGame } from './EnglishColorBalloonGame';
+import { PhonicsPopGame } from './PhonicsPopGame';
 import { MemoryCardsGame } from './MemoryCardsGame';
 import { ColoringCanvasGame } from './ColoringCanvasGame';
 
@@ -31,6 +35,7 @@ interface GameInfo {
   description: string;
   skillTag: string;
   color: string;
+  isNew?: boolean;
 }
 
 const GAMES_CATALOG: GameInfo[] = [
@@ -90,6 +95,18 @@ const GAMES_CATALOG: GameInfo[] = [
     color: 'from-purple-400 to-pink-500',
   },
   {
+    id: 'spelling_duel',
+    title: 'Đấu Trường Chính Tả',
+    category: 'viet',
+    categoryLabel: 'Tiếng Việt',
+    emoji: '✏️',
+    mascot: '🦉 Cú Chấm Bài',
+    description: 'Chinh phục c/k, g/gh, ng/ngh, ch/tr, s/x, d/gi/r qua 6 màn đấu.',
+    skillTag: 'Chính tả phân biệt — sát đề Trạng Nguyên',
+    color: 'from-rose-400 to-orange-500',
+    isNew: true,
+  },
+  {
     id: 'falling_numbers',
     title: 'Hứng Số Rơi Rộn Ràng',
     category: 'math',
@@ -145,6 +162,30 @@ const GAMES_CATALOG: GameInfo[] = [
     color: 'from-lime-500 to-emerald-600',
   },
   {
+    id: 'clock_money',
+    title: 'Thám Hiểm Giờ & Tiền Việt',
+    category: 'math',
+    categoryLabel: 'Toán Học',
+    emoji: '⏰',
+    mascot: '🦊 Cáo Thời Gian',
+    description: 'Xem giờ đúng, tiêu tiền Việt, đo cm/m và đếm ngày tháng.',
+    skillTag: 'Đo lường & Thực tế — dạng thi mới',
+    color: 'from-cyan-500 to-blue-600',
+    isNew: true,
+  },
+  {
+    id: 'word_story',
+    title: 'Chuyện Kể Toán Học',
+    category: 'math',
+    categoryLabel: 'Toán Học',
+    emoji: '🔍',
+    mascot: '🐻 Thám Tử Nhí',
+    description: 'Đọc chuyện ngắn, giải toán lời văn từ dễ đến 100 như đề thi thật.',
+    skillTag: 'Toán lời văn 6 cấp độ',
+    color: 'from-indigo-500 to-violet-600',
+    isNew: true,
+  },
+  {
     id: 'animal_safari',
     title: 'Safari Tiếng Anh — Animals',
     category: 'english',
@@ -165,6 +206,18 @@ const GAMES_CATALOG: GameInfo[] = [
     description: 'Đập vỡ những quả bóng bay đúng màu sắc tiếng Anh theo yêu cầu.',
     skillTag: 'Màu sắc tiếng Anh',
     color: 'from-rose-400 to-pink-500',
+  },
+  {
+    id: 'phonics_pop',
+    title: 'Phonics Pop — Bắn Âm',
+    category: 'english',
+    categoryLabel: 'Tiếng Anh',
+    emoji: '🔤',
+    mascot: '🦉 Cú Phonics',
+    description: 'Nghe từ giọng Anh-Anh, bắn đúng âm đầu: SH, CH, TH, BL, GR…',
+    skillTag: 'Phonics nâng cao giọng Anh-Anh',
+    color: 'from-fuchsia-500 to-purple-600',
+    isNew: true,
   },
   {
     id: 'memory_cards',
@@ -190,12 +243,81 @@ const GAMES_CATALOG: GameInfo[] = [
   },
 ];
 
+/** Registry: game id -> component. Thêm game mới chỉ cần thêm 1 dòng ở đây + catalog. */
+const GAME_REGISTRY: Record<string, React.ComponentType<{ onExit: () => void }>> = {
+  catch_letters: CatchFallingLettersGame,
+  syllable_builder: SyllableBuilderGame,
+  rhyme_hunter: RhymeHunterGame,
+  sentence_scramble: SentenceScrambleGame,
+  listen_pick: ListenPickPhonicsGame,
+  spelling_duel: SpellingDuelGame,
+  falling_numbers: FallingNumbersMathGame,
+  speed_racing: MathSpeedRacingGame,
+  number_tower: NumberTowerGame,
+  ocean_fishing: OceanFishingGame,
+  shape_sorting: ShapeSortingGame,
+  clock_money: ClockMoneyGame,
+  word_story: WordStoryGame,
+  animal_safari: EnglishAnimalSoundGame,
+  color_balloon: EnglishColorBalloonGame,
+  phonics_pop: PhonicsPopGame,
+  memory_cards: MemoryCardsGame,
+  coloring_canvas: ColoringCanvasGame,
+};
+
+function GameProgressDots({ gameId }: { gameId: string }) {
+  const progress = StorageService.getGameProgress(gameId);
+  const maxTier = GAME_LEVEL_POLICY.MAX_TIER;
+  return (
+    <div className="mt-2 space-y-1">
+      <div className="flex items-center gap-1 text-[10px] text-slate-500 font-bold">
+        <span>{getTierMeta(progress.unlockedTier).emoji}</span>
+        <span>Màn {progress.unlockedTier}/{maxTier}</span>
+        <span className="ml-auto flex items-center gap-0.5">
+          ⭐ {Object.values(progress.starsByTier ?? {}).reduce((a: number, b: unknown) => a + (typeof b === 'number' ? b : 0), 0)}
+        </span>
+      </div>
+      <div className="flex gap-1">
+        {Array.from({ length: maxTier }, (_, i) => {
+          const tierNo = i + 1;
+          const stars = (progress.starsByTier as Record<number, number> | undefined)?.[tierNo] ?? 0;
+          const unlocked = tierNo <= progress.unlockedTier;
+          return (
+            <div
+              key={tierNo}
+              title={`Màn ${tierNo}: ${stars} sao`}
+              className="h-1.5 flex-1 rounded-full"
+              style={{
+                background: stars >= 3 ? '#f59e0b' : stars >= 1 ? '#fcd34d' : unlocked ? '#e2e8f0' : '#f1f5f9',
+                opacity: unlocked ? 1 : 0.5,
+              }}
+            />
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export const GamesHubScreen: React.FC<{ onBack: () => void; onProfileUpdate: () => void }> = ({
   onBack,
   onProfileUpdate,
 }) => {
   const [activeCategory, setActiveCategory] = useState<GameCategory>('all');
   const [activeGameId, setActiveGameId] = useState<string | null>(null);
+
+  const counts = useMemo(() => {
+    const c: Record<GameCategory | 'total', number> = {
+      total: GAMES_CATALOG.length,
+      all: GAMES_CATALOG.length,
+      viet: 0,
+      math: 0,
+      english: 0,
+      fun: 0,
+    };
+    for (const g of GAMES_CATALOG) c[g.category] += 1;
+    return c;
+  }, []);
 
   const filteredGames =
     activeCategory === 'all'
@@ -211,6 +333,8 @@ export const GamesHubScreen: React.FC<{ onBack: () => void; onProfileUpdate: () 
     setActiveGameId(null);
     onProfileUpdate();
   };
+
+  const ActiveGame = activeGameId ? GAME_REGISTRY[activeGameId] : null;
 
   return (
     <div className="w-full max-w-5xl mx-auto px-4 py-6 md:py-8 space-y-6 select-none">
@@ -230,13 +354,13 @@ export const GamesHubScreen: React.FC<{ onBack: () => void; onProfileUpdate: () 
         <div className="flex items-center gap-2 bg-purple-50 px-4 py-1.5 rounded-full border border-purple-200">
           <Gamepad2 className="w-4 h-4 text-purple-600" />
           <span className="text-xs font-black text-purple-900 font-display">
-            {GAMES_CATALOG.length} Trò Chơi Giáo Dục Có Thể Chơi Ngay
+            {counts.total} Trò Chơi Giáo Dục Có Thể Chơi Ngay
           </span>
         </div>
       </div>
 
       {/* Hero Games Banner */}
-      <div className="bg-gradient-to-r from-purple-500 via-indigo-500 to-pink-500 rounded-3xl p-6 md:p-8 text-white shadow-xl border-4 border-white/60 flex flex-col md:flex-row items-center justify-between gap-6">
+      <div className="animate-gradient kb-hero-pattern bg-gradient-to-r from-purple-500 via-indigo-500 to-pink-500 rounded-3xl p-6 md:p-8 text-white shadow-xl border-4 border-white/60 flex flex-col md:flex-row items-center justify-between gap-6">
         <div className="flex items-center gap-5 text-center md:text-left">
           <div className="w-20 h-20 md:w-24 md:h-24 bg-white rounded-3xl shadow-lg flex items-center justify-center text-5xl md:text-6xl border-4 border-purple-200 animate-float shrink-0">
             🎪
@@ -246,24 +370,32 @@ export const GamesHubScreen: React.FC<{ onBack: () => void; onProfileUpdate: () 
               Đấu Trường Trò Chơi Trí Tuệ
             </h1>
             <p className="text-xs md:text-sm text-purple-100 font-bold mt-1 max-w-lg leading-relaxed">
-              Vừa chơi vừa học! Mỗi trò chơi giúp bé rèn luyện phản xạ, luyện vần, tính nhẩm và từ vựng tiếng Anh.
+              Vừa chơi vừa học! 6 màn từ dễ đến Vua Trò Chơi 👑 — mỗi màn mở khóa màn tiếp theo, nhận Sao & XP.
             </p>
+            <div className="mt-2 flex flex-wrap gap-1.5 justify-center md:justify-start">
+              {GAME_LEVEL_POLICY.TIERS.map((t) => (
+                <span key={t.id} className="kb-chip text-[10px] bg-white/20 px-2 py-0.5 backdrop-blur-xs">
+                  {t.emoji} {t.name}
+                </span>
+              ))}
+            </div>
           </div>
         </div>
 
         <div className="px-4 py-2 bg-white/20 rounded-2xl text-xs font-black flex items-center gap-1.5 backdrop-blur-xs">
+          <Star className="w-4 h-4 fill-amber-300 text-amber-200" />
           <span>⭐ Nhận Sao & XP sau mỗi màn</span>
         </div>
       </div>
 
-      {/* Category Tabs */}
+      {/* Category Tabs — counts computed dynamically */}
       <div className="flex items-center gap-2 overflow-x-auto pb-2">
         {[
-          { id: 'all', label: 'Tất Cả (14)', icon: '🌟' },
-          { id: 'viet', label: 'Tiếng Việt (5)', icon: '📚' },
-          { id: 'math', label: 'Toán Học (5)', icon: '🔢' },
-          { id: 'english', label: 'Tiếng Anh (2)', icon: '🇬🇧' },
-          { id: 'fun', label: 'Giải Trí & Mỹ Thuật (2)', icon: '🎨' },
+          { id: 'all', label: `Tất Cả (${counts.all})`, icon: '🌟' },
+          { id: 'viet', label: `Tiếng Việt (${counts.viet})`, icon: '📚' },
+          { id: 'math', label: `Toán Học (${counts.math})`, icon: '🔢' },
+          { id: 'english', label: `Tiếng Anh (${counts.english})`, icon: '🇬🇧' },
+          { id: 'fun', label: `Giải Trí (${counts.fun})`, icon: '🎨' },
         ].map((tab) => (
           <button
             key={tab.id}
@@ -284,20 +416,27 @@ export const GamesHubScreen: React.FC<{ onBack: () => void; onProfileUpdate: () 
       </div>
 
       {/* Games Catalog Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 md:gap-5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 md:gap-5 stagger">
         {filteredGames.map((game) => (
           <div
             key={game.id}
-            className="bg-white rounded-3xl p-5 shadow-lg border-3 border-amber-200 hover:border-purple-400 transition-all duration-300 hover:-translate-y-1 flex flex-col justify-between group"
+            className="kb-card kb-card-hover rounded-3xl p-5 flex flex-col justify-between group animate-rise"
           >
             <div>
               <div className="flex items-start justify-between mb-3">
                 <span className="text-5xl group-hover:scale-110 transition-transform">
                   {game.emoji}
                 </span>
-                <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-1 bg-purple-50 text-purple-700 rounded-full border border-purple-200">
-                  {game.categoryLabel}
-                </span>
+                <div className="flex flex-col items-end gap-1">
+                  <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-1 bg-purple-50 text-purple-700 rounded-full border border-purple-200">
+                    {game.categoryLabel}
+                  </span>
+                  {game.isNew && (
+                    <span className="text-[10px] font-black uppercase px-2 py-0.5 bg-rose-500 text-white rounded-full animate-pulse-subtle">
+                      ✨ Mới
+                    </span>
+                  )}
+                </div>
               </div>
 
               <h3 className="text-base md:text-lg font-black text-slate-900 font-display">
@@ -311,12 +450,7 @@ export const GamesHubScreen: React.FC<{ onBack: () => void; onProfileUpdate: () 
                 <span className="text-[11px] font-bold text-amber-800 bg-amber-50 px-2.5 py-0.5 rounded-lg border border-amber-200">
                   🎯 {game.skillTag}
                 </span>
-                {game.id && (
-                  <div className="mt-2 flex items-center gap-1 text-[10px] text-slate-500">
-                    <span>{getTierMeta(StorageService.getGameProgress(game.id).unlockedTier).emoji}</span>
-                    <span>Màn {StorageService.getGameProgress(game.id).unlockedTier}</span>
-                  </div>
-                )}
+                <GameProgressDots gameId={game.id} />
               </div>
             </div>
 
@@ -324,7 +458,7 @@ export const GamesHubScreen: React.FC<{ onBack: () => void; onProfileUpdate: () 
               <span className="text-[11px] font-bold text-slate-400">{game.mascot}</span>
               <button
                 onClick={() => handleLaunchGame(game.id)}
-                className="px-4 py-2 bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 text-white font-black text-xs rounded-xl shadow-md flex items-center gap-1.5 transition-transform active:scale-95 cursor-pointer"
+                className="kb-btn kb-btn-primary px-4 py-2 bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 text-white font-black text-xs rounded-xl shadow-md flex items-center gap-1.5 cursor-pointer"
               >
                 <Play className="w-3.5 h-3.5 fill-white" />
                 <span>Chơi ngay</span>
@@ -334,21 +468,8 @@ export const GamesHubScreen: React.FC<{ onBack: () => void; onProfileUpdate: () 
         ))}
       </div>
 
-      {/* Render Active Game */}
-      {activeGameId === 'catch_letters' && <CatchFallingLettersGame onExit={handleCloseGame} />}
-      {activeGameId === 'syllable_builder' && <SyllableBuilderGame onExit={handleCloseGame} />}
-      {activeGameId === 'rhyme_hunter' && <RhymeHunterGame onExit={handleCloseGame} />}
-      {activeGameId === 'sentence_scramble' && <SentenceScrambleGame onExit={handleCloseGame} />}
-      {activeGameId === 'listen_pick' && <ListenPickPhonicsGame onExit={handleCloseGame} />}
-      {activeGameId === 'falling_numbers' && <FallingNumbersMathGame onExit={handleCloseGame} />}
-      {activeGameId === 'speed_racing' && <MathSpeedRacingGame onExit={handleCloseGame} />}
-      {activeGameId === 'number_tower' && <NumberTowerGame onExit={handleCloseGame} />}
-      {activeGameId === 'ocean_fishing' && <OceanFishingGame onExit={handleCloseGame} />}
-      {activeGameId === 'shape_sorting' && <ShapeSortingGame onExit={handleCloseGame} />}
-      {activeGameId === 'animal_safari' && <EnglishAnimalSoundGame onExit={handleCloseGame} />}
-      {activeGameId === 'color_balloon' && <EnglishColorBalloonGame onExit={handleCloseGame} />}
-      {activeGameId === 'memory_cards' && <MemoryCardsGame onExit={handleCloseGame} />}
-      {activeGameId === 'coloring_canvas' && <ColoringCanvasGame onExit={handleCloseGame} />}
+      {/* Render Active Game via registry */}
+      {ActiveGame && <ActiveGame onExit={handleCloseGame} />}
     </div>
   );
 };

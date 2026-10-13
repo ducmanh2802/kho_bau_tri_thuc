@@ -2,6 +2,7 @@ import { CompetitionQuestion } from '../types/competition';
 import { EXAM_FORMAT_QUESTIONS } from './competitionExamFormats';
 import { EXPANSION_QUESTIONS } from './competitionBankExpansion';
 import { P36_QUESTIONS } from './competitionBankP36';
+import { TOURNAMENT_QUESTIONS } from './competitionBankTournament';
 
 /**
  * Version of the whole competition question bank. Bump whenever any item
@@ -10,13 +11,16 @@ import { P36_QUESTIONS } from './competitionBankP36';
  * v4 (P36): +230 expansion items; legacy answer-position rebalancing;
  * 15 legacy content-defect repairs (wrong rhymes, ambiguous answers,
  * Grade-1 misalignment, wrong accepted answer).
+ * v5 (Tournament): +72 Trạng Nguyên 4-vòng items (30 TV + 30 Toán + 12 Anh),
+ * cấu trúc 30 câu / 20 phút, đố vui dân gian, đọc hiểu, toán lời văn.
  */
-export const COMPETITION_BANK_VERSION = 4;
+export const COMPETITION_BANK_VERSION = 5;
 
 export const COMPETITION_QUESTIONS: CompetitionQuestion[] = [
   ...EXAM_FORMAT_QUESTIONS,
   ...EXPANSION_QUESTIONS,
   ...P36_QUESTIONS,
+  ...TOURNAMENT_QUESTIONS,
   // ==========================================
   // TIẾNG VIỆT (TV-PHONICS, TV-TONES, TV-SYLLABLE, TV-RHYME, TV-SPELLING, TV-WORD, TV-SENTENCE, TV-READING, TV-LANGUAGE-LOGIC)
   // ==========================================

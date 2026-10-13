@@ -58,7 +58,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   return (
     <div className="w-full max-w-5xl mx-auto px-4 py-6 md:py-10 space-y-8 select-none">
       {/* Friendly Greeting & Mascot Hero Banner */}
-      <div className="relative bg-gradient-to-r from-amber-400 via-orange-400 to-amber-500 rounded-3xl p-6 md:p-8 shadow-xl text-white overflow-hidden border-4 border-amber-300">
+      <div className="relative animate-gradient kb-hero-pattern bg-gradient-to-r from-amber-400 via-orange-400 to-rose-400 rounded-3xl p-6 md:p-8 shadow-xl text-white overflow-hidden border-4 border-amber-300">
         {/* Background shapes */}
         <div className="absolute top-2 right-4 text-7xl opacity-20 pointer-events-none">✨</div>
         <div className="absolute -bottom-6 -left-6 text-9xl opacity-15 pointer-events-none">⭐</div>
@@ -293,7 +293,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             <span className="text-3xl">🎮</span>
             <div className="text-left">
               <h4 className="font-black text-sm md:text-base font-display">Khu Trò Chơi</h4>
-              <p className="text-[11px] text-purple-200 font-semibold">14 mini-games vui</p>
+              <p className="text-[11px] text-purple-200 font-semibold">18 mini-games vui • 6 màn/game</p>
             </div>
           </div>
           <span className="text-xs font-bold bg-white/20 px-2.5 py-1 rounded-xl">Chơi ngay</span>

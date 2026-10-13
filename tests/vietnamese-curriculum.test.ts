@@ -2,8 +2,8 @@ import { describe, it, expect } from 'vitest';
 import { VIETNAMESE_TOPICS } from '../src/data/vietnameseCurriculum';
 
 describe('Vietnamese Curriculum Quality & Deterministic Invariants', () => {
-  it('contains 10 comprehensive topics covering primary Grade 1 milestones', () => {
-    expect(VIETNAMESE_TOPICS.length).toBe(10);
+  it('contains 12 comprehensive topics covering primary Grade 1 milestones', () => {
+    expect(VIETNAMESE_TOPICS.length).toBe(12);
     const expectedIds = [
       'vn-chu-cai',
       'vn-dau-thanh',
@@ -15,6 +15,8 @@ describe('Vietnamese Curriculum Quality & Deterministic Invariants', () => {
       'vn-xep-cau',
       'vn-doc-hieu-1',
       'vn-doc-hieu-2',
+      'vn-chinh-ta-nang-cao',
+      'vn-ke-chuyen-doc-hieu',
     ];
     for (const id of expectedIds) {
       const topic = VIETNAMESE_TOPICS.find((t) => t.id === id);

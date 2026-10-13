@@ -13,6 +13,7 @@ import { sound } from '../../services/sound';
 import { CompetitionExamModal } from './CompetitionExamModal';
 import { CompetitionResultModal } from './CompetitionResultModal';
 import { ReadinessView } from './ReadinessView';
+import { buildTournamentLeaderboard, isTournamentUnlocked, TOURNAMENT_NAMES } from '../../services/tournament';
 import {
   Trophy,
   Target,
@@ -37,8 +38,8 @@ export const CompetitionHubScreen: React.FC<CompetitionHubScreenProps> = ({
   onBack,
   onProfileUpdate,
 }) => {
-  const [activeTab, setActiveTab] = useState<'mock_exams' | 'skill_practice' | 'speed_trial' | 'history'>('mock_exams');
-  const [selectedSubject, setSelectedSubject] = useState<SubjectType>('toan');
+  const [activeTab, setActiveTab] = useState<'tournament' | 'mock_exams' | 'skill_practice' | 'speed_trial' | 'history'>('tournament');
+  const [selectedSubject, setSelectedSubject] = useState<SubjectType>('tieng-viet');
 
   // Active exam session
   const [activeBlueprint, setActiveBlueprint] = useState<ExamBlueprint | null>(null);
@@ -198,6 +199,7 @@ export const CompetitionHubScreen: React.FC<CompetitionHubScreenProps> = ({
       {/* Main Tabs Navigation */}
       <div className="flex items-center gap-2 overflow-x-auto pb-1 border-b border-amber-200">
         {[
+          { id: 'tournament', label: 'Trạng Nguyên 4 Vòng', icon: '👑' },
           { id: 'mock_exams', label: 'Thi Thử Đấu Trường', icon: '🏆' },
           { id: 'skill_practice', label: 'Luyện Dạng Bài', icon: '🎯' },
           { id: 'speed_trial', label: 'Luyện Tốc Độ (3p)', icon: '⚡' },
@@ -245,6 +247,88 @@ export const CompetitionHubScreen: React.FC<CompetitionHubScreenProps> = ({
               <span>{sub.label}</span>
             </button>
           ))}
+        </div>
+      )}
+
+      {/* TAB 0: TRẠNG NGUYÊN TOURNAMENT */}
+      {activeTab === 'tournament' && (
+        <div className="space-y-4">
+          <div className="p-4 bg-gradient-to-r from-amber-100 via-orange-100 to-rose-100 border-2 border-amber-300 rounded-3xl flex items-start gap-3">
+            <span className="text-3xl">👑</span>
+            <div className="text-xs leading-relaxed">
+              <span className="font-black text-amber-950 block text-sm">Hành trình Trạng Nguyên Nhí: Hương → Huyện → Tỉnh → Quốc gia</span>
+              <span className="text-amber-800 font-medium">
+                Đề dài đúng chuẩn thi thật (15 → 30 câu, 10 → 20 phút). Vượt qua vòng trước từ 5 điểm để mở vòng sau.
+                Mỗi vòng có bảng xếp hạng riêng với 6 bạn thi bot vui nhộn!
+              </span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {EXAM_BLUEPRINTS.filter((b) => b.mode === 'tournament').map((bp, idx) => {
+              const unlocked = bp.subject === 'tieng-viet' && bp.id.startsWith('bp-tn-') && ['bp-tn-huong','bp-tn-huyen','bp-tn-tinh','bp-tn-quocgia'].includes(bp.id)
+                ? isTournamentUnlocked(bp.id, historyStore.examResults)
+                : true;
+              const best = historyStore.examResults
+                .filter((r) => r.blueprintId === bp.id)
+                .sort((a, b) => b.score - a.score)[0] ?? null;
+              const board = buildTournamentLeaderboard(bp.id, best);
+              return (
+                <div
+                  key={bp.id}
+                  className={`rounded-3xl p-5 md:p-6 border-2 shadow-xs flex flex-col justify-between space-y-4 ${
+                    unlocked ? 'bg-white border-amber-200' : 'bg-slate-50 border-slate-200 opacity-80'
+                  }`}
+                >
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-3xl">{unlocked ? bp.badgeEmoji : '🔒'}</span>
+                      <span className="px-3 py-1 rounded-full text-[11px] font-black uppercase bg-amber-100 text-amber-800">
+                        {idx + 1}. {TOURNAMENT_NAMES[bp.id] ?? bp.title}
+                      </span>
+                    </div>
+                    <h3 className="text-base md:text-lg font-black text-slate-800 font-display">{bp.title}</h3>
+                    <p className="text-xs text-slate-500 font-medium">{bp.subtitle}</p>
+                    <div className="flex items-center gap-3 text-xs font-bold text-slate-600">
+                      <span className="flex items-center gap-1"><Clock className="w-4 h-4 text-amber-600" />{Math.round(bp.durationSeconds / 60)} phút</span>
+                      <span>{bp.questionCount} câu</span>
+                      <span className="flex items-center gap-1 text-amber-600"><Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />+{bp.rewardStars}</span>
+                      {best && <span className="text-emerald-700">Tốt nhất: {best.score}/10</span>}
+                    </div>
+                    {!unlocked && (
+                      <p className="text-[11px] font-bold text-slate-500 bg-slate-100 rounded-xl px-3 py-2">
+                        🔒 Hãy đạt từ 5 điểm ở vòng trước để mở {TOURNAMENT_NAMES[bp.id]} nhé!
+                      </p>
+                    )}
+                    {/* Mini leaderboard */}
+                    <div className="bg-amber-50/60 rounded-2xl border border-amber-200 p-3 space-y-1.5">
+                      <p className="text-[11px] font-black text-amber-900 uppercase">🏅 Bảng xếp hạng vòng này</p>
+                      {board.slice(0, 4).map((row) => (
+                        <div key={row.name} className={`flex items-center gap-2 text-xs font-bold ${row.isMe ? 'text-amber-900' : 'text-slate-600'}`}>
+                          <span className="w-5 text-center">{row.rank === 1 ? '🥇' : row.rank === 2 ? '🥈' : row.rank === 3 ? '🥉' : `${row.rank}.`}</span>
+                          <span>{row.emoji} {row.name}</span>
+                          <span className="ml-auto tabular-nums">{row.score}/10</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => unlocked && handleStartExam(bp)}
+                    disabled={!unlocked}
+                    className={`w-full py-3 rounded-2xl font-black text-xs md:text-sm shadow-md transition-all active:scale-95 flex items-center justify-center gap-2 ${
+                      unlocked
+                        ? 'bg-gradient-to-r from-amber-500 to-rose-500 hover:from-amber-600 hover:to-rose-600 text-white cursor-pointer'
+                        : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                    }`}
+                  >
+                    <Trophy className="w-4 h-4" />
+                    <span>{unlocked ? (best ? 'Thi lại để lên hạng' : 'Vào thi vòng này') : 'Chưa mở khóa'}</span>
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
 
