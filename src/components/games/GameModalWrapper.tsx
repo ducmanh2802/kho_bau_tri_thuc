@@ -1,9 +1,10 @@
 import React from 'react';
-import { Volume2, VolumeX, X, Trophy, Star, Sparkles, RotateCcw, Rocket, Lock } from 'lucide-react';
+import { Volume2, VolumeX, X, Trophy, Star, Sparkles, RotateCcw, Rocket, Lock, Megaphone } from 'lucide-react';
 import { sound } from '../../services/sound';
 import { fireCelebrationConfetti } from '../../services/confetti';
 import { StorageService } from '../../services/storage';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
+import { useModalHistory } from '../../hooks/useModalHistory';
 
 export interface GameTierMetaProp {
   id: number;
@@ -77,6 +78,8 @@ export const GameModalWrapper: React.FC<GameModalWrapperProps> = ({
   const claimedKeys = React.useRef<Set<string>>(new Set());
   const [receipt, setReceipt] = React.useState<{ stars: number; xp: number } | null>(null);
   const dialogRef = useFocusTrap<HTMLDivElement>(true);
+  // T01B/1 — Esc + nút Back (history) đóng modal game.
+  const { requestClose } = useModalHistory(onExit);
 
   const isLevelGame = tier !== undefined && tierMeta !== undefined;
   const rewardKey = `${gameId ?? 'legacy'}-${tier ?? 1}-${phase}`;
@@ -149,80 +152,81 @@ export const GameModalWrapper: React.FC<GameModalWrapperProps> = ({
         tabIndex={-1}
         className="relative w-full max-w-4xl h-[92vh] max-h-[780px] bg-gradient-to-b from-amber-50 to-orange-50 rounded-3xl shadow-2xl flex flex-col overflow-hidden border-4 border-amber-300"
       >
-        {/* Top Header */}
-        <div className="flex items-center justify-between px-4 py-3 bg-white/90 border-b-2 border-amber-200">
-          <div className="flex items-center gap-3">
-            <span className="text-3xl animate-bounce">{mascotEmoji}</span>
-            <div>
-              <h2 className="text-lg md:text-xl font-black text-amber-900 tracking-wide font-display">
-                {title}
-              </h2>
-              <p className="text-xs text-amber-700 font-semibold hidden sm:block">{subtitle}</p>
-            </div>
-          </div>
+        {/*
+          T01B/1 — header game GỌN 1 DÒNG, vừa 343px (360–375px):
+          nút đóng ĐỨNG ĐẦU (luôn hiện, 44px) → linh vật → tên game rút gọn
+          (truncate, tooltip đầy đủ) + tiến độ dạng icon gọn → 2 icon khác nhau.
+        */}
+        <div className="flex items-center gap-1.5 px-2 py-2 bg-white/90 border-b-2 border-amber-200 min-h-[56px]">
+          {/* Close button FIRST — always visible, never pushed out */}
+          <button
+            onClick={requestClose}
+            data-testid="game-close"
+            aria-label="Đóng trò chơi và quay lại"
+            title="Đóng trò chơi (Esc)"
+            className="min-w-[44px] min-h-[44px] shrink-0 flex items-center justify-center bg-red-100 hover:bg-red-200 text-red-600 rounded-full transition-all active:scale-95"
+          >
+            <X className="w-5 h-5" aria-hidden="true" />
+          </button>
 
-          <div className="flex items-center gap-2">
-            {/* Level HUD */}
-            {isLevelGame && (
-              <div
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border-2 bg-white shadow-sm"
-                style={{ borderColor: tierMeta.color }}
-              >
-                <span className="text-sm">{tierMeta.emoji}</span>
-                <span className="text-xs font-black text-slate-800">
-                  Màn {tier}/{tierCount} · {tierMeta.name}
-                </span>
-              </div>
-            )}
+          <span className="text-2xl shrink-0 leading-none" aria-hidden="true">{mascotEmoji}</span>
 
-            {isLevelGame && roundTotal !== undefined ? (
-              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-100 rounded-full border border-purple-200">
-                <Rocket className="w-4 h-4 text-purple-600" />
-                <span className="text-xs font-black text-purple-900">
-                  Câu {roundNumber ?? 1}/{roundTotal}
-                </span>
-              </div>
-            ) : (
-              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-100 rounded-full border border-amber-300">
-                <Star className="w-4 h-4 fill-amber-500 text-amber-500" />
-                <span className="text-sm font-black text-amber-900">
-                  {score} / {maxScore}
-                </span>
-              </div>
-            )}
-
-            {/* Read instruction button */}
-            <button
-              onClick={playInstructionVoice}
-              aria-label="Đọc hướng dẫn bằng giọng nói"
-              className="min-w-[44px] min-h-[44px] flex items-center justify-center bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-full transition-all active:scale-95"
+          {/* Title + compact icon progress (flex-1, truncate) */}
+          <div className="flex-1 min-w-0">
+            <h2
+              className="truncate text-sm font-black text-amber-900 tracking-wide font-display leading-tight"
+              title={isLevelGame ? `${title} — Màn ${tier}/${tierCount}: ${tierMeta.name}` : `${title} — ${score}/${maxScore} sao`}
             >
-              <Volume2 className="w-5 h-5" aria-hidden="true" />
-            </button>
-
-            {/* Mute toggle */}
-            <button
-              onClick={toggleSound}
-              aria-label={isMuted ? 'Bật âm thanh' : 'Tắt âm thanh'}
-              aria-pressed={isMuted}
-              className="min-w-[44px] min-h-[44px] flex items-center justify-center bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-full transition-all active:scale-95"
-            >
-              {isMuted ? (
-                <VolumeX className="w-5 h-5 text-red-500" aria-hidden="true" />
+              {title}
+            </h2>
+            <span className="sr-only">{subtitle}</span>
+            <p className="truncate text-[11px] text-amber-700 font-bold leading-tight" aria-label={
+              isLevelGame && roundTotal !== undefined
+                ? `Màn ${tier} trên ${tierCount}, câu ${roundNumber ?? 1} trên ${roundTotal}`
+                : `Được ${score} trên ${maxScore} sao`
+            }>
+              {isLevelGame ? (
+                <span>
+                  <span aria-hidden="true">{tierMeta.emoji} </span>
+                  Màn {tier}/{tierCount}
+                  {roundTotal !== undefined && (
+                    <span> · 🚀 Câu {roundNumber ?? 1}/{roundTotal}</span>
+                  )}
+                  <span className="hidden min-[420px]:inline"> · {tierMeta.name}</span>
+                </span>
               ) : (
-                <Volume2 className="w-5 h-5" aria-hidden="true" />
+                <span>
+                  <span aria-hidden="true">⭐ </span>
+                  {score}/{maxScore}
+                </span>
               )}
-            </button>
-
-            {/* Close button */}
-            <button
-              onClick={onExit}
-              aria-label="Đóng trò chơi và quay lại"
-              className="min-w-[44px] min-h-[44px] flex items-center justify-center bg-red-100 hover:bg-red-200 text-red-600 rounded-full transition-all active:scale-95 ml-1"
-            >
-              <X className="w-5 h-5" aria-hidden="true" />
-            </button>
+            </p>
           </div>
+
+          {/* Read instruction — MEGAPHONE icon, khác hẳn nút tắt tiếng */}
+          <button
+            onClick={playInstructionVoice}
+            aria-label="Nghe hướng dẫn chơi"
+            title="Nghe hướng dẫn chơi"
+            className="min-w-[44px] min-h-[44px] shrink-0 flex items-center justify-center bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-full transition-all active:scale-95"
+          >
+            <Megaphone className="w-5 h-5" aria-hidden="true" />
+          </button>
+
+          {/* Mute toggle — LOA icon + trạng thái rõ ràng */}
+          <button
+            onClick={toggleSound}
+            aria-label={isMuted ? 'Bật âm thanh trò chơi' : 'Tắt âm thanh trò chơi'}
+            title={isMuted ? 'Bật âm thanh trò chơi' : 'Tắt âm thanh trò chơi'}
+            aria-pressed={isMuted}
+            className="min-w-[44px] min-h-[44px] shrink-0 flex items-center justify-center bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-full transition-all active:scale-95"
+          >
+            {isMuted ? (
+              <VolumeX className="w-5 h-5 text-red-500" aria-hidden="true" />
+            ) : (
+              <Volume2 className="w-5 h-5" aria-hidden="true" />
+            )}
+          </button>
         </div>
 
         {/* Instruction Banner */}
@@ -233,7 +237,8 @@ export const GameModalWrapper: React.FC<GameModalWrapperProps> = ({
           </div>
           <button
             onClick={playInstructionVoice}
-            className="text-xs text-blue-700 hover:underline shrink-0 ml-2 font-black"
+            aria-label="Nghe lại hướng dẫn chơi"
+            className="min-h-[44px] px-3 flex items-center text-xs text-blue-700 hover:underline shrink-0 ml-2 font-black"
           >
             Nghe lại 🔊
           </button>

@@ -89,7 +89,7 @@ export const AvatarShopScreen: React.FC<AvatarShopScreenProps> = ({
             sound.playClick();
             onBack();
           }}
-          className="flex items-center gap-1.5 px-4 py-2 bg-white hover:bg-amber-50 border-2 border-amber-300 rounded-2xl font-bold text-xs md:text-sm text-amber-950 transition-all active:scale-95 shadow-xs cursor-pointer"
+          className="flex items-center gap-1.5 px-4 min-h-[44px] py-2 bg-white hover:bg-amber-50 border-2 border-amber-300 rounded-2xl font-bold text-xs md:text-sm text-amber-950 transition-all active:scale-95 shadow-xs cursor-pointer"
         >
           <ArrowLeft className="w-4 h-4" />
           <span>Về Trang Chủ</span>
@@ -169,7 +169,7 @@ export const AvatarShopScreen: React.FC<AvatarShopScreenProps> = ({
               sound.playClick();
               setActiveTab(tab.id as typeof activeTab);
             }}
-            className={`px-4 py-2 rounded-2xl text-xs md:text-sm font-black flex items-center gap-1.5 transition-all whitespace-nowrap cursor-pointer active:scale-95 ${
+            className={`px-4 min-h-[44px] py-2 rounded-2xl text-xs md:text-sm font-black flex items-center gap-1.5 transition-all whitespace-nowrap cursor-pointer active:scale-95 ${
               activeTab === tab.id
                 ? 'bg-amber-600 text-white shadow-md'
                 : 'bg-white hover:bg-amber-50 text-slate-700 border border-slate-200'
@@ -255,7 +255,7 @@ export const AvatarShopScreen: React.FC<AvatarShopScreenProps> = ({
 
                   <button
                     onClick={() => handleBuyOrEquip(item)}
-                    className={`px-3 py-1.5 rounded-xl font-black text-xs transition-all active:scale-95 cursor-pointer ${
+                    className={`px-4 min-h-[44px] py-1.5 rounded-xl font-black text-xs transition-all active:scale-95 cursor-pointer flex items-center ${
                       isEquipped
                         ? 'bg-emerald-600 text-white'
                         : isUnlocked

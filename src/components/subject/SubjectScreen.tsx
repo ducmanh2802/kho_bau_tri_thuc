@@ -69,7 +69,7 @@ export const SubjectScreen: React.FC<SubjectScreenProps> = ({
             sound.playClick();
             onBack();
           }}
-          className="flex items-center gap-1.5 px-4 py-2 bg-white hover:bg-amber-50 border-2 border-amber-300 rounded-2xl font-bold text-xs md:text-sm text-amber-950 transition-all active:scale-95 shadow-xs cursor-pointer"
+          className="flex items-center gap-1.5 px-4 min-h-[44px] py-2 bg-white hover:bg-amber-50 border-2 border-amber-300 rounded-2xl font-bold text-xs md:text-sm text-amber-950 transition-all active:scale-95 shadow-xs cursor-pointer"
         >
           <ArrowLeft className="w-4 h-4" />
           <span>Quay Lại</span>
@@ -210,7 +210,7 @@ export const SubjectScreen: React.FC<SubjectScreenProps> = ({
 
                       <button
                         onClick={() => handleStartLesson(lesson)}
-                        className={`px-4 py-2 rounded-xl font-black text-xs flex items-center gap-1.5 transition-transform active:scale-95 cursor-pointer ${
+                        className={`px-4 min-h-[44px] py-2 rounded-xl font-black text-xs flex items-center gap-1.5 transition-transform active:scale-95 cursor-pointer ${
                           isCompleted
                             ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs'
                             : 'bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white shadow-sm'

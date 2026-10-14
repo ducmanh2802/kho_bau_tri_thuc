@@ -73,6 +73,10 @@ export function registerServiceWorker(): Promise<ServiceWorkerRegistration | nul
  * Listens for the SW_UPDATED broadcast (§11) so the app can offer a reload at
  * a safe moment instead of forcing one mid-lesson. Safe to call anywhere: it is
  * a no-op (returns a no-op unsubscribe) outside a real browser. Never throws.
+ *
+ * T01B/7 — chỉ báo khi có SW MỚI THAY THẾ SW đang điều khiển trang: nếu
+ * `navigator.serviceWorker.controller` là null thì trang chưa hề bị SW điều
+ * khiển (lần mở đầu tiên / vừa cài đặt) → bỏ qua, không hiện banner.
  */
 export function onServiceWorkerUpdate(callback: (version: string) => void): () => void {
   if (typeof window === 'undefined' || typeof navigator === 'undefined') return () => {};
@@ -81,6 +85,8 @@ export function onServiceWorkerUpdate(callback: (version: string) => void): () =
   const handler = (event: MessageEvent) => {
     if (event.data && event.data.type === 'SW_UPDATED') {
       try {
+        // First visit / fresh install: no controller to replace → not an update.
+        if (!navigator.serviceWorker.controller) return;
         callback(typeof event.data.version === 'string' ? event.data.version : 'unknown');
       } catch {
         /* A throwing subscriber must not break the listener. */

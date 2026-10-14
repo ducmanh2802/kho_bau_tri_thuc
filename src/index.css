@@ -1,6 +1,16 @@
 @import "tailwindcss";
 
 /*
+ * T01B/5 — font Nunito phải thắng class `font-sans` của Tailwind.
+ * Tailwind v4 sinh `font-sans` từ token `--font-sans`; trước đây token này
+ * vẫn là stack hệ thống nên div gốc `font-sans` (App.tsx) ghi đè body.
+ */
+@theme {
+  --font-sans: 'Nunito', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-display: 'Comfortaa', 'Nunito', cursive, sans-serif;
+}
+
+/*
  * T01/B12 — self-hosted fonts (offline-first). Nunito + Comfortaa woff2,
  * subsets latin + vietnamese, in public/fonts/. No Google Fonts requests.
  */

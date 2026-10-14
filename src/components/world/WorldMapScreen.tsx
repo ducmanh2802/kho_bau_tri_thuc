@@ -1,6 +1,7 @@
 import React from 'react';
 import { ActiveScreen, SubjectType } from '../../types';
 import { sound } from '../../services/sound';
+import { GAMES_CATALOG } from '../../data/gamesCatalog';
 import { ArrowLeft, Compass } from 'lucide-react';
 
 interface WorldMapScreenProps {
@@ -57,7 +58,7 @@ export const WorldMapScreen: React.FC<WorldMapScreenProps> = ({
     {
       id: 'games',
       title: 'Đấu Trường Trò Chơi',
-      subtitle: '10+ Mini-Game trí tuệ bổ ích',
+      subtitle: `${GAMES_CATALOG.length} Mini-Game trí tuệ bổ ích`,
       emoji: '🎪',
       mascot: '🦉 Cú Thông Thái',
       color: 'from-purple-400 to-pink-500',
@@ -95,7 +96,7 @@ export const WorldMapScreen: React.FC<WorldMapScreenProps> = ({
             sound.playClick();
             onNavigate('home');
           }}
-          className="flex items-center gap-1.5 px-4 py-2 bg-white hover:bg-amber-50 border-2 border-amber-300 rounded-2xl font-bold text-xs md:text-sm text-amber-950 transition-all active:scale-95 shadow-xs cursor-pointer"
+          className="flex items-center gap-1.5 px-4 min-h-[44px] py-2 bg-white hover:bg-amber-50 border-2 border-amber-300 rounded-2xl font-bold text-xs md:text-sm text-amber-950 transition-all active:scale-95 shadow-xs cursor-pointer"
         >
           <ArrowLeft className="w-4 h-4" />
           <span>Về Trang Chủ</span>

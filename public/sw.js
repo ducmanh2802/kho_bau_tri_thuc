@@ -79,8 +79,11 @@ self.addEventListener('activate', (event) => {
       // ever be trapped on an obsolete build), but the open page still runs the
       // old bundle. Tell it a new version is live so it can offer a reload at a
       // safe moment — never forced, and localStorage is never touched.
+      // T01B/7 — chỉ báo cho các trang ĐANG bị SW điều khiển (bản mới thay thế
+      // bản cũ). Trang mở lần đầu (uncontrolled) không nhận tin → không hiện
+      // banner sai ở lần mở đầu tiên. Phía app (pwa.ts) cũng guard controller.
       .then(() =>
-        self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
+        self.clients.matchAll({ type: 'window' }).then((clients) => {
           for (const client of clients) {
             try {
               client.postMessage({ type: 'SW_UPDATED', version: CACHE_VERSION });
