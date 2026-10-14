@@ -166,6 +166,19 @@ const [activeTab, setActiveTab] = useState<
     sound.playClick();
   };
 
+  const handleToggleNightMode = () => {
+    const next = { ...settings, nightMode: !settings.nightMode };
+    setSettings(next);
+    StorageService.saveParentSettings(next);
+    sound.playClick();
+    // Apply immediately to document
+    if (next.nightMode) {
+      document.documentElement.setAttribute('data-theme', 'night');
+    } else {
+      document.documentElement.removeAttribute('data-theme');
+    }
+  };
+
   const handleExportData = () => {
     const profile = StorageService.getChildProfile();
     const analytics = StorageService.getAnalytics();
@@ -985,6 +998,31 @@ const [activeTab, setActiveTab] = useState<
                         }`}
                       >
                         {settings.questionAutoplay ? 'Bật' : 'Tắt'}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Night Mode (T03A) */}
+                  <div className="p-5 bg-slate-50 border border-slate-200 rounded-2xl space-y-3">
+                    <h4 className="text-sm font-black text-slate-800 mb-2 flex items-center gap-2">
+                      <span className="w-5 h-5 text-purple-600" aria-hidden="true">🌙</span>
+                      Chế Độ Ban Ngày / Ban Đêm
+                    </h4>
+                    <p className="text-xs text-slate-500 mb-3">
+                      Chế độ ban đêm dịu mắt cho bé học vào buổi tối. Tự động áp dụng khi bật.
+                    </p>
+                    <div className="flex items-center justify-between py-2 border-b border-slate-200 text-xs">
+                      <div>
+                        <span className="font-bold text-slate-800 block">Chế độ ban đêm</span>
+                        <span className="text-slate-500">Nền tối, chữ sáng, giảm ánh sáng xanh</span>
+                      </div>
+                      <button
+                        onClick={handleToggleNightMode}
+                        className={`px-3 py-1.5 rounded-lg font-bold text-xs ${
+                          settings.nightMode ? 'bg-emerald-600 text-white' : 'bg-slate-300 text-slate-700'
+                        }`}
+                      >
+                        {settings.nightMode ? 'Bật' : 'Tắt'}
                       </button>
                     </div>
                   </div>

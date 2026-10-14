@@ -25,6 +25,7 @@ import { EnglishColorBalloonGame } from './EnglishColorBalloonGame';
 import { PhonicsPopGame } from './PhonicsPopGame';
 import { MemoryCardsGame } from './MemoryCardsGame';
 import { ColoringCanvasGame } from './ColoringCanvasGame';
+import { KidButton, KidCard, Pill, SectionTitle, ProgressStars } from '../ui';
 
 /** Registry: game id -> component. Thêm game mới chỉ cần thêm 1 dòng ở đây + catalog. */
 const GAME_REGISTRY: Record<string, React.ComponentType<{ onExit: () => void }>> = {
@@ -82,6 +83,14 @@ function GameProgressDots({ gameId }: { gameId: string }) {
   );
 }
 
+const categoryTabs = [
+  { id: 'all' as GameCategory, label: 'Tất Cả', icon: '🌟' },
+  { id: 'viet' as GameCategory, label: 'Tiếng Việt', icon: '📚' },
+  { id: 'math' as GameCategory, label: 'Toán Học', icon: '🔢' },
+  { id: 'english' as GameCategory, label: 'Tiếng Anh', icon: '🇬🇧' },
+  { id: 'fun' as GameCategory, label: 'Giải Trí', icon: '🎨' },
+];
+
 export const GamesHubScreen: React.FC<{ onBack: () => void; onProfileUpdate: () => void }> = ({
   onBack,
   onProfileUpdate,
@@ -123,23 +132,21 @@ export const GamesHubScreen: React.FC<{ onBack: () => void; onProfileUpdate: () 
     <div className="w-full max-w-5xl mx-auto px-4 py-6 md:py-8 space-y-6 select-none">
       {/* Top Header */}
       <div className="flex items-center justify-between">
-        <button
+        <KidButton
+          variant="secondary"
+          size="md"
           onClick={() => {
             sound.playClick();
             onBack();
           }}
-          className="flex items-center gap-1.5 px-4 min-h-[44px] py-2 bg-white hover:bg-amber-50 border-2 border-amber-300 rounded-2xl font-bold text-xs md:text-sm text-amber-950 transition-all active:scale-95 shadow-xs cursor-pointer"
+          leftIcon={<ArrowLeft className="w-4 h-4" />}
         >
-          <ArrowLeft className="w-4 h-4" />
-          <span>Về Trang Chủ</span>
-        </button>
+          Về Trang Chủ
+        </KidButton>
 
-        <div className="flex items-center gap-2 bg-purple-50 px-4 py-1.5 rounded-full border border-purple-200">
-          <Gamepad2 className="w-4 h-4 text-purple-600" />
-          <span className="text-xs font-black text-purple-900 font-display">
-            {counts.total} Trò Chơi Giáo Dục Có Thể Chơi Ngay
-          </span>
-        </div>
+        <Pill variant="default" size="md" icon={<Gamepad2 className="w-4 h-4 text-purple-600" aria-hidden="true" />}>
+          {counts.total} Trò Chơi Giáo Dục Có Thể Chơi Ngay
+        </Pill>
       </div>
 
       {/* Hero Games Banner */}
@@ -157,9 +164,9 @@ export const GamesHubScreen: React.FC<{ onBack: () => void; onProfileUpdate: () 
             </p>
             <div className="mt-2 flex flex-wrap gap-1.5 justify-center md:justify-start">
               {GAME_LEVEL_POLICY.TIERS.map((t) => (
-                <span key={t.id} className="kb-chip text-[10px] bg-white/20 px-2 py-0.5 backdrop-blur-xs">
+                <Pill key={t.id} variant="default" size="sm" className="bg-white/20 backdrop-blur-xs">
                   {t.emoji} {t.name}
-                </span>
+                </Pill>
               ))}
             </div>
           </div>
@@ -173,37 +180,37 @@ export const GamesHubScreen: React.FC<{ onBack: () => void; onProfileUpdate: () 
 
       {/* Category Tabs — counts computed dynamically */}
       <div className="flex items-center gap-2 overflow-x-auto pb-2">
-        {[
-          { id: 'all', label: `Tất Cả (${counts.all})`, icon: '🌟' },
-          { id: 'viet', label: `Tiếng Việt (${counts.viet})`, icon: '📚' },
-          { id: 'math', label: `Toán Học (${counts.math})`, icon: '🔢' },
-          { id: 'english', label: `Tiếng Anh (${counts.english})`, icon: '🇬🇧' },
-          { id: 'fun', label: `Giải Trí (${counts.fun})`, icon: '🎨' },
-        ].map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => {
-              sound.playClick();
-              setActiveCategory(tab.id as GameCategory);
-            }}
-            className={`px-4 min-h-[44px] py-2 rounded-2xl text-xs md:text-sm font-black flex items-center gap-1.5 transition-all whitespace-nowrap cursor-pointer active:scale-95 ${
-              activeCategory === tab.id
-                ? 'bg-purple-600 text-white shadow-md'
-                : 'bg-white hover:bg-purple-50 text-slate-700 border border-slate-200'
-            }`}
-          >
-            <span>{tab.icon}</span>
-            <span>{tab.label}</span>
-          </button>
-        ))}
+        {categoryTabs.map((tab) => {
+          const count = counts[tab.id];
+          return (
+            <KidButton
+              key={tab.id}
+              variant={activeCategory === tab.id ? 'primary' : 'secondary'}
+              size="md"
+              className="whitespace-nowrap"
+              onClick={() => {
+                sound.playClick();
+                setActiveCategory(tab.id);
+              }}
+              leftIcon={<span>{tab.icon}</span>}
+            >
+              {tab.label} ({count})
+            </KidButton>
+          );
+        })}
       </div>
 
       {/* Games Catalog Grid */}
+      <SectionTitle icon="🎮" size="lg" className="mb-4">
+        Danh Sách Trò Chơi
+      </SectionTitle>
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 md:gap-5 stagger">
         {filteredGames.map((game) => (
-          <div
+          <KidCard
             key={game.id}
-            className="kb-card kb-card-hover rounded-3xl p-5 flex flex-col justify-between group animate-rise"
+            hoverable
+            subjectBorder="none"
+            className="flex flex-col justify-between"
           >
             <div>
               <div className="flex items-start justify-between mb-3">
@@ -211,13 +218,13 @@ export const GamesHubScreen: React.FC<{ onBack: () => void; onProfileUpdate: () 
                   {game.emoji}
                 </span>
                 <div className="flex flex-col items-end gap-1">
-                  <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-1 bg-purple-50 text-purple-700 rounded-full border border-purple-200">
+                  <Pill variant="default" size="sm" className="bg-purple-50 text-purple-700 border-purple-200">
                     {game.categoryLabel}
-                  </span>
+                  </Pill>
                   {game.isNew && (
-                    <span className="text-[10px] font-black uppercase px-2 py-0.5 bg-rose-500 text-white rounded-full animate-pulse-subtle">
+                    <Pill variant="default" size="sm" className="bg-rose-500 text-white animate-pulse-subtle">
                       ✨ Mới
-                    </span>
+                    </Pill>
                   )}
                 </div>
               </div>
@@ -230,24 +237,26 @@ export const GamesHubScreen: React.FC<{ onBack: () => void; onProfileUpdate: () 
               </p>
 
               <div className="mt-3">
-                <span className="text-[11px] font-bold text-amber-800 bg-amber-50 px-2.5 py-0.5 rounded-lg border border-amber-200">
+                <Pill variant="default" size="sm" className="bg-amber-50 text-amber-800 border-amber-200">
                   🎯 {game.skillTag}
-                </span>
+                </Pill>
                 <GameProgressDots gameId={game.id} />
               </div>
             </div>
 
             <div className="pt-4 mt-4 border-t border-slate-100 flex items-center justify-between">
               <span className="text-[11px] font-bold text-slate-400">{game.mascot}</span>
-              <button
+              <KidButton
+                variant="primary"
+                size="md"
+                className="min-h-[44px]"
                 onClick={() => handleLaunchGame(game.id)}
-                className="kb-btn kb-btn-primary px-5 min-h-[44px] py-2 bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 text-white font-black text-xs rounded-xl shadow-md flex items-center gap-1.5 cursor-pointer"
+                leftIcon={<Play className="w-3.5 h-3.5 fill-white" />}
               >
-                <Play className="w-3.5 h-3.5 fill-white" />
-                <span>Chơi ngay</span>
-              </button>
+                Chơi ngay
+              </KidButton>
             </div>
-          </div>
+          </KidCard>
         ))}
       </div>
 
