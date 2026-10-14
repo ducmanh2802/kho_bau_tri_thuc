@@ -52,14 +52,8 @@ export const WeeklyChallengeScreen: React.FC<WeeklyChallengeScreenProps> = ({
   };
 
   const handleComplete = () => {
-    const freshProfile = StorageService.getChildProfile();
-    const updated = {
-      ...freshProfile,
-      completedWeeklyChallenges: Array.from(
-        new Set([...freshProfile.completedWeeklyChallenges, 'weekly-challenge-week-1'])
-      ),
-    };
-    StorageService.saveChildProfile(updated);
+    // T01/B10 — completing a weekly challenge unlocks ach_weekly_hero.
+    StorageService.recordWeeklyChallengeCompleted('weekly-challenge-week-1');
     onProfileUpdate();
   };
 

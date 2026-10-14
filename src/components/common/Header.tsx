@@ -87,17 +87,17 @@ export const Header: React.FC<HeaderProps> = ({
         </button>
 
         {/*
-          Zone 2: navigation.
-          Seven links plus the action pills cannot share one row below 2xl, so
-          xl shows the four primary destinations and the sticky bottom bar
-          carries the full set until 2xl.
+          Zone 2: navigation (T01/B11).
+          >= 1024px (lg) only the top nav shows; < 1024px only the bottom nav
+          shows (see App.tsx). lg–xl shows the 4 primary destinations so the
+          pills always fit; xl+ shows the full set.
         */}
-        <nav aria-label="Điều hướng chính" className="hidden xl:flex 2xl:hidden items-center gap-1">
+        <nav aria-label="Điều hướng chính" className="hidden lg:flex xl:hidden items-center gap-1">
           {PRIMARY_NAV.map((item) => (
             <NavLink key={item.screen} item={item} current={currentScreen} onNavigate={onNavigate} />
           ))}
         </nav>
-        <nav aria-label="Điều hướng chính (đầy đủ)" className="hidden 2xl:flex items-center gap-1">
+        <nav aria-label="Điều hướng chính (đầy đủ)" className="hidden xl:flex items-center gap-1">
           {navItems.map((item) => (
             <NavLink key={item.screen} item={item} current={currentScreen} onNavigate={onNavigate} />
           ))}

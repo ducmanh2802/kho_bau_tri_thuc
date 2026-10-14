@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { ActiveScreen, ChildProfile, DailyQuest, ReadingProfile, SubjectType } from '../../types';
 import { sound } from '../../services/sound';
+import { localDateKey } from '../../services/dateUtils';
 import { fireCelebrationConfetti } from '../../services/confetti';
 import { StorageService } from '../../services/storage';
+import { GAMES_CATALOG } from '../../data/gamesCatalog';
 import { NextBestActionCard } from '../learning/NextBestActionCard';
 import { Star, Sparkles, Gift, Check, ArrowRight, BookOpen } from 'lucide-react';
 
@@ -28,7 +30,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   const [quests, setQuests] = useState<DailyQuest[]>(StorageService.getDailyQuests());
   const [reading, setReading] = useState<ReadingProfile>(() => StorageService.getReadingProfile());
   const [chestClaimed, setChestClaimed] = useState(
-    profile.dailyChestClaimedDate === new Date().toISOString().split('T')[0]
+    profile.dailyChestClaimedDate === localDateKey()
   );
 
   const completedQuestsCount = quests.filter((q) => q.completed).length;
@@ -43,7 +45,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
       ...freshProfile,
       stars: freshProfile.stars + 10,
       xp: freshProfile.xp + 50,
-      dailyChestClaimedDate: new Date().toISOString().split('T')[0],
+      dailyChestClaimedDate: localDateKey(),
     };
     StorageService.saveChildProfile(updated);
     setChestClaimed(true);
@@ -293,7 +295,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             <span className="text-3xl">🎮</span>
             <div className="text-left">
               <h4 className="font-black text-sm md:text-base font-display">Khu Trò Chơi</h4>
-              <p className="text-[11px] text-purple-200 font-semibold">18 mini-games vui • 6 màn/game</p>
+              <p className="text-[11px] text-purple-200 font-semibold">{GAMES_CATALOG.length} mini-games vui • 6 màn/game</p>
             </div>
           </div>
           <span className="text-xs font-bold bg-white/20 px-2.5 py-1 rounded-xl">Chơi ngay</span>

@@ -15,6 +15,7 @@ import {
 } from '../types/kidBox';
 import { isKidBoxSkillId, KIDBOX_SKILLS } from './kidBoxTaxonomy';
 import { KIDBOX_COURSE_ID, KIDBOX_LEVEL_ID, KIDBOX_SCHEMA_VERSION } from './kidBoxCurriculum';
+import { localDateKey } from '../services/dateUtils';
 
 /**
  * §27 CONTENT INGESTION — mapping workflow for teacher / parent supplied source
@@ -163,10 +164,10 @@ function clampDifficulty(value: unknown, fallback: 1 | 2 | 3 = 1): 1 | 2 | 3 {
 }
 
 function normaliseISODate(input: unknown): string {
-  if (typeof input !== 'string') return new Date().toISOString().split('T')[0];
+  if (typeof input !== 'string') return localDateKey();
   const parsed = new Date(input);
-  if (Number.isNaN(parsed.getTime())) return new Date().toISOString().split('T')[0];
-  return parsed.toISOString().split('T')[0];
+  if (Number.isNaN(parsed.getTime())) return localDateKey();
+  return localDateKey(parsed);
 }
 
 /* ------------------------------------------------------------------ */

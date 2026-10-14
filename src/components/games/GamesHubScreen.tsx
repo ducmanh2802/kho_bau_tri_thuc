@@ -3,6 +3,9 @@ import { sound } from '../../services/sound';
 import { ArrowLeft, Play, Gamepad2, Star } from 'lucide-react';
 import { StorageService } from '../../services/storage';
 import { GAME_LEVEL_POLICY } from '../../config/policy';
+import { GAMES_CATALOG, type GameCategory, type GameInfo } from '../../data/gamesCatalog';
+export { GAMES_CATALOG };
+export type { GameCategory, GameInfo };
 import { getTierMeta } from '../../data/gameLevels';
 import { CatchFallingLettersGame } from './CatchFallingLettersGame';
 import { SyllableBuilderGame } from './SyllableBuilderGame';
@@ -22,226 +25,6 @@ import { EnglishColorBalloonGame } from './EnglishColorBalloonGame';
 import { PhonicsPopGame } from './PhonicsPopGame';
 import { MemoryCardsGame } from './MemoryCardsGame';
 import { ColoringCanvasGame } from './ColoringCanvasGame';
-
-type GameCategory = 'all' | 'viet' | 'math' | 'english' | 'fun';
-
-interface GameInfo {
-  id: string;
-  title: string;
-  category: GameCategory;
-  categoryLabel: string;
-  emoji: string;
-  mascot: string;
-  description: string;
-  skillTag: string;
-  color: string;
-  isNew?: boolean;
-}
-
-const GAMES_CATALOG: GameInfo[] = [
-  {
-    id: 'catch_letters',
-    title: 'Bắt Chữ Cái Bay',
-    category: 'viet',
-    categoryLabel: 'Tiếng Việt',
-    emoji: '🔤',
-    mascot: '🐻 Gấu Bút Chì',
-    description: 'Chạm vào các bóng bóng mang đúng chữ cái đang rơi từ trên cao.',
-    skillTag: 'Nhận diện bảng chữ cái',
-    color: 'from-amber-400 to-orange-500',
-  },
-  {
-    id: 'syllable_builder',
-    title: 'Xưởng Ghép Tiếng Lớp 1',
-    category: 'viet',
-    categoryLabel: 'Tiếng Việt',
-    emoji: '🧩',
-    mascot: '🦊 Cáo Tinh Nhanh',
-    description: 'Ghép âm đầu, nguyên âm và dấu thanh để tạo thành từ có nghĩa.',
-    skillTag: 'Ghép âm & Dấu thanh',
-    color: 'from-orange-400 to-amber-600',
-  },
-  {
-    id: 'rhyme_hunter',
-    title: 'Săn Vần Trong Vườn Cây',
-    category: 'viet',
-    categoryLabel: 'Tiếng Việt',
-    emoji: '🍎',
-    mascot: '🐰 Thỏ Trắng',
-    description: 'Hái những trái cây ngọt ngào mang vần "an", "on", "at" vào giỏ.',
-    skillTag: 'Nhận biết vần lớp 1',
-    color: 'from-emerald-400 to-teal-600',
-  },
-  {
-    id: 'sentence_scramble',
-    title: 'Đoàn Tàu Xếp Câu',
-    category: 'viet',
-    categoryLabel: 'Tiếng Việt',
-    emoji: '🚂',
-    mascot: '🐻 Gấu Bút Chì',
-    description: 'Bấm các toa tàu theo đúng thứ tự ngữ pháp để đoàn tàu lăn bánh.',
-    skillTag: 'Cấu trúc câu hoàn chỉnh',
-    color: 'from-blue-400 to-indigo-600',
-  },
-  {
-    id: 'listen_pick',
-    title: 'Đôi Tai Thính — Nghe & Chọn',
-    category: 'viet',
-    categoryLabel: 'Tiếng Việt',
-    emoji: '🦉',
-    mascot: '🦉 Cú Thông Thái',
-    description: 'Lắng nghe phát âm của máy và chọn đúng bức tranh tương ứng.',
-    skillTag: 'Luyện nghe & Nhận diện từ',
-    color: 'from-purple-400 to-pink-500',
-  },
-  {
-    id: 'spelling_duel',
-    title: 'Đấu Trường Chính Tả',
-    category: 'viet',
-    categoryLabel: 'Tiếng Việt',
-    emoji: '✏️',
-    mascot: '🦉 Cú Chấm Bài',
-    description: 'Chinh phục c/k, g/gh, ng/ngh, ch/tr, s/x, d/gi/r qua 6 màn đấu.',
-    skillTag: 'Chính tả phân biệt — sát đề Trạng Nguyên',
-    color: 'from-rose-400 to-orange-500',
-    isNew: true,
-  },
-  {
-    id: 'falling_numbers',
-    title: 'Hứng Số Rơi Rộn Ràng',
-    category: 'math',
-    categoryLabel: 'Toán Học',
-    emoji: '🔢',
-    mascot: '🦊 Cáo Toán',
-    description: 'Hứng các quả bóng có số lớn hơn 5, bé hơn 6 hoặc số chẵn.',
-    skillTag: 'So sánh số & Nhận diện số',
-    color: 'from-blue-500 to-cyan-500',
-  },
-  {
-    id: 'speed_racing',
-    title: 'Đường Đua Thần Tốc',
-    category: 'math',
-    categoryLabel: 'Toán Học',
-    emoji: '🏎️',
-    mascot: '🏁 Tay Đua Nhí',
-    description: 'Tính nhanh phép cộng trừ để nạp Nitro cho xe đua về đích.',
-    skillTag: 'Tính nhẩm trong 10',
-    color: 'from-amber-500 to-red-500',
-  },
-  {
-    id: 'number_tower',
-    title: 'Xây Tháp Số Lên Mây',
-    category: 'math',
-    categoryLabel: 'Toán Học',
-    emoji: '🏰',
-    mascot: '🦊 Cáo Toán',
-    description: 'Tìm viên gạch số còn thiếu trong phép cộng để tháp cao vút.',
-    skillTag: 'Cộng gộp trong 10',
-    color: 'from-sky-400 to-blue-600',
-  },
-  {
-    id: 'ocean_fishing',
-    title: 'Câu Cá Đại Dương Xanh',
-    category: 'math',
-    categoryLabel: 'Toán Học',
-    emoji: '🎣',
-    mascot: '⛵ Thuyền Trưởng Cáo',
-    description: 'Thả cần câu bắt những chú cá mang kết quả đúng của phép trừ.',
-    skillTag: 'Phép trừ trong 10',
-    color: 'from-teal-400 to-cyan-600',
-  },
-  {
-    id: 'shape_sorting',
-    title: 'Phân Loại Hình Học',
-    category: 'math',
-    categoryLabel: 'Toán Học',
-    emoji: '📦',
-    mascot: '🦉 Cú Thông Thái',
-    description: 'Phân chia các đồ vật quanh em vào giỏ hình tròn, vuông, tam giác.',
-    skillTag: 'Hình học trực quan',
-    color: 'from-lime-500 to-emerald-600',
-  },
-  {
-    id: 'clock_money',
-    title: 'Thám Hiểm Giờ & Tiền Việt',
-    category: 'math',
-    categoryLabel: 'Toán Học',
-    emoji: '⏰',
-    mascot: '🦊 Cáo Thời Gian',
-    description: 'Xem giờ đúng, tiêu tiền Việt, đo cm/m và đếm ngày tháng.',
-    skillTag: 'Đo lường & Thực tế — dạng thi mới',
-    color: 'from-cyan-500 to-blue-600',
-    isNew: true,
-  },
-  {
-    id: 'word_story',
-    title: 'Chuyện Kể Toán Học',
-    category: 'math',
-    categoryLabel: 'Toán Học',
-    emoji: '🔍',
-    mascot: '🐻 Thám Tử Nhí',
-    description: 'Đọc chuyện ngắn, giải toán lời văn từ dễ đến 100 như đề thi thật.',
-    skillTag: 'Toán lời văn 6 cấp độ',
-    color: 'from-indigo-500 to-violet-600',
-    isNew: true,
-  },
-  {
-    id: 'animal_safari',
-    title: 'Safari Tiếng Anh — Animals',
-    category: 'english',
-    categoryLabel: 'Tiếng Anh',
-    emoji: '🦁',
-    mascot: '🐰 Thỏ English',
-    description: 'Khám phá sở thú, nghe tên và tìm đúng các bạn động vật dễ thương.',
-    skillTag: 'Từ vựng động vật English',
-    color: 'from-emerald-500 to-green-600',
-  },
-  {
-    id: 'color_balloon',
-    title: 'Pop The Color Balloons!',
-    category: 'english',
-    categoryLabel: 'Tiếng Anh',
-    emoji: '🎈',
-    mascot: '🐰 Thỏ English',
-    description: 'Đập vỡ những quả bóng bay đúng màu sắc tiếng Anh theo yêu cầu.',
-    skillTag: 'Màu sắc tiếng Anh',
-    color: 'from-rose-400 to-pink-500',
-  },
-  {
-    id: 'phonics_pop',
-    title: 'Phonics Pop — Bắn Âm',
-    category: 'english',
-    categoryLabel: 'Tiếng Anh',
-    emoji: '🔤',
-    mascot: '🦉 Cú Phonics',
-    description: 'Nghe từ giọng Anh-Anh, bắn đúng âm đầu: SH, CH, TH, BL, GR…',
-    skillTag: 'Phonics nâng cao giọng Anh-Anh',
-    color: 'from-fuchsia-500 to-purple-600',
-    isNew: true,
-  },
-  {
-    id: 'memory_cards',
-    title: 'Lật Thẻ Trí Nhớ Vàng',
-    category: 'fun',
-    categoryLabel: 'Giải Trí',
-    emoji: '🧠',
-    mascot: '⭐ Trí Tuệ Nhí',
-    description: 'Lật tìm các cặp hình giống nhau giúp rèn luyện khả năng ghi nhớ.',
-    skillTag: 'Trí nhớ ngắn hạn & Tập trung',
-    color: 'from-indigo-500 to-purple-600',
-  },
-  {
-    id: 'coloring_canvas',
-    title: 'Bé Tập Vẽ & Tô Màu Diệu Kỳ',
-    category: 'fun',
-    categoryLabel: 'Giải Trí',
-    emoji: '🎨',
-    mascot: '🌈 Họa Sĩ Nhí',
-    description: 'Thỏa sức vẽ tranh, tô màu và dán sticker đáng yêu lên tác phẩm.',
-    skillTag: 'Sáng tạo & Khéo léo',
-    color: 'from-yellow-400 to-orange-500',
-  },
-];
 
 /** Registry: game id -> component. Thêm game mới chỉ cần thêm 1 dòng ở đây + catalog. */
 const GAME_REGISTRY: Record<string, React.ComponentType<{ onExit: () => void }>> = {
@@ -360,7 +143,7 @@ export const GamesHubScreen: React.FC<{ onBack: () => void; onProfileUpdate: () 
       </div>
 
       {/* Hero Games Banner */}
-      <div className="animate-gradient kb-hero-pattern bg-gradient-to-r from-purple-500 via-indigo-500 to-pink-500 rounded-3xl p-6 md:p-8 text-white shadow-xl border-4 border-white/60 flex flex-col md:flex-row items-center justify-between gap-6">
+      <div className="relative overflow-hidden animate-gradient kb-hero-pattern bg-gradient-to-r from-purple-500 via-indigo-500 to-pink-500 rounded-3xl p-6 md:p-8 text-white shadow-xl border-4 border-white/60 flex flex-col md:flex-row items-center justify-between gap-6">
         <div className="flex items-center gap-5 text-center md:text-left">
           <div className="w-20 h-20 md:w-24 md:h-24 bg-white rounded-3xl shadow-lg flex items-center justify-center text-5xl md:text-6xl border-4 border-purple-200 animate-float shrink-0">
             🎪

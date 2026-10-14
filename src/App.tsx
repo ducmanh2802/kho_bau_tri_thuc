@@ -62,14 +62,14 @@ const ScreenFallback: React.FC<{ label: string }> = ({ label }) => (
 );
 
 /** Quick-access destinations for the sticky bottom navigation bar. */
-const BOTTOM_NAV: { screen: ActiveScreen; label: string; icon: string }[] = [
-  { screen: 'home', label: 'Trang Chủ', icon: '🏠' },
-  { screen: 'world_map', label: 'Bản Đồ', icon: '🗺️' },
-  { screen: 'reading_fluency', label: 'Luyện Đọc', icon: '📖' },
-  { screen: 'competition', label: 'Đấu Trường', icon: '🏆' },
-  { screen: 'games', label: 'Trò Chơi', icon: '🎮' },
-  { screen: 'daily_review', label: 'Ôn Tập', icon: '💡' },
-  { screen: 'achievements', label: 'Vườn Sao', icon: '🌳' },
+const BOTTOM_NAV: { screen: ActiveScreen; label: string; shortLabel: string; icon: string }[] = [
+  { screen: 'home', label: 'Trang Chủ', shortLabel: 'Trang Chủ', icon: '🏠' },
+  { screen: 'world_map', label: 'Bản Đồ', shortLabel: 'Bản Đồ', icon: '🗺️' },
+  { screen: 'reading_fluency', label: 'Luyện Đọc', shortLabel: 'L.Đọc', icon: '📖' },
+  { screen: 'competition', label: 'Đấu Trường', shortLabel: 'Đ.Trường', icon: '🏆' },
+  { screen: 'games', label: 'Trò Chơi', shortLabel: 'T.Chơi', icon: '🎮' },
+  { screen: 'daily_review', label: 'Ôn Tập', shortLabel: 'Ôn Tập', icon: '💡' },
+  { screen: 'achievements', label: 'Vườn Sao', shortLabel: 'V.Sao', icon: '🌳' },
 ];
 
 export default function App() {
@@ -228,29 +228,30 @@ export default function App() {
       </main>
 
       {/*
-        Sticky bottom navigation for everything below xl, where the top nav is
-        hidden. Horizontally scrollable so seven destinations never overflow the
-        viewport, with 44px minimum touch targets.
+        T01/B11 — sticky bottom nav ONLY below lg (1024px). At lg+ the Header
+        top nav is the single navigation. 7 compact tabs fit 375px without
+        clipping: flex-1 + min-w-0, short labels, 44px+ touch targets.
       */}
       <nav
         aria-label="Điều hướng nhanh"
-        className="2xl:hidden fixed bottom-0 inset-x-0 bg-white/95 backdrop-blur-md border-t border-amber-200 flex items-stretch gap-1 px-2 pt-1.5 pb-[max(0.375rem,env(safe-area-inset-bottom))] z-30 shadow-lg overflow-x-auto"
+        className="lg:hidden fixed bottom-0 inset-x-0 bg-white/95 backdrop-blur-md border-t border-amber-200 flex items-stretch gap-0.5 px-1.5 pt-1.5 pb-[max(0.375rem,env(safe-area-inset-bottom))] z-30 shadow-lg"
       >
         {BOTTOM_NAV.map((tab) => (
           <button
             key={tab.screen}
             onClick={() => setCurrentScreen(tab.screen)}
             aria-current={currentScreen === tab.screen ? 'page' : undefined}
-            className={`flex-1 min-w-[64px] min-h-[48px] flex flex-col items-center justify-center gap-0.5 text-[11px] font-bold rounded-xl transition-all ${
+            title={tab.label}
+            className={`flex-1 min-w-0 min-h-[48px] flex flex-col items-center justify-center gap-0.5 text-[10px] font-bold rounded-xl transition-all px-0.5 ${
               currentScreen === tab.screen
                 ? 'text-amber-600 font-black bg-amber-50'
                 : 'text-slate-500'
             }`}
           >
-            <span className="text-xl leading-none" aria-hidden="true">
+            <span className="text-lg leading-none" aria-hidden="true">
               {tab.icon}
             </span>
-            <span className="truncate">{tab.label}</span>
+            <span className="truncate max-w-full leading-tight">{tab.shortLabel}</span>
           </button>
         ))}
       </nav>

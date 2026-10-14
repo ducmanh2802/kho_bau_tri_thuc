@@ -6,6 +6,7 @@ import { adaptiveDifficulty, describeLevel } from '../../services/adaptiveDiffic
 import type { DecisionOutput, KnowledgeState, SessionProfileKind } from '../../types';
 import { ParentSettings } from '../../types';
 import { sound } from '../../services/sound';
+import { localDateKey } from '../../services/dateUtils';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import {
   Lock,
@@ -171,7 +172,7 @@ const [activeTab, setActiveTab] = useState<
     const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify({ profile, analytics, competitionHistory }, null, 2));
     const dlAnchor = document.createElement('a');
     dlAnchor.setAttribute('href', dataStr);
-    dlAnchor.setAttribute('download', `kho_bau_tri_thuc_report_${new Date().toISOString().split('T')[0]}.json`);
+    dlAnchor.setAttribute('download', `kho_bau_tri_thuc_report_${localDateKey()}.json`);
     dlAnchor.click();
     sound.playStar();
   };
