@@ -9,6 +9,7 @@ import {
 } from '../../services/praiseEngine';
 import { fireCelebrationConfetti } from '../../services/confetti';
 import { StorageService } from '../../services/storage';
+import { checkAnswer } from '../../services/answerCheck';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { useModalHistory } from '../../hooks/useModalHistory';
 import { useSpeak } from '../../hooks/useSpeak';
@@ -30,12 +31,24 @@ import {
   ArrowRight,
   RotateCcw,
 } from 'lucide-react';
+import {
+  ChoiceQuestion,
+  ImageChoiceQuestion,
+  TrueFalseQuestion,
+  MatchingQuestion,
+  DragDropQuestion,
+  FillBlankQuestion,
+  OrderingQuestion,
+  MathExpressionQuestion,
+} from './questions';
 
 interface LessonPlayerModalProps {
   lesson: Lesson;
   onClose: () => void;
   onComplete?: () => void;
 }
+
+type MatchingState = Record<string, string>;
 
 export const LessonPlayerModal: React.FC<LessonPlayerModalProps> = ({
   lesson,
@@ -45,33 +58,26 @@ export const LessonPlayerModal: React.FC<LessonPlayerModalProps> = ({
   const [currentIdx, setCurrentIdx] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<string | string[] | null>(null);
   const [orderedList, setOrderedList] = useState<string[]>([]);
+  const [matchingState, setMatchingState] = useState<MatchingState>({});
+  const [dragItem, setDragItem] = useState<string | null>(null);
   const [isAnswerChecked, setIsAnswerChecked] = useState(false);
   const [isCorrect, setIsCorrect] = useState(false);
   const [showHint, setShowHint] = useState(false);
   const [score, setScore] = useState(0);
   const [isFinished, setIsFinished] = useState(false);
   const dialogRef = useFocusTrap<HTMLDivElement>(true);
-  // T01B/1 — Esc + nút Back (history) đóng bài học.
   const { requestClose } = useModalHistory(onClose);
   const { state: audioState, speak: speakQuestion } = useSpeak();
-  // Last canonical text handed toward TTS (test hook; also rendered as
-  // data-last-spoken so automation in an isolated JS world can still verify
-  // routing against the real app realm).
   const [lastSpoken, setLastSpoken] = useState<string | null>(null);
-  // Canonical praise for the current answer (P38): caption and TTS share ONE
-  // string (praise.text === praise.ttsText). The explanation/hint stays
-  // visible as learning content but is never spoken as praise.
   const [praise, setPraise] = useState<PraiseResult | null>(null);
   const praiseAttemptRef = useRef(0);
 
   const question: Question = lesson.questions[currentIdx];
   const progressPercent = Math.round(((currentIdx + 1) / lesson.questions.length) * 100);
+  const correctAnswerStr = Array.isArray(question.correctAnswer)
+    ? question.correctAnswer.join('|')
+    : question.correctAnswer;
 
-  // Read prompt on demand. Auto-play is the parent-controlled accessibility mode
-  // (§20): pre-readers need to hear questions, and a parent can switch it off.
-  // Single source of truth: resolveQuestionAudioText (audioPrompt || prompt).
-  // NEVER answers[0]/options[0]/selectedAnswer/explanation — resolver returns
-  // null (AUDIO_UNAVAILABLE) instead of falling back, and we stay silent.
   const playPromptAudio = () => {
     const target = buildQuestionAudioTarget(question);
     if (!target) return;
@@ -94,16 +100,16 @@ export const LessonPlayerModal: React.FC<LessonPlayerModalProps> = ({
   };
 
   useEffect(() => {
-    // Reset state for new question
     setSelectedAnswer(null);
     setLastSpoken(null);
     setPraise(null);
     setOrderedList([]);
+    setMatchingState({});
+    setDragItem(null);
     setIsAnswerChecked(false);
     setIsCorrect(false);
     setShowHint(false);
 
-    // Speak automatically only when the parent left the accessibility mode on.
     if (!StorageService.getParentSettings().questionAutoplay) return;
     const timer = setTimeout(() => {
       playPromptAudio();
@@ -127,21 +133,79 @@ export const LessonPlayerModal: React.FC<LessonPlayerModalProps> = ({
     }
   };
 
+  const handleMatch = (side: 'left' | 'right', value: string) => {
+    if (isAnswerChecked) return;
+    sound.playClick();
+    const state = { ...matchingState };
+    const key = `${question.id}::${value}`;
+    if (side === 'left') {
+      for (const k of Object.keys(state)) {
+        if (k.startsWith(`${question.id}::`) && state[k] === `L:${value}`) delete state[k];
+      }
+      state[key] = `L:${value}`;
+    } else {
+      const leftKey = Object.keys(state).find(
+        (k) => k.startsWith(`${question.id}::`) && state[k] === `R:${value}`
+      );
+      if (leftKey) {
+        const leftValue = leftKey.split('::')[1];
+        delete state[leftKey];
+        state[`${question.id}::${leftValue}`] = `${leftValue}=${value}`;
+      } else {
+        state[key] = `R:${value}`;
+      }
+    }
+    setMatchingState(state);
+
+    const pairs = question.matchingPairs ?? [];
+    const complete = pairs.every((p: { left: string; right: string }) => {
+      const stored = state[`${question.id}::${p.left}`];
+      return typeof stored === 'string' && stored.includes('=');
+    });
+    if (complete) {
+      const canonical = pairs
+        .map((p: { left: string; right: string }) => `${p.left}=${state[`${question.id}::${p.left}`]}`)
+        .join('|');
+      setSelectedAnswer(canonical);
+    } else {
+      const partial = Object.entries(state)
+        .filter(([k, v]) => k.startsWith(`${question.id}::`) && v.includes('='))
+        .map(([, v]) => v)
+        .join('|');
+      setSelectedAnswer(partial);
+    }
+  };
+
+  const handleDragItem = (item: string) => {
+    if (isAnswerChecked) return;
+    sound.playClick();
+    setDragItem(item);
+  };
+
+  const handleDropInto = (bucket: string) => {
+    if (isAnswerChecked || !dragItem) return;
+    sound.playClick();
+    setSelectedAnswer(bucket);
+    setDragItem(null);
+  };
+
   const handleCheckAnswer = () => {
     if (isAnswerChecked) return;
 
-    let correct = false;
-    if (question.type === 'ordering') {
-      const targetArr = question.correctAnswer as string[];
-      correct = orderedList.join(' ') === targetArr.join(' ');
-    } else {
-      correct = selectedAnswer === question.correctAnswer;
-    }
+    const userAnswer =
+      question.type === 'ordering'
+        ? orderedList
+        : question.type === 'matching'
+        ? selectedAnswer
+        : question.type === 'drag-drop' || question.type === 'classify'
+        ? selectedAnswer
+        : selectedAnswer;
+
+    const correct = checkAnswer(question, userAnswer);
 
     setIsAnswerChecked(true);
     setIsCorrect(correct);
 
-    // Record in storage analytics for adaptive tracking
     StorageService.recordQuestionAnswer(
       question.skillId,
       correct,
@@ -157,10 +221,6 @@ export const LessonPlayerModal: React.FC<LessonPlayerModalProps> = ({
       sound.playWrong();
     }
 
-    // P38 canonical praise: ONE resolver → ONE caption string → ONE TTS
-    // request with the identical string. Language follows the question
-    // subject (English lessons praise in English, en-GB), so an English
-    // context can never fall back to Vietnamese praise.
     praiseAttemptRef.current += 1;
     const resolved = resolvePraise({
       subject: toPraiseSubject(question.subject),
@@ -176,7 +236,6 @@ export const LessonPlayerModal: React.FC<LessonPlayerModalProps> = ({
     if (currentIdx + 1 < lesson.questions.length) {
       setCurrentIdx(currentIdx + 1);
     } else {
-      // Completed lesson!
       setIsFinished(true);
       sound.playLevelUp();
       fireCelebrationConfetti();
@@ -195,16 +254,147 @@ export const LessonPlayerModal: React.FC<LessonPlayerModalProps> = ({
     sound.playClick();
     setSelectedAnswer(null);
     setOrderedList([]);
+    setMatchingState({});
+    setDragItem(null);
     setIsAnswerChecked(false);
     setIsCorrect(false);
     setShowHint(true);
-    // Retry encouragement in the lesson language (P38): same caption/TTS rule.
     const retryPraise = resolvePraise({
       subject: toPraiseSubject(question.subject),
       outcome: 'ENCOURAGEMENT',
     });
     setPraise(retryPraise);
     speakPraise(retryPraise);
+  };
+
+  const renderQuestionInput = () => {
+    const correctAnswerStr = Array.isArray(question.correctAnswer)
+      ? question.correctAnswer.join('|')
+      : question.correctAnswer;
+
+    switch (question.type) {
+      case 'ordering':
+        return (
+          <OrderingQuestion
+            key={question.id}
+            question={question}
+            orderedList={orderedList}
+            onToggleOrderItem={handleToggleOrderItem}
+            isAnswerChecked={isAnswerChecked}
+            isCorrect={isCorrect}
+            correctAnswer={correctAnswerStr}
+          />
+        );
+      case 'matching':
+        return (
+          <MatchingQuestion
+            key={question.id}
+            question={question}
+            matchingState={matchingState}
+            onMatch={handleMatch}
+            isAnswerChecked={isAnswerChecked}
+            isCorrect={isCorrect}
+            correctAnswer={correctAnswerStr}
+          />
+        );
+      case 'drag-drop':
+      case 'classify':
+        return (
+          <DragDropQuestion
+            key={question.id}
+            question={question}
+            dragItem={dragItem}
+            onDragItem={handleDragItem}
+            onDropInto={handleDropInto}
+            isAnswerChecked={isAnswerChecked}
+            isCorrect={isCorrect}
+            correctAnswer={correctAnswerStr}
+            selectedAnswer={selectedAnswer as string}
+          />
+        );
+      case 'fill-blank':
+        return (
+          <FillBlankQuestion
+            key={question.id}
+            question={question}
+            selectedAnswer={selectedAnswer as string}
+            onSelect={handleSelectOption}
+            isAnswerChecked={isAnswerChecked}
+            isCorrect={isCorrect}
+            correctAnswer={correctAnswerStr}
+          />
+        );
+      case 'true-false':
+        return (
+          <TrueFalseQuestion
+            key={question.id}
+            question={question}
+            selectedAnswer={selectedAnswer as string}
+            onSelect={handleSelectOption}
+            isAnswerChecked={isAnswerChecked}
+            isCorrect={isCorrect}
+            correctAnswer={correctAnswerStr}
+          />
+        );
+      case 'math-expression':
+        return (
+          <MathExpressionQuestion
+            key={question.id}
+            question={question}
+            selectedAnswer={selectedAnswer as string}
+            onSelect={handleSelectOption}
+            isAnswerChecked={isAnswerChecked}
+            isCorrect={isCorrect}
+            correctAnswer={correctAnswerStr}
+          />
+        );
+      case 'image-choice':
+        return (
+          <ImageChoiceQuestion
+            key={question.id}
+            question={question}
+            selectedAnswer={selectedAnswer as string}
+            onSelect={handleSelectOption}
+            isAnswerChecked={isAnswerChecked}
+            isCorrect={isCorrect}
+            correctAnswer={correctAnswerStr}
+          />
+        );
+      case 'multiple-choice':
+      case 'audio-choice':
+      default:
+        return (
+          <ChoiceQuestion
+            key={question.id}
+            question={question}
+            selectedAnswer={selectedAnswer as string}
+            onSelect={handleSelectOption}
+            isAnswerChecked={isAnswerChecked}
+            isCorrect={isCorrect}
+            correctAnswer={correctAnswerStr}
+          />
+        );
+    }
+  };
+
+  const isSubmitDisabled = () => {
+    if (isAnswerChecked) return false;
+    switch (question.type) {
+      case 'ordering':
+        return orderedList.length === 0;
+      case 'matching': {
+        const pairs = question.matchingPairs ?? [];
+        return pairs.length > 0 && !pairs.every((p) => {
+          const stored = matchingState[`${question.id}::${p.left}`];
+          return typeof stored === 'string' && stored.includes('=');
+        });
+      }
+      case 'drag-drop':
+      case 'classify':
+        return !selectedAnswer;
+      default:
+        return !selectedAnswer;
+    }
   };
 
   return (
@@ -261,194 +451,117 @@ export const LessonPlayerModal: React.FC<LessonPlayerModalProps> = ({
         {/* Question Area */}
         {!isFinished ? (
           <div className="flex-1 flex flex-col min-h-0">
-          <div className="flex-1 overflow-y-auto p-4 md:p-6">
-            {/* Prompt Card */}
-            <div className="bg-amber-50/70 p-4 md:p-5 rounded-2xl border-2 border-amber-200 flex flex-col items-center text-center">
-              {question.mediaEmoji && (
-                <div className="text-5xl md:text-6xl mb-3 animate-pulse-subtle">
-                  {question.mediaEmoji}
-                </div>
-              )}
+            <div className="flex-1 overflow-y-auto p-4 md:p-6">
+              {/* Prompt Card */}
+              <div className="bg-amber-50/70 p-4 md:p-5 rounded-2xl border-2 border-amber-200 flex flex-col items-center text-center">
+                {question.mediaEmoji && (
+                  <div className="text-5xl md:text-6xl mb-3 animate-pulse-subtle">
+                    {question.mediaEmoji}
+                  </div>
+                )}
 
-              <div className="flex items-center justify-center gap-2 mb-1">
-                <h4 className="text-lg md:text-xl font-black text-slate-800 font-display">
-                  {question.prompt}
-                </h4>
-                <button
-                  onClick={playPromptAudio}
-                  data-testid="question-audio"
-                  data-action="READ_QUESTION"
-                  data-audio-state={audioState}
-                  data-question-id={question.id}
-                  data-last-spoken={lastSpoken ?? undefined}
-                  className="p-2 min-w-[44px] min-h-[44px] bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-full active:scale-95 shrink-0 flex items-center justify-center"
-                  title="Đọc câu hỏi"
-                  aria-label={
-                    audioState === 'playing'
-                      ? 'Đang đọc câu hỏi'
-                      : audioState === 'played'
+                <div className="flex items-center justify-center gap-2 mb-1">
+                  <h4 className="text-lg md:text-xl font-black text-slate-800 font-display">
+                    {question.prompt}
+                  </h4>
+                  <button
+                    onClick={playPromptAudio}
+                    data-testid="question-audio"
+                    data-action="READ_QUESTION"
+                    data-audio-state={audioState}
+                    data-question-id={question.id}
+                    data-last-spoken={lastSpoken ?? undefined}
+                    className="p-2 min-w-[44px] min-h-[44px] bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-full active:scale-95 shrink-0 flex items-center justify-center"
+                    title="Đọc câu hỏi"
+                    aria-label={
+                      audioState === 'playing'
+                        ? 'Đang đọc câu hỏi'
+                        : audioState === 'played'
                         ? 'Đã đọc xong, chạm để nghe lại'
                         : audioState === 'unavailable'
-                          ? 'Thiết bị không đọc được, hãy đọc cùng ba mẹ nhé'
-                          : 'Đọc câu hỏi'
-                  }
-                >
-                  <Volume2 className="w-5 h-5" />
-                </button>
+                        ? 'Thiết bị không đọc được, hãy đọc cùng ba mẹ nhé'
+                        : 'Đọc câu hỏi'
+                    }
+                  >
+                    <Volume2 className="w-5 h-5" />
+                  </button>
+                </div>
+
+                {/* Hint toggler */}
+                {question.hint && (
+                  <div className="mt-2">
+                    <button
+                      onClick={() => {
+                        sound.playClick();
+                        setShowHint(!showHint);
+                      }}
+                      className="min-h-[44px] px-4 text-xs text-amber-800 hover:text-amber-900 flex items-center gap-1 font-bold bg-amber-100/80 py-1 rounded-full"
+                    >
+                      <HelpCircle className="w-3.5 h-3.5" />
+                      <span>{showHint ? 'Ẩn gợi ý' : 'Bé cần gợi ý?'}</span>
+                    </button>
+                    {showHint && (
+                      <p className="text-xs text-amber-900 mt-1 bg-amber-200/60 px-3 py-1.5 rounded-xl font-medium animate-pop">
+                        💡 {question.hint}
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
 
-              {/* Hint toggler */}
-              {question.hint && (
-                <div className="mt-2">
-                  <button
-                    onClick={() => {
-                      sound.playClick();
-                      setShowHint(!showHint);
-                    }}
-                    className="min-h-[44px] px-4 text-xs text-amber-800 hover:text-amber-900 flex items-center gap-1 font-bold bg-amber-100/80 py-1 rounded-full"
+              {/* Answer Options */}
+              <div className="my-4" data-testid="question-input">
+                {renderQuestionInput()}
+              </div>
+
+              {/* Bottom Feedback (trong vùng cuộn) */}
+              <div>
+                {isAnswerChecked && (
+                  <div
+                    role="status"
+                    className={`p-3 rounded-2xl mb-3 flex items-center gap-3 animate-pop ${
+                      isCorrect
+                        ? 'bg-emerald-100 border border-emerald-300 text-emerald-900'
+                        : 'bg-rose-100 border border-rose-300 text-rose-900'
+                    }`}
                   >
-                    <HelpCircle className="w-3.5 h-3.5" />
-                    <span>{showHint ? 'Ẩn gợi ý' : 'Bé cần gợi ý?'}</span>
-                  </button>
-                  {showHint && (
-                    <p className="text-xs text-amber-900 mt-1 bg-amber-200/60 px-3 py-1.5 rounded-xl font-medium animate-pop">
-                      💡 {question.hint}
-                    </p>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {/* Answer Options */}
-            <div className="my-4">
-              {question.type === 'ordering' ? (
-                // Ordering word tiles
-                <div className="space-y-4">
-                  <div className="min-h-[56px] p-3 bg-slate-50 border-2 border-dashed border-amber-300 rounded-2xl flex flex-wrap items-center justify-center gap-2">
-                    {orderedList.length === 0 ? (
-                      <span className="text-xs text-slate-400 font-semibold">
-                        Chạm vào các từ bên dưới để ghép câu...
-                      </span>
+                    {isCorrect ? (
+                      <CheckCircle2 className="w-6 h-6 text-emerald-600 shrink-0" />
                     ) : (
-                      orderedList.map((word, i) => (
-                        <button
-                          key={i}
-                          onClick={() => handleToggleOrderItem(word)}
-                          className="px-4 py-2 bg-amber-400 text-amber-950 font-black rounded-xl shadow-sm text-base animate-pop"
-                        >
-                          {word}
-                        </button>
-                      ))
+                      <AlertCircle className="w-6 h-6 text-rose-600 shrink-0" />
                     )}
-                  </div>
-
-                  <div className="flex flex-wrap items-center justify-center gap-2">
-                    {question.options?.map((word, i) => {
-                      const isUsed = orderedList.includes(word);
-                      return (
-                        <button
-                          key={i}
-                          onClick={() => handleToggleOrderItem(word)}
-                          disabled={isUsed || isAnswerChecked}
-                          className={`px-4 py-2.5 rounded-xl font-black text-base border-2 transition-all ${
-                            isUsed
-                              ? 'opacity-30 border-slate-200 bg-slate-100'
-                              : 'bg-white hover:bg-amber-50 border-amber-300 shadow-sm active:scale-95'
-                          }`}
+                    <div className="text-xs md:text-sm font-bold flex-1">
+                      {praise && (
+                        <span
+                          data-testid="praise-caption"
+                          data-praise-text={praise.text}
+                          data-praise-tts={praise.ttsText}
+                          data-praise-locale={praise.locale}
+                          data-praise-language={praise.language}
+                          data-praise-outcome={praise.outcome}
+                          className="block text-sm md:text-base font-black mb-0.5"
                         >
-                          {word}
-                        </button>
-                      );
-                    })}
+                          {praise.characterEmoji} {praise.text}
+                        </span>
+                      )}
+                      {isCorrect
+                        ? question.explanation || 'Rất tuyệt vời! Bé đã trả lời chính xác!'
+                        : `Đáp án đúng là: ${correctAnswerStr}`}
+                    </div>
                   </div>
-                </div>
-              ) : (
-                // Multiple Choice / Fill Blank / Image Choice Grid
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {question.options?.map((opt, i) => {
-                    const isSelected = selectedAnswer === opt;
-                    let stateStyle = 'bg-white border-slate-200 hover:border-amber-400 hover:bg-amber-50/50';
-
-                    if (isAnswerChecked) {
-                      if (opt === question.correctAnswer) {
-                        stateStyle = 'bg-emerald-50 border-emerald-500 text-emerald-900';
-                      } else if (isSelected) {
-                        stateStyle = 'bg-rose-50 border-rose-500 text-rose-900';
-                      } else {
-                        stateStyle = 'opacity-40 border-slate-200';
-                      }
-                    } else if (isSelected) {
-                      stateStyle = 'bg-amber-100 border-amber-500 text-amber-950 shadow-md scale-[1.02]';
-                    }
-
-                    return (
-                      <button
-                        key={i}
-                        data-testid="answer-option"
-                        onClick={() => handleSelectOption(opt)}
-                        disabled={isAnswerChecked}
-                        className={`p-4 rounded-2xl border-3 font-bold text-base md:text-lg flex items-center justify-center transition-all cursor-pointer text-center ${stateStyle}`}
-                      >
-                        {opt}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
+                )}
+              </div>
             </div>
 
-            {/* Bottom Feedback (trong vùng cuộn) và Actions (dính đáy) */}
-            <div>
-              {isAnswerChecked && (
-                <div
-                  role="status"
-                  className={`p-3 rounded-2xl mb-3 flex items-center gap-3 animate-pop ${
-                    isCorrect
-                      ? 'bg-emerald-100 border border-emerald-300 text-emerald-900'
-                      : 'bg-rose-100 border border-rose-300 text-rose-900'
-                  }`}
-                >
-                  {isCorrect ? (
-                    <CheckCircle2 className="w-6 h-6 text-emerald-600 shrink-0" />
-                  ) : (
-                    <AlertCircle className="w-6 h-6 text-rose-600 shrink-0" />
-                  )}
-                  <div className="text-xs md:text-sm font-bold flex-1">
-                    {praise && (
-                      <span
-                        data-testid="praise-caption"
-                        data-praise-text={praise.text}
-                        data-praise-tts={praise.ttsText}
-                        data-praise-locale={praise.locale}
-                        data-praise-language={praise.language}
-                        data-praise-outcome={praise.outcome}
-                        className="block text-sm md:text-base font-black mb-0.5"
-                      >
-                        {praise.characterEmoji} {praise.text}
-                      </span>
-                    )}
-                    {isCorrect
-                      ? question.explanation || 'Rất tuyệt vời! Bé đã trả lời chính xác!'
-                      : `Đáp án đúng là: ${Array.isArray(question.correctAnswer) ? question.correctAnswer.join(' ') : question.correctAnswer}`}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/*
-            T01B/2 — thanh hành động DÍNH ĐÁY modal: nút "Kiểm tra"/"Câu tiếp
-            theo" luôn thấy ở 375×667, không phải cuộn. Nằm ngoài vùng cuộn.
-          */}
-          <div className="shrink-0 border-t-2 border-amber-200 bg-white/95 backdrop-blur px-4 md:px-6 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+            {/*
+              T01B/2 — thanh hành động DÍNH ĐÁY modal: nút "Kiểm tra"/"Câu tiếp
+              theo" luôn thấy ở 375×667, không phải cuộn. Nằm ngoài vùng cuộn.
+            */}
+            <div className="shrink-0 border-t-2 border-amber-200 bg-white/95 backdrop-blur px-4 md:px-6 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
               {!isAnswerChecked ? (
                 <button
                   onClick={handleCheckAnswer}
-                  disabled={
-                    question.type === 'ordering'
-                      ? orderedList.length === 0
-                      : !selectedAnswer
-                  }
+                  disabled={isSubmitDisabled()}
                   className="w-full py-3.5 px-6 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 disabled:opacity-40 text-white font-black text-base md:text-lg rounded-2xl shadow-lg transition-transform active:scale-95 cursor-pointer font-display"
                 >
                   Kiểm tra câu trả lời ✨
