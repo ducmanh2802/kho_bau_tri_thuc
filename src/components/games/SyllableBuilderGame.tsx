@@ -3,156 +3,19 @@ import { GameModalWrapper } from './GameModalWrapper';
 import { sound } from '../../services/sound';
 import { Volume2, CheckCircle2 } from 'lucide-react';
 import { useGameStage } from '../../hooks/useGameStage';
-import { getTierMeta, seededRng, shuffleSeeded } from '../../data/gameLevels';
+import { getTierMeta } from '../../data/gameLevels';
+import {
+  INITIAL_OPTIONS,
+  POOL_BY_TIER,
+  SYLLABLE_ROUNDS_PER_TIER,
+  TONE_OPTIONS,
+  VOWEL_OPTIONS,
+  buildSyllableRounds,
+} from '../../data/games/syllable_builder';
+import type { SyllablePuzzle, SyllableSeed } from '../../data/games/syllable_builder';
 
-export interface SyllablePuzzle {
-  word: string;
-  emoji: string;
-  initial: string;
-  vowel: string;
-  tone: string;
-  toneSymbol: string;
-  readAloud: string;
-}
-
-export interface SyllableSeed {
-  w: string;
-  i: string;
-  v: string;
-  t: string;
-  sym: string;
-  emoji: string;
-}
-
-const TONE_NAMES: Record<string, string> = {
-  ngang: 'ngang', sắc: 'sắc', huyền: 'huyền', hỏi: 'hỏi', ngã: 'ngã', nặng: 'nặng',
-};
-
-function seed(v: SyllableSeed): SyllablePuzzle {
-  return {
-    word: v.w,
-    emoji: v.emoji,
-    initial: v.i,
-    vowel: v.v,
-    tone: v.t,
-    toneSymbol: v.sym,
-    readAloud: `${v.i} - ${v.v} - ${v.i}${v.v} - ${TONE_NAMES[v.t]} - ${v.w}`,
-  };
-}
-
-export const POOL_BY_TIER: SyllableSeed[][] = [
-  // T1 — vần a
-  [
-    { w: 'cá', i: 'c', v: 'a', t: 'sắc', sym: '´', emoji: '🐟' },
-    { w: 'gà', i: 'g', v: 'a', t: 'huyền', sym: '`', emoji: '🐓' },
-    { w: 'bà', i: 'b', v: 'a', t: 'huyền', sym: '`', emoji: '👵' },
-    { w: 'ba', i: 'b', v: 'a', t: 'ngang', sym: '-', emoji: '👨' },
-    { w: 'ca', i: 'c', v: 'a', t: 'ngang', sym: '-', emoji: '🎤' },
-    { w: 'cà', i: 'c', v: 'a', t: 'huyền', sym: '`', emoji: '🍆' },
-    { w: 'ga', i: 'g', v: 'a', t: 'ngang', sym: '-', emoji: '🚂' },
-    { w: 'má', i: 'm', v: 'a', t: 'sắc', sym: '´', emoji: '👩' },
-    { w: 'mạ', i: 'm', v: 'a', t: 'nặng', sym: '.', emoji: '🌾' },
-    { w: 'đa', i: 'd', v: 'a', t: 'ngang', sym: '-', emoji: '🌳' },
-    { w: 'thả', i: 'th', v: 'a', t: 'hỏi', sym: '?', emoji: '🪁' },
-    { w: 'dạ', i: 'd', v: 'a', t: 'nặng', sym: '.', emoji: '🙋' },
-  ],
-  // T2 — vần e / ê
-  [
-    { w: 'bé', i: 'b', v: 'e', t: 'sắc', sym: '´', emoji: '👶' },
-    { w: 'bè', i: 'b', v: 'e', t: 'huyền', sym: '`', emoji: '🛶' },
-    { w: 'che', i: 'th', v: 'e', t: 'ngang', sym: '-', emoji: '⛱️' },
-    { w: 'mê', i: 'm', v: 'e', t: 'ngang', sym: '-', emoji: '😍' },
-    { w: 'mè', i: 'm', v: 'e', t: 'huyền', sym: '`', emoji: '🌿' },
-    { w: 'thẻ', i: 'th', v: 'e', t: 'hỏi', sym: '?', emoji: '🎫' },
-    { w: 'thề', i: 'th', v: 'e', t: 'huyền', sym: '`', emoji: '🤝' },
-    { w: 'bê', i: 'b', v: 'ê', t: 'ngang', sym: '-', emoji: '🐄' },
-    { w: 'dê', i: 'd', v: 'ê', t: 'ngang', sym: '-', emoji: '🐐' },
-    { w: 'hề', i: 'th', v: 'ê', t: 'huyền', sym: '`', emoji: '🤡' },
-    { w: 'mề', i: 'm', v: 'ê', t: 'huyền', sym: '`', emoji: '🐔' },
-    { w: 'thuê', i: 'th', v: 'ê', t: 'ngang', sym: '-', emoji: '🏠' },
-  ],
-  // T3 — vần o
-  [
-    { w: 'cò', i: 'c', v: 'o', t: 'huyền', sym: '`', emoji: '🦢' },
-    { w: 'cỏ', i: 'c', v: 'o', t: 'hỏi', sym: '?', emoji: '🌱' },
-    { w: 'có', i: 'c', v: 'o', t: 'sắc', sym: '´', emoji: '✨' },
-    { w: 'cọ', i: 'c', v: 'o', t: 'nặng', sym: '.', emoji: '🖌️' },
-    { w: 'bò', i: 'b', v: 'o', t: 'huyền', sym: '`', emoji: '🐮' },
-    { w: 'bỏ', i: 'b', v: 'o', t: 'hỏi', sym: '?', emoji: '🗑️' },
-    { w: 'bọ', i: 'b', v: 'o', t: 'nặng', sym: '.', emoji: '🪲' },
-    { w: 'bố', i: 'b', v: 'o', t: 'sắc', sym: '´', emoji: '👨' },
-    { w: 'gò', i: 'g', v: 'o', t: 'huyền', sym: '`', emoji: '⛰️' },
-    { w: 'gõ', i: 'g', v: 'o', t: 'ngã', sym: '~', emoji: '🚪' },
-    { w: 'mò', i: 'm', v: 'o', t: 'huyền', sym: '`', emoji: '🦀' },
-    { w: 'dỗ', i: 'd', v: 'o', t: 'ngã', sym: '~', emoji: '🤗' },
-  ],
-  // T4 — vần u
-  [
-    { w: 'cú', i: 'c', v: 'u', t: 'sắc', sym: '´', emoji: '🦉' },
-    { w: 'củ', i: 'c', v: 'u', t: 'hỏi', sym: '?', emoji: '🥔' },
-    { w: 'cụ', i: 'c', v: 'u', t: 'nặng', sym: '.', emoji: '👴' },
-    { w: 'cũ', i: 'c', v: 'u', t: 'ngã', sym: '~', emoji: '👕' },
-    { w: 'bú', i: 'b', v: 'u', t: 'sắc', sym: '´', emoji: '🍼' },
-    { w: 'gù', i: 'g', v: 'u', t: 'huyền', sym: '`', emoji: '🕊️' },
-    { w: 'mù', i: 'm', v: 'u', t: 'huyền', sym: '`', emoji: '🌫️' },
-    { w: 'mũ', i: 'm', v: 'u', t: 'ngã', sym: '~', emoji: '🧢' },
-    { w: 'thu', i: 'th', v: 'u', t: 'ngang', sym: '-', emoji: '🍂' },
-    { w: 'thủ', i: 'th', v: 'u', t: 'hỏi', sym: '?', emoji: '🥅' },
-    { w: 'thú', i: 'th', v: 'u', t: 'sắc', sym: '´', emoji: '🐱' },
-    { w: 'dù', i: 'd', v: 'u', t: 'huyền', sym: '`', emoji: '☂️' },
-  ],
-  // T5 — vần i
-  [
-    { w: 'bi', i: 'b', v: 'i', t: 'ngang', sym: '-', emoji: '🔮' },
-    { w: 'bí', i: 'b', v: 'i', t: 'sắc', sym: '´', emoji: '🎃' },
-    { w: 'bị', i: 'b', v: 'i', t: 'nặng', sym: '.', emoji: '🤒' },
-    { w: 'dì', i: 'd', v: 'i', t: 'huyền', sym: '`', emoji: '👩‍👧' },
-    { w: 'gì', i: 'g', v: 'i', t: 'huyền', sym: '`', emoji: '❓' },
-    { w: 'mi', i: 'm', v: 'i', t: 'ngang', sym: '-', emoji: '👀' },
-    { w: 'mí', i: 'm', v: 'i', t: 'sắc', sym: '´', emoji: '👁️' },
-    { w: 'thi', i: 'th', v: 'i', t: 'ngang', sym: '-', emoji: '📝' },
-    { w: 'thì', i: 'th', v: 'i', t: 'huyền', sym: '`', emoji: '⏳' },
-    { w: 'đi', i: 'đ', v: 'i', t: 'ngang', sym: '-', emoji: '🚶' },
-    { w: 'ti', i: 't', v: 'i', t: 'ngang', sym: '-', emoji: '📺' },
-    { w: 'li', i: 'l', v: 'i', t: 'ngang', sym: '-', emoji: '🔍' },
-  ],
-  // T6 — ôn tập tổng hợp (âm đ/l/n/t mới + dấu ngã)
-  [
-    { w: 'đá', i: 'đ', v: 'a', t: 'sắc', sym: '´', emoji: '⚽' },
-    { w: 'lúa', i: 'l', v: 'u', t: 'sắc', sym: '´', emoji: '🌾' },
-    { w: 'na', i: 'n', v: 'a', t: 'ngang', sym: '-', emoji: '🍈' },
-    { w: 'no', i: 'n', v: 'o', t: 'ngang', sym: '-', emoji: '🍚' },
-    { w: 'nụ', i: 'n', v: 'u', t: 'nặng', sym: '.', emoji: '🌷' },
-    { w: 'đô', i: 'đ', v: 'o', t: 'ngang', sym: '-', emoji: '🏙️' },
-    { w: 'đồ', i: 'đ', v: 'o', t: 'huyền', sym: '`', emoji: '🧸' },
-    { w: 'đổ', i: 'đ', v: 'o', t: 'hỏi', sym: '?', emoji: '💧' },
-    { w: 'đỗ', i: 'đ', v: 'o', t: 'ngã', sym: '~', emoji: '🎓' },
-    { w: 'tí', i: 't', v: 'i', t: 'sắc', sym: '´', emoji: '🤏' },
-    { w: 'tô', i: 't', v: 'o', t: 'ngang', sym: '-', emoji: '🍜' },
-    { w: 'tủ', i: 't', v: 'u', t: 'hỏi', sym: '?', emoji: '🗄️' },
-  ],
-];
-
-export const SYLLABLE_ROUNDS_PER_TIER = [4, 4, 5, 5, 6, 6];
-
-export function buildSyllableRounds(tier: number, nonce = 0, seedOverride?: number): SyllablePuzzle[] {
-  const safeTier = Math.min(Math.max(Math.round(tier), 1), POOL_BY_TIER.length);
-  const count = SYLLABLE_ROUNDS_PER_TIER[safeTier - 1];
-  const pool = POOL_BY_TIER[safeTier - 1];
-  const shuffled = shuffleSeeded(pool, seededRng(seedOverride ?? 8900 + safeTier * 53 + nonce * 1009));
-  return shuffled.slice(0, Math.min(count, shuffled.length)).map(seed);
-}
-
-export const INITIAL_OPTIONS = ['c', 'b', 'g', 'm', 'th', 'd', 'đ', 'l', 'n', 't'];
-export const VOWEL_OPTIONS = ['a', 'e', 'o', 'u', 'i', 'ê'];
-export const TONE_OPTIONS = [
-  { label: 'Không dấu', val: 'ngang', sym: '-' },
-  { label: 'Dấu Sắc (/)', val: 'sắc', sym: '´' },
-  { label: 'Dấu Huyền (\\)', val: 'huyền', sym: '`' },
-  { label: 'Dấu Hỏi (?)', val: 'hỏi', sym: '?' },
-  { label: 'Dấu Ngã (~)', val: 'ngã', sym: '~' },
-  { label: 'Dấu Nặng (.)', val: 'nặng', sym: '.' },
-];
+export { INITIAL_OPTIONS, POOL_BY_TIER, SYLLABLE_ROUNDS_PER_TIER, VOWEL_OPTIONS, buildSyllableRounds };
+export type { SyllablePuzzle, SyllableSeed };
 
 export const SyllableBuilderGame: React.FC<{ onExit: () => void }> = ({ onExit }) => {
   const roundsPerTier = useMemo(() => SYLLABLE_ROUNDS_PER_TIER.slice(), []);

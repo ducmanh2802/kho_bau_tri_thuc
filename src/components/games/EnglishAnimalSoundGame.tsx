@@ -3,56 +3,17 @@ import { GameModalWrapper } from './GameModalWrapper';
 import { sound } from '../../services/sound';
 import { Volume2 } from 'lucide-react';
 import { useGameStage } from '../../hooks/useGameStage';
-import { defaultRoundsPerTier, getTierMeta, pickDistinct, seededRng, shuffleSeeded } from '../../data/gameLevels';
+import { defaultRoundsPerTier, getTierMeta } from '../../data/gameLevels';
+import { SAFARI_ANIMALS, buildAnimalRounds } from '../../data/games/animal_safari';
+import type { AnimalRound, AnimalSafariItem } from '../../data/games/animal_safari';
 
-interface AnimalSafariItem {
-  englishName: string;
-  vietnameseMeaning: string;
-  emoji: string;
-  soundCue: string;
-}
-
-interface AnimalRound {
-  target: AnimalSafariItem;
-  options: AnimalSafariItem[];
-}
-
-const SAFARI_ANIMALS: AnimalSafariItem[] = [
-  { englishName: 'Dog', vietnameseMeaning: 'Con chó', emoji: '🐶', soundCue: 'Woof woof! Find the Dog!' },
-  { englishName: 'Cat', vietnameseMeaning: 'Con mèo', emoji: '🐱', soundCue: 'Meow meow! Find the Cat!' },
-  { englishName: 'Duck', vietnameseMeaning: 'Con vịt', emoji: '🦆', soundCue: 'Quack quack! Find the Duck!' },
-  { englishName: 'Lion', vietnameseMeaning: 'Sư tử', emoji: '🦁', soundCue: 'Roar! Find the Lion!' },
-  { englishName: 'Monkey', vietnameseMeaning: 'Con khỉ', emoji: '🐵', soundCue: 'Ooh ooh aah aah! Find the Monkey!' },
-  { englishName: 'Elephant', vietnameseMeaning: 'Con voi', emoji: '🐘', soundCue: 'Paaah! Find the Elephant!' },
-  { englishName: 'Giraffe', vietnameseMeaning: 'Hươu cao cổ', emoji: '🦒', soundCue: 'Munch! Find the Giraffe!' },
-  { englishName: 'Zebra', vietnameseMeaning: 'Ngựa vằn', emoji: '🦓', soundCue: 'Bray! Find the Zebra!' },
-  { englishName: 'Fox', vietnameseMeaning: 'Con cáo', emoji: '🦊', soundCue: 'Yip yip! Find the Fox!' },
-  { englishName: 'Bear', vietnameseMeaning: 'Con gấu', emoji: '🐻', soundCue: 'Growl! Find the Bear!' },
-  { englishName: 'Frog', vietnameseMeaning: 'Con ếch', emoji: '🐸', soundCue: 'Ribbit! Find the Frog!' },
-  { englishName: 'Tiger', vietnameseMeaning: 'Con hổ', emoji: '🐯', soundCue: 'Grrr! Find the Tiger!' },
-];
-
-function buildAnimalRounds(tier: number): AnimalRound[] {
-  const roundsPerTier = defaultRoundsPerTier();
-  const count = roundsPerTier[tier - 1];
-  const poolSize = tier <= 1 ? 4 : tier === 2 ? 5 : tier === 3 ? 6 : tier === 4 ? 8 : tier === 5 ? 10 : SAFARI_ANIMALS.length;
-  const pool = SAFARI_ANIMALS.slice(0, poolSize);
-  const rng = seededRng(9100 + tier * 59);
-  const rounds: AnimalRound[] = [];
-  for (let i = 0; i < count; i++) {
-    const rngI = seededRng(9100 + tier * 59 + i * 271);
-    const picked = pickDistinct(pool, 4, rngI);
-    const shuffled = shuffleSeeded(picked, seededRng(9100 + tier * 59 + i * 853));
-    rounds.push({ target: shuffled[0], options: shuffled });
-  }
-  return rounds;
-}
+export { SAFARI_ANIMALS, buildAnimalRounds };
 
 export const EnglishAnimalSoundGame: React.FC<{ onExit: () => void }> = ({ onExit }) => {
   const roundsPerTier = useMemo(() => defaultRoundsPerTier(), []);
   const stage = useGameStage({ gameId: 'animal_safari', roundsPerTier, advanceDelayMs: 1300 });
 
-  const rounds = useMemo(() => buildAnimalRounds(stage.tier), [stage.tier]);
+  const rounds = useMemo(() => buildAnimalRounds(stage.tier, stage.nonce), [stage.tier, stage.nonce]);
   const current = rounds[stage.roundIdx];
 
   const playVoice = () => {

@@ -3,6 +3,11 @@ import { GameModalWrapper } from './GameModalWrapper';
 import { sound } from '../../services/sound';
 import { useGameStage } from '../../hooks/useGameStage';
 import { defaultRoundsPerTier, getTierMeta } from '../../data/gameLevels';
+import { TIER_CONFIG } from '../../data/games/falling_numbers';
+import type { Condition } from '../../data/games/falling_numbers';
+
+export { TIER_CONFIG };
+export type { Condition };
 
 interface FallingBall {
   id: number;
@@ -14,42 +19,6 @@ interface FallingBall {
 }
 
 const BALL_COLORS = ['bg-rose-500', 'bg-blue-500', 'bg-emerald-500', 'bg-amber-500', 'bg-purple-500'];
-
-export interface Condition {
-  text: string;
-  check: (n: number) => boolean;
-  speech: string;
-}
-
-// T02/A6 — "chia hết cho 5" removed (beyond Grade 1); T5 catches round tens,
-// T6 catches numbers immediately AFTER a round ten ("số liền sau").
-// T4 already covers "số lớn hơn 10".
-export const TIER_CONFIG: { condition: Condition; maxVal: number; spawnMs: number; speedMin: number; speedMax: number }[] = [
-  {
-    condition: { text: 'LỚN HƠN 5 (> 5)', check: (n) => n > 5, speech: 'Hứng các quả bóng có số lớn hơn năm' },
-    maxVal: 10, spawnMs: 1100, speedMin: 0.35, speedMax: 0.6,
-  },
-  {
-    condition: { text: 'SỐ CHẴN', check: (n) => n % 2 === 0, speech: 'Hứng các quả bóng mang số chẵn' },
-    maxVal: 10, spawnMs: 1000, speedMin: 0.35, speedMax: 0.62,
-  },
-  {
-    condition: { text: 'BÉ HƠN 7 (< 7)', check: (n) => n < 7, speech: 'Hứng các quả bóng có số bé hơn bảy' },
-    maxVal: 12, spawnMs: 900, speedMin: 0.38, speedMax: 0.68,
-  },
-  {
-    condition: { text: 'LỚN HƠN 10 (> 10)', check: (n) => n > 10, speech: 'Hứng các quả bóng có số lớn hơn mười' },
-    maxVal: 20, spawnMs: 850, speedMin: 0.4, speedMax: 0.72,
-  },
-  {
-    condition: { text: 'SỐ TRÒN CHỤC', check: (n) => n % 10 === 0, speech: 'Hứng các quả bóng mang số tròn chục' },
-    maxVal: 100, spawnMs: 750, speedMin: 0.42, speedMax: 0.78,
-  },
-  {
-    condition: { text: 'SỐ LIỀN SAU SỐ TRÒN CHỤC', check: (n) => n > 10 && n % 10 === 1, speech: 'Hứng các quả bóng mang số liền sau số tròn chục' },
-    maxVal: 100, spawnMs: 650, speedMin: 0.46, speedMax: 0.86,
-  },
-];
 
 export const FallingNumbersMathGame: React.FC<{ onExit: () => void }> = ({ onExit }) => {
   const roundsPerTier = useMemo(() => defaultRoundsPerTier(), []);

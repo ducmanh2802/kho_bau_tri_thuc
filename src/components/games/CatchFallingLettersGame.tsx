@@ -3,6 +3,9 @@ import { GameModalWrapper } from './GameModalWrapper';
 import { sound } from '../../services/sound';
 import { useGameStage } from '../../hooks/useGameStage';
 import { defaultRoundsPerTier, getTierMeta } from '../../data/gameLevels';
+import { BUBBLE_COLORS, TIER_CONFIG, buildRounds, poolForTier } from '../../data/games/catch_letters';
+
+export { TIER_CONFIG, buildRounds };
 
 interface FallingBubble {
   id: number;
@@ -12,17 +15,6 @@ interface FallingBubble {
   speed: number;
   color: string;
 }
-
-const BUBBLE_COLORS = ['bg-rose-400', 'bg-amber-400', 'bg-emerald-400', 'bg-sky-400', 'bg-purple-400', 'bg-pink-400'];
-
-const TIER_CONFIG: { pool: string[]; spawnMs: number; speedMin: number; speedMax: number }[] = [
-  { pool: ['A', 'B', 'C', 'D', 'E'], spawnMs: 1300, speedMin: 0.3, speedMax: 0.55 },
-  { pool: ['A', 'B', 'C', 'D', 'E', 'G', 'H', 'I'], spawnMs: 1150, speedMin: 0.32, speedMax: 0.6 },
-  { pool: ['A', 'B', 'C', 'D', 'Đ', 'E', 'G', 'H', 'I', 'K', 'L', 'M'], spawnMs: 1000, speedMin: 0.35, speedMax: 0.65 },
-  { pool: ['A', 'B', 'C', 'D', 'Đ', 'E', 'Ê', 'G', 'H', 'I', 'K', 'L', 'M', 'N', 'O', 'Ô'], spawnMs: 850, speedMin: 0.38, speedMax: 0.72 },
-  { pool: ['A', 'B', 'C', 'D', 'Đ', 'E', 'Ê', 'G', 'H', 'I', 'K', 'L', 'M', 'N', 'O', 'Ô', 'Ơ', 'U'], spawnMs: 700, speedMin: 0.42, speedMax: 0.8 },
-  { pool: ['A', 'B', 'C', 'D', 'Đ', 'E', 'Ê', 'G', 'H', 'I', 'K', 'L', 'M', 'N', 'O', 'Ô', 'Ơ', 'U', 'Ư', 'V'], spawnMs: 600, speedMin: 0.46, speedMax: 0.9 },
-];
 
 export const CatchFallingLettersGame: React.FC<{ onExit: () => void }> = ({ onExit }) => {
   const roundsPerTier = useMemo(() => defaultRoundsPerTier(), []);

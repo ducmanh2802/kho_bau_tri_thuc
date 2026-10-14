@@ -3,116 +3,17 @@ import { GameModalWrapper } from './GameModalWrapper';
 import { sound } from '../../services/sound';
 import { Volume2 } from 'lucide-react';
 import { useGameStage } from '../../hooks/useGameStage';
-import { defaultRoundsPerTier, getTierMeta, pickDistinct, seededRng } from '../../data/gameLevels';
+import { defaultRoundsPerTier, getTierMeta } from '../../data/gameLevels';
+import { THEMES, buildPhonicsRounds } from '../../data/games/listen_pick';
+import type { PhonicsCard, PhonicsRound } from '../../data/games/listen_pick';
 
-interface PhonicsCard {
-  word: string;
-  emoji: string;
-  spokenText: string;
-}
-
-interface PhonicsRound {
-  spokenPrompt: string;
-  targetWord: string;
-  cards: PhonicsCard[];
-}
-
-const THEMES: { name: string; words: { word: string; emoji: string }[] }[] = [
-  {
-    name: 'con vật',
-    words: [
-      { word: 'Con mèo', emoji: '🐱' },
-      { word: 'Con cá', emoji: '🐟' },
-      { word: 'Con chó', emoji: '🐶' },
-      { word: 'Con gà', emoji: '🐓' },
-      { word: 'Con vịt', emoji: '🦆' },
-      { word: 'Con thỏ', emoji: '🐰' },
-    ],
-  },
-  {
-    name: 'quả cây',
-    words: [
-      { word: 'Quả cam', emoji: '🍊' },
-      { word: 'Quả chuối', emoji: '🍌' },
-      { word: 'Quả táo', emoji: '🍎' },
-      { word: 'Quả dưa hấu', emoji: '🍉' },
-      { word: 'Quả nho', emoji: '🍇' },
-      { word: 'Quả lê', emoji: '🍐' },
-    ],
-  },
-  {
-    name: 'đồ dùng học tập',
-    words: [
-      { word: 'Quyển sách', emoji: '📖' },
-      { word: 'Cây bút', emoji: '✏️' },
-      { word: 'Cái cặp', emoji: '🎒' },
-      { word: 'Thước kẻ', emoji: '📏' },
-      { word: 'Cái bảng', emoji: '📋' },
-      { word: 'Hộp màu', emoji: '🖍️' },
-    ],
-  },
-  {
-    name: 'thiên nhiên',
-    words: [
-      { word: 'Mặt trời', emoji: '☀️' },
-      { word: 'Mặt trăng', emoji: '🌙' },
-      { word: 'Ngôi sao', emoji: '⭐' },
-      { word: 'Đám mây', emoji: '☁️' },
-      { word: 'Cầu vồng', emoji: '🌈' },
-      { word: 'Ngọn gió', emoji: '🌬️' },
-    ],
-  },
-  {
-    name: 'đồ vật gia đình',
-    words: [
-      { word: 'Chiếc ghế', emoji: '🪑' },
-      { word: 'Cái quạt', emoji: '🪭' },
-      { word: 'Chiếc đèn', emoji: '💡' },
-      { word: 'Cái nồi', emoji: '🍲' },
-      { word: 'Cái chổi', emoji: '🧹' },
-      { word: 'Cái tủ', emoji: '🗄️' },
-    ],
-  },
-  {
-    name: 'đồ ăn',
-    words: [
-      { word: 'Bánh mì', emoji: '🍞' },
-      { word: 'Quả trứng', emoji: '🥚' },
-      { word: 'Cốc sữa', emoji: '🥛' },
-      { word: 'Đĩa cơm', emoji: '🍚' },
-      { word: 'Cốc nước', emoji: '🥤' },
-      { word: 'Củ cà rốt', emoji: '🥕' },
-    ],
-  },
-];
-
-function buildPhonicsRounds(tier: number): PhonicsRound[] {
-  const roundsPerTier = defaultRoundsPerTier();
-  const count = roundsPerTier[tier - 1];
-  const rng = seededRng(7800 + tier * 47);
-  // Tier 1-2 stay inside easy visual themes; higher tiers blend themes.
-  const themeCount = tier <= 1 ? 1 : tier <= 3 ? 2 : tier <= 5 ? 3 : THEMES.length;
-  const themes = pickDistinct(THEMES, themeCount, seededRng(7800 + tier * 61));
-  const rounds: PhonicsRound[] = [];
-  for (let i = 0; i < count; i++) {
-    const theme = themes[i % themes.length];
-    const rngI = seededRng(7800 + tier * 47 + i * 331);
-    const picked = pickDistinct(theme.words, 4, rngI);
-    const target = picked[0];
-    rounds.push({
-      spokenPrompt: target.word,
-      targetWord: target.word,
-      cards: picked.map((w) => ({ word: w.word, emoji: w.emoji, spokenText: w.word })),
-    });
-  }
-  return rounds;
-}
+export { THEMES, buildPhonicsRounds };
 
 export const ListenPickPhonicsGame: React.FC<{ onExit: () => void }> = ({ onExit }) => {
   const roundsPerTier = useMemo(() => defaultRoundsPerTier(), []);
   const stage = useGameStage({ gameId: 'listen_pick', roundsPerTier, advanceDelayMs: 1200 });
 
-  const rounds = useMemo(() => buildPhonicsRounds(stage.tier), [stage.tier]);
+  const rounds = useMemo(() => buildPhonicsRounds(stage.tier, stage.nonce), [stage.tier, stage.nonce]);
   const current = rounds[stage.roundIdx];
 
   const playVoice = () => {

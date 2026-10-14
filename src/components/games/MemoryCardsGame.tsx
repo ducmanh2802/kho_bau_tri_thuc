@@ -2,8 +2,15 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { GameModalWrapper } from './GameModalWrapper';
 import { sound } from '../../services/sound';
 import { useGameStage } from '../../hooks/useGameStage';
-import { getTierMeta, seededRng, shuffleSeeded } from '../../data/gameLevels';
+import { getTierMeta } from '../../data/gameLevels';
+import {
+  GOALS_PER_TIER,
+  PAIR_POOL,
+  buildMemoryDeck,
+  shouldCountMemoryMistake,
+} from '../../data/games/memory_cards';
 
+export { GOALS_PER_TIER, shouldCountMemoryMistake };
 interface CardItem {
   id: number;
   pairId: number;
@@ -13,42 +20,7 @@ interface CardItem {
   isMatched: boolean;
 }
 
-const PAIR_POOL = [
-  { pairId: 1, label: 'Quả táo', emoji: '🍎' },
-  { pairId: 2, label: 'Mèo con', emoji: '🐱' },
-  { pairId: 3, label: 'Cún cưng', emoji: '🐶' },
-  { pairId: 4, label: 'Ngôi sao', emoji: '⭐' },
-  { pairId: 5, label: 'Bông hoa', emoji: '🌸' },
-  { pairId: 6, label: 'Mặt trời', emoji: '☀️' },
-  { pairId: 7, label: 'Chiếc ô tô', emoji: '🚗' },
-  { pairId: 8, label: 'Chú bướm', emoji: '🦋' },
-  { pairId: 9, label: 'Quả dâu', emoji: '🍓' },
-  { pairId: 10, label: 'Mặt trăng', emoji: '🌙' },
-  { pairId: 11, label: 'Chú ếch', emoji: '🐸' },
-  { pairId: 12, label: 'Quả chuối', emoji: '🍌' },
-  { pairId: 13, label: 'Con thuyền', emoji: '⛵' },
-  { pairId: 14, label: 'Ngôi nhà', emoji: '🏠' },
-  { pairId: 15, label: 'Trái tim', emoji: '💖' },
-  { pairId: 16, label: 'Chiếc bánh', emoji: '🍰' },
-];
-
-export const GOALS_PER_TIER = [3, 4, 5, 6, 7, 8];
 const ROUNDS_PER_TIER = GOALS_PER_TIER.map(() => 1);
-
-/**
- * T02/B4 — a mismatch counts as a mistake ONLY when the child has seen both
- * cards' pairs before and still gets it wrong (first-time exploration is
- * never punished).
- */
-export function shouldCountMemoryMistake(
-  seenPairIds: readonly number[],
-  pairA: number,
-  pairB: number
-): boolean {
-  if (pairA === pairB) return false;
-  const seen = new Set(seenPairIds);
-  return seen.has(pairA) && seen.has(pairB);
-}
 
 export const MemoryCardsGame: React.FC<{ onExit: () => void }> = ({ onExit }) => {
   const stage = useGameStage({ gameId: 'memory_cards', roundsPerTier: ROUNDS_PER_TIER, advanceDelayMs: 900 });
@@ -56,28 +28,24 @@ export const MemoryCardsGame: React.FC<{ onExit: () => void }> = ({ onExit }) =>
   const [flippedIds, setFlippedIds] = useState<number[]>([]);
   const [matchedPairs, setMatchedPairs] = useState(0);
   const [moves, setMoves] = useState(0);
-  const [seenPairs, setSeenPairs] = useState<number[]>([]);
+  // T02B/B12 — track individual CARD ids the child has flipped, not pair ids.
+  const [seenCardIds, setSeenCardIds] = useState<number[]>([]);
   const submittedRef = useRef(false);
 
   const goalPairs = GOALS_PER_TIER[Math.min(stage.tier - 1, GOALS_PER_TIER.length - 1)];
-  const pool = PAIR_POOL.slice(0, goalPairs);
 
   const initGame = () => {
-    const deck: CardItem[] = [];
-    let idCounter = 1;
-    const baseSeed = 10000 + stage.tier * 133 + stage.nonce * 101;
-    const shuffledPool = shuffleSeeded(pool, seededRng(baseSeed));
-    shuffledPool.forEach((p) => {
-      deck.push({ id: idCounter++, pairId: p.pairId, label: p.label, emoji: p.emoji, isFlipped: false, isMatched: false });
-      deck.push({ id: idCounter++, pairId: p.pairId, label: p.label, emoji: p.emoji, isFlipped: false, isMatched: false });
-    });
-    const shuffledDeck = shuffleSeeded(deck, seededRng(baseSeed + 17));
+    const deck: CardItem[] = buildMemoryDeck(stage.tier, stage.nonce).map((c) => ({
+      ...c,
+      isFlipped: false,
+      isMatched: false,
+    }));
 
-    setCards(shuffledDeck);
+    setCards(deck);
     setFlippedIds([]);
     setMatchedPairs(0);
     setMoves(0);
-    setSeenPairs([]);
+    setSeenCardIds([]);
     submittedRef.current = false;
   };
 
@@ -106,7 +74,7 @@ export const MemoryCardsGame: React.FC<{ onExit: () => void }> = ({ onExit }) =>
       if (first && second && first.pairId === second.pairId) {
         sound.playCorrect();
         sound.speak(`Cặp ${first.label}!`);
-        setSeenPairs((prev) => Array.from(new Set([...prev, first.pairId])));
+        setSeenCardIds((prev) => Array.from(new Set([...prev, firstId, secondId])));
         setCards((prev) =>
           prev.map((c) =>
             c.id === firstId || c.id === secondId ? { ...c, isMatched: true } : c
@@ -121,10 +89,10 @@ export const MemoryCardsGame: React.FC<{ onExit: () => void }> = ({ onExit }) =>
           stage.submitCorrect();
         }
       } else if (first && second) {
-        // T02/B4 — first-time mismatches teach (no mistake); only repeat
-        // errors on already-seen pairs count against the stars.
-        const counts = shouldCountMemoryMistake(seenPairs, first.pairId, second.pairId);
-        setSeenPairs((prev) => Array.from(new Set([...prev, first.pairId, second.pairId])));
+        // T02B/B12 — first-time mismatches teach (no mistake); only a
+        // mismatch of two ALREADY-SEEN cards counts against the stars.
+        const counts = shouldCountMemoryMistake(seenCardIds, firstId, secondId);
+        setSeenCardIds((prev) => Array.from(new Set([...prev, firstId, secondId])));
         if (counts) {
           sound.playWrong();
           sound.speak('Hai thẻ này bé đã thấy rồi mà! Nhớ lại xem nào.');

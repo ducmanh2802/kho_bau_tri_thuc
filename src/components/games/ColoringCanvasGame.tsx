@@ -4,51 +4,17 @@ import { sound } from '../../services/sound';
 import { Eraser, Trash2, CheckCircle, Palette } from 'lucide-react';
 import { useGameStage } from '../../hooks/useGameStage';
 import { getTierMeta } from '../../data/gameLevels';
+import {
+  COLORS,
+  MIN_PAINT_COVERAGE,
+  TEMPLATES,
+  coverageFromPixels,
+  effectiveCoverage,
+  starsForCoverage,
+  templateForTier,
+} from '../../data/games/coloring_canvas';
 
-const COLORS = [
-  '#EF4444', // Red
-  '#F97316', // Orange
-  '#FBBF24', // Yellow
-  '#10B981', // Green
-  '#06B6D4', // Cyan
-  '#3B82F6', // Blue
-  '#8B5CF6', // Purple
-  '#EC4899', // Pink
-  '#78350F', // Brown
-  '#1F2937', // Black
-];
-
-const TEMPLATES = [
-  { name: 'Ngôi Nhà Thân Thương', emoji: '🏠' },
-  { name: 'Chú Gấu Nhí', emoji: '🐻' },
-  { name: 'Bông Hoa Rực Rỡ', emoji: '🌸' },
-  { name: 'Quả Táo Ngọt Ngào', emoji: '🍎' },
-  { name: 'Chú Cá Đáng Yêu', emoji: '🐠' },
-  { name: 'Chiếc Bánh Sinh Nhật', emoji: '🎂' },
-];
-
-const ROUNDS_PER_TIER = TEMPLATES.map(() => 1);
-
-/** T02/B3 — minimum painted share before "Hoàn thành" grants a reward. */
-export const MIN_PAINT_COVERAGE = 0.3;
-
-/**
- * Share of pixels that differ from the blank white canvas.
- * Pure (testable): pass any RGBA buffer, e.g. from getImageData().data.
- */
-export function coverageFromPixels(data: Uint8ClampedArray | number[]): number {
-  if (data.length < 4) return 0;
-  const total = Math.floor(data.length / 4);
-  let painted = 0;
-  for (let i = 0; i < total; i++) {
-    const r = data[i * 4];
-    const g = data[i * 4 + 1];
-    const b = data[i * 4 + 2];
-    // The faint template outline (≈white) does not count as painting.
-    if (r < 235 || g < 235 || b < 235) painted++;
-  }
-  return painted / total;
-}
+export { MIN_PAINT_COVERAGE, coverageFromPixels, starsForCoverage };
 
 export const ColoringCanvasGame: React.FC<{ onExit: () => void }> = ({ onExit }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -59,9 +25,13 @@ export const ColoringCanvasGame: React.FC<{ onExit: () => void }> = ({ onExit })
   const [selectedTemplate, setSelectedTemplate] = useState(TEMPLATES[0]);
   const [coverage, setCoverage] = useState(0);
   const [needMorePaint, setNeedMorePaint] = useState(false);
+  // T02B/B13 — baseline snapshot right after the template outline is drawn,
+  // so faint template pixels never count as the child's painting.
+  const baselineRef = useRef(0);
 
+  const ROUNDS_PER_TIER = TEMPLATES.map(() => 1);
   const stage = useGameStage({ gameId: 'coloring_canvas', roundsPerTier: ROUNDS_PER_TIER, advanceDelayMs: 900 });
-  const missionTemplate = TEMPLATES[Math.min(stage.tier - 1, TEMPLATES.length - 1)];
+  const missionTemplate = templateForTier(stage.tier);
 
   // Each tier is a new themed masterpiece.
   useEffect(() => {
@@ -80,6 +50,13 @@ export const ColoringCanvasGame: React.FC<{ onExit: () => void }> = ({ onExit })
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     drawTemplateOutline(ctx, selectedTemplate.emoji);
+    // T02B/B13 — snapshot the template-only coverage as baseline.
+    try {
+      const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      baselineRef.current = coverageFromPixels(img.data);
+    } catch {
+      baselineRef.current = 0;
+    }
     setCoverage(0);
     setNeedMorePaint(false);
   }, [selectedTemplate]);
@@ -156,7 +133,8 @@ export const ColoringCanvasGame: React.FC<{ onExit: () => void }> = ({ onExit })
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
       const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      setCoverage(coverageFromPixels(img.data));
+      // T02B/B13 — effective coverage excludes the faint template baseline.
+      setCoverage(effectiveCoverage(coverageFromPixels(img.data), baselineRef.current));
     } catch {
       // Canvas unavailable (tests): keep last value.
     }
@@ -172,6 +150,12 @@ export const ColoringCanvasGame: React.FC<{ onExit: () => void }> = ({ onExit })
     ctx.fillStyle = '#FFFFFF';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     drawTemplateOutline(ctx, selectedTemplate.emoji);
+    try {
+      const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      baselineRef.current = coverageFromPixels(img.data);
+    } catch {
+      baselineRef.current = 0;
+    }
     setCoverage(0);
     setNeedMorePaint(false);
   };
@@ -200,7 +184,7 @@ export const ColoringCanvasGame: React.FC<{ onExit: () => void }> = ({ onExit })
         const ctx = canvas.getContext('2d');
         if (ctx) {
           const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
-          ratio = coverageFromPixels(img.data);
+          ratio = effectiveCoverage(coverageFromPixels(img.data), baselineRef.current);
           setCoverage(ratio);
         }
       }
@@ -217,9 +201,15 @@ export const ColoringCanvasGame: React.FC<{ onExit: () => void }> = ({ onExit })
     }
     setNeedMorePaint(false);
     sound.playCorrect();
-    sound.speak('Bức tranh của bé đẹp tuyệt vời!');
+    // T02B/B13 — stars from REAL coverage (≥30% 1★, ≥60% 2★, ≥85% 3★).
+    const stars = starsForCoverage(ratio);
+    sound.speak(
+      stars >= 3
+        ? 'Bức tranh của bé đẹp tuyệt vời!'
+        : 'Bức tranh của bé đẹp lắm! Bé tô thêm cho rực rỡ hơn nhé!'
+    );
     setSelectedColor(COLORS[0]);
-    stage.submitCorrect();
+    stage.submitCorrect(stars);
   };
 
   const restartGame = () => {
