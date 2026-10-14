@@ -7,6 +7,7 @@ import { StorageService } from '../../services/storage';
 import { GAMES_CATALOG } from '../../data/gamesCatalog';
 import { NextBestActionCard } from '../learning/NextBestActionCard';
 import { Star, Sparkles, Gift, Check, ArrowRight, BookOpen } from 'lucide-react';
+import { KidButton, KidCard, Pill, SectionTitle, ProgressStars } from '../ui';
 
 interface HomeScreenProps {
   profile: ChildProfile;
@@ -57,6 +58,88 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
     sound.speak(`Xin chào ${profile.name}! Hôm nay bé muốn học bài gì nào?`);
   };
 
+  const subjectCards = [
+    {
+      id: 'tieng-viet' as SubjectType,
+      title: 'Tiếng Việt',
+      subtitle: 'Chữ cái · Dấu thanh · Vần ghép · Đọc truyện ngắn',
+      emoji: '📚',
+      gradient: 'from-amber-500 to-orange-500',
+      border: 'border-amber-300',
+      hoverShadow: 'hover:shadow-amber-500/40',
+      variant: 'subject-viet' as const,
+    },
+    {
+      id: 'toan' as SubjectType,
+      title: 'Toán Học',
+      subtitle: 'Đếm số 0–20 · Phép cộng · Phép trừ · Hình học',
+      emoji: '🔢',
+      gradient: 'from-blue-500 to-cyan-500',
+      border: 'border-blue-300',
+      hoverShadow: 'hover:shadow-blue-500/40',
+      variant: 'subject-math' as const,
+    },
+    {
+      id: 'english' as SubjectType,
+      title: 'Tiếng Anh',
+      subtitle: 'ABC Phonics · Numbers · Colors · Animals',
+      emoji: '🇬🇧',
+      gradient: 'from-emerald-500 to-teal-500',
+      border: 'border-emerald-300',
+      hoverShadow: 'hover:shadow-emerald-500/40',
+      variant: 'subject-english' as const,
+    },
+  ];
+
+  const actionCards = [
+    {
+      label: 'Luyện Đọc',
+      desc: `Chỉ số đọc: ${reading.readingIndex}/100`,
+      emoji: '📖',
+      gradient: 'from-sky-500 to-cyan-600',
+      border: 'border-sky-300',
+      pillText: 'Luyện',
+      onClick: () => onNavigate('reading_fluency'),
+    },
+    {
+      label: 'Đấu Trường',
+      desc: 'Thi thử & Tốc độ',
+      emoji: '🏆',
+      gradient: 'from-amber-500 to-orange-600',
+      border: 'border-amber-300',
+      pillText: 'Vào thi',
+      onClick: () => onNavigate('competition'),
+    },
+    {
+      label: 'Khu Trò Chơi',
+      desc: `${GAMES_CATALOG.length} mini-games vui • 6 màn/game`,
+      emoji: '🎮',
+      gradient: 'from-purple-500 to-indigo-600',
+      border: 'border-purple-300',
+      pillText: 'Chơi ngay',
+      onClick: () => onOpenGames(),
+    },
+    {
+      label: 'Ôn Tập Ngày',
+      desc: 'Chống quên kiến thức',
+      emoji: '💡',
+      gradient: 'from-yellow-400 to-amber-500',
+      border: 'border-amber-300',
+      pillText: 'Ôn ngay',
+      textColor: 'text-slate-950',
+      onClick: () => onOpenDailyReview(),
+    },
+    {
+      label: 'Thử Thách Tuần',
+      desc: 'Nhận cúp danh dự',
+      emoji: '🌟',
+      gradient: 'from-rose-500 to-pink-600',
+      border: 'border-rose-300',
+      pillText: 'Thử sức',
+      onClick: () => onOpenWeeklyChallenge(),
+    },
+  ];
+
   return (
     <div className="w-full max-w-5xl mx-auto px-4 py-6 md:py-10 space-y-8 select-none">
       {/* Friendly Greeting & Mascot Hero Banner */}
@@ -89,14 +172,14 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                 <h1 className="text-2xl md:text-4xl font-black font-display tracking-tight text-white drop-shadow-sm">
                   Xin chào {profile.name}! 👋
                 </h1>
-                <button
+                <KidButton
+                  variant="secondary"
+                  size="md"
+                  className="min-w-[44px] min-h-[44px]"
                   onClick={playWelcomeVoice}
                   aria-label="Nghe lời chào"
-                  className="min-w-[44px] min-h-[44px] flex items-center justify-center bg-white/20 hover:bg-white/30 rounded-full text-white active:scale-95 transition-transform"
-                  title="Nghe lời chào"
-                >
-                  🔊
-                </button>
+                  leftIcon="🔊"
+                />
               </div>
 
               <p className="text-amber-50 text-xs md:text-sm font-bold mt-1 max-w-md">
@@ -105,280 +188,159 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
 
               {/* Stats pill */}
               <div className="flex flex-wrap items-center gap-2 mt-3 justify-center md:justify-start">
-                <span className="px-3 py-1 bg-black/25 rounded-full text-xs font-black backdrop-blur-xs flex items-center gap-1">
-                  ⭐ <span className="tabular-nums">{profile.stars}</span> Sao
-                </span>
-                <span className="px-3 py-1 bg-black/25 rounded-full text-xs font-black backdrop-blur-xs flex items-center gap-1">
-                  🔥 Chuỗi <span className="tabular-nums">{profile.streak}</span> ngày
-                </span>
-                <span className="px-3 py-1 bg-black/25 rounded-full text-xs font-black backdrop-blur-xs flex items-center gap-1">
-                  🎟️ <span className="tabular-nums">{profile.tickets}</span> Vé game
-                </span>
+                <Pill variant="star" size="sm" icon="⭐">
+                  <span className="tabular-nums">{profile.stars}</span> Sao
+                </Pill>
+                <Pill variant="streak" size="sm" icon="🔥">
+                  Chuỗi <span className="tabular-nums">{profile.streak}</span> ngày
+                </Pill>
+                <Pill variant="ticket" size="sm" icon="🎟️">
+                  <span className="tabular-nums">{profile.tickets}</span> Vé game
+                </Pill>
               </div>
             </div>
           </div>
 
           {/* Quick World Map Button */}
-          <button
+          <KidButton
+            variant="secondary"
+            size="lg"
+            fullWidth={false}
+            className="w-full md:w-auto shrink-0"
             onClick={() => {
               sound.playClick();
               onNavigate('world_map');
             }}
-            className="w-full md:w-auto px-6 py-3.5 bg-white hover:bg-amber-50 text-amber-950 font-black rounded-2xl shadow-lg hover:shadow-xl transition-all active:scale-95 flex items-center justify-center gap-2 text-sm md:text-base cursor-pointer shrink-0 font-display"
+            rightIcon={<ArrowRight className="w-5 h-5" />}
           >
-            <span>Bản Đồ Học Tập</span>
-            <ArrowRight className="w-5 h-5" />
-          </button>
+            Bản Đồ Học Tập
+          </KidButton>
         </div>
       </div>
 
       {/* Reading fluency headline — supportive, never negative (§8) */}
-      <div className="bg-gradient-to-r from-sky-50 to-cyan-50 border-2 border-sky-200 rounded-3xl p-4 md:p-5 flex flex-col sm:flex-row sm:items-center gap-3">
-        <span className="text-3xl shrink-0" aria-hidden="true">
-          <BookOpen className="w-8 h-8 text-sky-600" />
-        </span>
-        <div className="flex-1">
-          <p className="text-sm md:text-base font-black text-sky-950">{reading.headline}</p>
-          <p className="text-xs text-sky-900 font-medium">{reading.encouragement}</p>
-        </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <div className="text-center px-3 py-1.5 bg-white rounded-xl border border-sky-200">
-            <span className="block text-[10px] font-black text-sky-700">CHÍNH XÁC</span>
-            <span className="text-base font-black text-sky-950 tabular-nums">{reading.accuracyIndex}%</span>
+      <KidCard subjectBorder="none" className="bg-gradient-to-r from-sky-50 to-cyan-50 border-sky-200">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+          <span className="text-3xl shrink-0" aria-hidden="true">
+            <BookOpen className="w-8 h-8 text-sky-600" />
+          </span>
+          <div className="flex-1">
+            <p className="text-sm md:text-base font-black text-sky-950">{reading.headline}</p>
+            <p className="text-xs text-sky-900 font-medium">{reading.encouragement}</p>
           </div>
-          <div className="text-center px-3 py-1.5 bg-white rounded-xl border border-sky-200">
-            <span className="block text-[10px] font-black text-sky-700">HIỂU BÀI</span>
-            <span className="text-base font-black text-sky-950 tabular-nums">
-              {reading.comprehensionIndex}%
-            </span>
+          <div className="flex items-center gap-2 shrink-0">
+            <div className="text-center px-3 py-1.5 bg-white rounded-xl border border-sky-200">
+              <span className="block text-[10px] font-black text-sky-700">CHÍNH XÁC</span>
+              <span className="text-base font-black text-sky-950 tabular-nums">{reading.accuracyIndex}%</span>
+            </div>
+            <div className="text-center px-3 py-1.5 bg-white rounded-xl border border-sky-200">
+              <span className="block text-[10px] font-black text-sky-700">HIỂU BÀI</span>
+              <span className="text-base font-black text-sky-950 tabular-nums">
+                {reading.comprehensionIndex}%
+              </span>
+            </div>
           </div>
         </div>
-      </div>
+      </KidCard>
 
       {/* Primary Subjects Hub (Big, Friendly, Touch-First Cards) */}
       <div>
-        <h2 className="text-lg md:text-xl font-black text-amber-950 mb-4 font-display flex items-center gap-2">
-          <span>🎯</span> Hôm Nay Bé Học Gì?
-        </h2>
+        <SectionTitle icon="🎯" size="lg">
+          Hôm Nay Bé Học Gì?
+        </SectionTitle>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
-          {/* Tiếng Việt */}
-          <button
-            onClick={() => {
-              sound.playClick();
-              onSelectSubject('tieng-viet');
-            }}
-            className="group relative bg-gradient-to-br from-amber-500 to-orange-500 text-white rounded-3xl p-6 shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 active:scale-95 text-left border-4 border-amber-300 flex flex-col justify-between min-h-[170px] cursor-pointer"
-          >
-            <div className="flex items-start justify-between">
+          {subjectCards.map((subject) => (
+            <KidButton
+              key={subject.id}
+              variant={subject.variant}
+              size="lg"
+              fullWidth
+              className="min-h-[170px] text-left justify-between flex flex-col p-6"
+              onClick={() => {
+                sound.playClick();
+                onSelectSubject(subject.id);
+              }}
+            >
+              <div className="flex items-start justify-between">
+                <div>
+                  <span className="text-xs uppercase font-black tracking-widest text-white/80">
+                    Môn Học Lớp 1
+                  </span>
+                  <h3 className="text-2xl font-black font-display mt-0.5">{subject.title}</h3>
+                </div>
+                <span className="text-5xl group-hover:scale-110 transition-transform">{subject.emoji}</span>
+              </div>
+
               <div>
-                <span className="text-xs uppercase font-black tracking-widest text-amber-200">
-                  Môn Học Lớp 1
-                </span>
-                <h3 className="text-2xl font-black font-display mt-0.5">Tiếng Việt</h3>
+                <p className="text-xs text-white/90 font-bold mb-3">{subject.subtitle}</p>
+                <div className="w-full py-2 bg-white/20 hover:bg-white/30 rounded-xl text-center font-black text-xs md:text-sm tracking-wide">
+                  Bắt đầu học ➔
+                </div>
               </div>
-              <span className="text-5xl group-hover:scale-110 transition-transform">📚</span>
-            </div>
-
-            <div>
-              <p className="text-xs text-amber-100 font-bold mb-3">
-                Chữ cái · Dấu thanh · Vần ghép · Đọc truyện ngắn
-              </p>
-              <div className="w-full py-2 bg-white/20 hover:bg-white/30 rounded-xl text-center font-black text-xs md:text-sm tracking-wide">
-                Bắt đầu học ➔
-              </div>
-            </div>
-          </button>
-
-          {/* Toán */}
-          <button
-            onClick={() => {
-              sound.playClick();
-              onSelectSubject('toan');
-            }}
-            className="group relative bg-gradient-to-br from-blue-500 to-cyan-500 text-white rounded-3xl p-6 shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 active:scale-95 text-left border-4 border-blue-300 flex flex-col justify-between min-h-[170px] cursor-pointer"
-          >
-            <div className="flex items-start justify-between">
-              <div>
-                <span className="text-xs uppercase font-black tracking-widest text-blue-200">
-                  Môn Học Lớp 1
-                </span>
-                <h3 className="text-2xl font-black font-display mt-0.5">Toán Học</h3>
-              </div>
-              <span className="text-5xl group-hover:scale-110 transition-transform">🔢</span>
-            </div>
-
-            <div>
-              <p className="text-xs text-blue-100 font-bold mb-3">
-                Đếm số 0–20 · Phép cộng · Phép trừ · Hình học
-              </p>
-              <div className="w-full py-2 bg-white/20 hover:bg-white/30 rounded-xl text-center font-black text-xs md:text-sm tracking-wide">
-                Bắt đầu học ➔
-              </div>
-            </div>
-          </button>
-
-          {/* Tiếng Anh */}
-          <button
-            onClick={() => {
-              sound.playClick();
-              onSelectSubject('english');
-            }}
-            className="group relative bg-gradient-to-br from-emerald-500 to-teal-500 text-white rounded-3xl p-6 shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 active:scale-95 text-left border-4 border-emerald-300 flex flex-col justify-between min-h-[170px] cursor-pointer"
-          >
-            <div className="flex items-start justify-between">
-              <div>
-                <span className="text-xs uppercase font-black tracking-widest text-emerald-200">
-                  Môn Học Lớp 1
-                </span>
-                <h3 className="text-2xl font-black font-display mt-0.5">Tiếng Anh</h3>
-              </div>
-              <span className="text-5xl group-hover:scale-110 transition-transform">🇬🇧</span>
-            </div>
-
-            <div>
-              <p className="text-xs text-emerald-100 font-bold mb-3">
-                ABC Phonics · Numbers · Colors · Animals
-              </p>
-              <div className="w-full py-2 bg-white/20 hover:bg-white/30 rounded-xl text-center font-black text-xs md:text-sm tracking-wide">
-                Bắt đầu học ➔
-              </div>
-            </div>
-          </button>
+            </KidButton>
+          ))}
         </div>
       </div>
 
       {/* Secondary Fast Action Row (Games, Daily Smart Review, Competition Arena, Weekly Challenge) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-        {/* Reading Fluency */}
-        <button
-          onClick={() => {
-            sound.playClick();
-            onNavigate('reading_fluency');
-          }}
-          className="p-4 bg-gradient-to-br from-sky-500 to-cyan-600 text-white rounded-3xl shadow-lg flex items-center justify-between transition-all hover:scale-[1.02] active:scale-95 cursor-pointer border-[3px] border-sky-300 text-left"
-        >
-          <div className="flex items-center gap-3">
-            <span className="text-3xl">📖</span>
-            <div className="text-left">
-              <h4 className="font-black text-sm md:text-base font-display">Luyện Đọc</h4>
-              <p className="text-[11px] text-sky-100 font-semibold">
-                Chỉ số đọc: {reading.readingIndex}/100
-              </p>
+        {actionCards.map((action, idx) => (
+          <KidButton
+            key={idx}
+            variant="primary"
+            size="lg"
+            fullWidth
+            className={`min-h-[120px] text-left justify-between p-4 bg-gradient-to-br ${action.gradient} ${action.border} border-3 hover:scale-[1.02] active:scale-95 ${action.textColor || 'text-white'}`}
+            onClick={() => {
+              sound.playClick();
+              action.onClick();
+            }}
+          >
+            <div className="flex items-center gap-3">
+              <span className="text-3xl">{action.emoji}</span>
+              <div className="text-left">
+                <h4 className="font-black text-sm md:text-base font-display">{action.label}</h4>
+                <p className="text-[11px] font-semibold opacity-90">{action.desc}</p>
+              </div>
             </div>
-          </div>
-          <span className="text-xs font-black bg-white/20 px-2.5 py-1 rounded-xl shrink-0">Luyện</span>
-        </button>
-
-        {/* Competition Hub */}
-        <button
-          onClick={() => {
-            sound.playClick();
-            onNavigate('competition');
-          }}
-          className="p-4 bg-gradient-to-br from-amber-500 to-orange-600 text-white rounded-3xl shadow-lg flex items-center justify-between transition-all hover:scale-102 active:scale-95 cursor-pointer border-3 border-amber-300"
-        >
-          <div className="flex items-center gap-3">
-            <span className="text-3xl">🏆</span>
-            <div className="text-left">
-              <h4 className="font-black text-sm md:text-base font-display">Đấu Trường</h4>
-              <p className="text-[11px] text-amber-100 font-semibold">Thi thử & Tốc độ</p>
-            </div>
-          </div>
-          <span className="text-xs font-black bg-white/20 px-2.5 py-1 rounded-xl">Vào thi</span>
-        </button>
-
-        {/* Game Center */}
-        <button
-          onClick={() => {
-            sound.playClick();
-            onOpenGames();
-          }}
-          className="p-4 bg-gradient-to-br from-purple-500 to-indigo-600 text-white rounded-3xl shadow-lg flex items-center justify-between transition-all hover:scale-102 active:scale-95 cursor-pointer border-3 border-purple-300"
-        >
-          <div className="flex items-center gap-3">
-            <span className="text-3xl">🎮</span>
-            <div className="text-left">
-              <h4 className="font-black text-sm md:text-base font-display">Khu Trò Chơi</h4>
-              <p className="text-[11px] text-purple-200 font-semibold">{GAMES_CATALOG.length} mini-games vui • 6 màn/game</p>
-            </div>
-          </div>
-          <span className="text-xs font-bold bg-white/20 px-2.5 py-1 rounded-xl">Chơi ngay</span>
-        </button>
-
-        {/* Daily Smart Review */}
-        <button
-          onClick={() => {
-            sound.playClick();
-            onOpenDailyReview();
-          }}
-          className="p-4 bg-gradient-to-br from-yellow-400 to-amber-500 text-slate-950 rounded-3xl shadow-lg flex items-center justify-between transition-all hover:scale-102 active:scale-95 cursor-pointer border-3 border-amber-300"
-        >
-          <div className="flex items-center gap-3">
-            <span className="text-3xl">💡</span>
-            <div className="text-left">
-              <h4 className="font-black text-sm md:text-base font-display">Ôn Tập Ngày</h4>
-              <p className="text-[11px] text-amber-950 font-semibold">Chống quên kiến thức</p>
-            </div>
-          </div>
-          <span className="text-xs font-black bg-white/80 px-2.5 py-1 rounded-xl">Ôn ngay</span>
-        </button>
-
-        {/* Weekly Challenge */}
-        <button
-          onClick={() => {
-            sound.playClick();
-            onOpenWeeklyChallenge();
-          }}
-          className="p-4 bg-gradient-to-br from-rose-500 to-pink-600 text-white rounded-3xl shadow-lg flex items-center justify-between transition-all hover:scale-102 active:scale-95 cursor-pointer border-3 border-rose-300"
-        >
-          <div className="flex items-center gap-3">
-            <span className="text-3xl">🌟</span>
-            <div className="text-left">
-              <h4 className="font-black text-sm md:text-base font-display">Thử Thách Tuần</h4>
-              <p className="text-[11px] text-rose-200 font-semibold">Nhận cúp danh dự</p>
-            </div>
-          </div>
-          <span className="text-xs font-bold bg-white/20 px-2.5 py-1 rounded-xl">Thử sức</span>
-        </button>
+            <Pill variant="default" size="sm" className="bg-white/20 shrink-0">
+              {action.pillText}
+            </Pill>
+          </KidButton>
+        ))}
       </div>
 
       {/* Evidence-driven "next best action" from the Learning OS */}
       <NextBestActionCard onNavigate={onNavigate} />
 
       {/* Daily Quests & Treasure Chest */}
-      <div className="bg-white rounded-3xl p-6 shadow-xl border-3 border-amber-200 space-y-4">
+      <KidCard subjectBorder="none" className="space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-amber-100 pb-3">
           <div>
-            <h3 className="text-lg font-black text-amber-950 font-display flex items-center gap-2">
-              <span>🎯</span> Nhiệm Vụ Hôm Nay
-            </h3>
+            <SectionTitle icon="🎯" size="md" className="mb-0">
+              Nhiệm Vụ Hôm Nay
+            </SectionTitle>
             <p className="text-xs text-slate-500 font-bold">
               Hoàn thành 3 nhiệm vụ để mở Rương Kho Báu thần kỳ (+10 Sao, +50 XP)!
             </p>
           </div>
 
           {/* Treasure chest button */}
-          <button
-            onClick={handleClaimChest}
+          <KidButton
+            variant={chestClaimed ? 'secondary' : canClaimChest ? 'primary' : 'secondary'}
+            size="md"
             disabled={!canClaimChest && chestClaimed}
-            className={`min-h-[44px] px-4 py-2.5 rounded-2xl font-black text-xs md:text-sm flex items-center justify-center gap-2 transition-all ${
-              chestClaimed
-                ? 'bg-slate-100 text-slate-400 cursor-default'
-                : canClaimChest
-                ? 'bg-gradient-to-r from-amber-400 to-yellow-400 hover:from-amber-500 hover:to-yellow-500 text-amber-950 shadow-md animate-bounce active:scale-95 cursor-pointer'
-                : 'bg-amber-100/60 text-amber-800 opacity-60 cursor-not-allowed'
-            }`}
+            className={`min-h-[44px] ${chestClaimed ? '' : canClaimChest ? 'animate-bounce' : 'opacity-60 cursor-not-allowed'}`}
+            leftIcon={<Gift className="w-5 h-5" />}
+            onClick={handleClaimChest}
           >
-            <Gift className="w-5 h-5 text-amber-600" />
-            <span>
-              {chestClaimed
-                ? 'Đã Nhận Rương Hôm Nay'
-                : canClaimChest
-                ? 'Mở Rương Kho Báu!'
-                : `Mở Rương (${completedQuestsCount}/3)`}
-            </span>
-          </button>
+            {chestClaimed
+              ? 'Đã Nhận Rương Hôm Nay'
+              : canClaimChest
+              ? 'Mở Rương Kho Báu!'
+              : `Mở Rương (${completedQuestsCount}/3)`}
+          </KidButton>
         </div>
 
         {/* Quest List */}
@@ -403,14 +365,13 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                 <span className="text-xs font-bold">{q.title}</span>
               </div>
 
-              <div className="flex items-center gap-1 text-[11px] font-black text-amber-700">
-                <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-500" />
+              <Pill variant="star" size="sm" className="gap-1">
                 <span>+{q.rewardStars}</span>
-              </div>
+              </Pill>
             </div>
           ))}
         </div>
-      </div>
+      </KidCard>
     </div>
   );
 };

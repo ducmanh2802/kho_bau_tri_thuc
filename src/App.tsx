@@ -77,6 +77,16 @@ export default function App() {
   const [selectedSubject, setSelectedSubject] = useState<SubjectType>('tieng-viet');
   const [profile, setProfile] = useState<ChildProfile>(StorageService.getChildProfile());
 
+  // Night mode — apply data-theme="night" to document root
+  useEffect(() => {
+    const settings = StorageService.getParentSettings();
+    if (settings.nightMode) {
+      document.documentElement.setAttribute('data-theme', 'night');
+    } else {
+      document.documentElement.removeAttribute('data-theme');
+    }
+  }, [profile]); // re-run when profile changes (parent settings may have changed)
+
   // Parent modal state
   const [isParentModalOpen, setIsParentModalOpen] = useState(false);
 

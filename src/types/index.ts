@@ -172,6 +172,8 @@ export interface ParentSettings {
   reviewIntensity: 'light' | 'standard' | 'intensive';
   /** Offer an explicit break/pause inside long sessions (never force a 6-year-old). */
   optionalBreaks: boolean;
+  /** Night mode (eye-friendly dark theme). */
+  nightMode: boolean;
 }
 
 /**

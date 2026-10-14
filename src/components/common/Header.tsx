@@ -2,6 +2,7 @@ import React from 'react';
 import { ActiveScreen, ChildProfile } from '../../types';
 import { sound } from '../../services/sound';
 import { Star, Sparkles, Flame, Volume2, VolumeX, Shield, ShoppingBag } from 'lucide-react';
+import { KidButton, Pill } from '../ui';
 
 interface HeaderProps {
   currentScreen: ActiveScreen;
@@ -68,24 +69,25 @@ export const Header: React.FC<HeaderProps> = ({
   ];
 
   return (
-    <header className="sticky top-0 z-40 w-full bg-white/95 backdrop-blur-md border-b-2 border-amber-200/80 shadow-xs">
+    <header className="sticky top-0 z-40 w-full bg-[var(--color-kb-card)]/95 backdrop-blur-md border-b-2 border-amber-200/80 shadow-xs">
       <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 h-16 flex items-center justify-between gap-2 sm:gap-4">
         {/* Zone 1: Single text element wordmark */}
-        <button
+        <KidButton
+          variant="secondary"
+          size="md"
+          className="gap-2 text-left shrink-0 min-w-0 min-w-[44px] min-h-[44px] justify-center sm:justify-start"
           onClick={() => {
             sound.playClick();
             onNavigate('home');
           }}
-          className="flex items-center gap-2 text-left cursor-pointer group shrink-0 min-w-0 min-w-[44px] min-h-[44px] justify-center sm:justify-start"
+          aria-label="Về trang chủ"
         >
-          <span className="text-2xl group-hover:scale-110 transition-transform" aria-hidden="true">
-            🐻
-          </span>
+          <span className="text-2xl" aria-hidden="true">🐻</span>
           <span className="hidden sm:inline text-lg xl:text-xl font-black text-amber-950 tracking-tight font-display truncate">
             Kho Báu Tri Thức
           </span>
           <span className="sm:hidden sr-only">Kho Báu Tri Thức — Về trang chủ</span>
-        </button>
+        </KidButton>
 
         {/*
           Zone 2: navigation (T01/B11 + T01B/3).
@@ -108,74 +110,80 @@ export const Header: React.FC<HeaderProps> = ({
         {/* Zone 3: primary actions & kid profile stats */}
         <div className="flex items-center gap-1.5 sm:gap-2 md:gap-3 shrink-0">
           {/* Streak indicator */}
-          <div
-            title={`Chuỗi học ${profile.streak} ngày liên tiếp`}
-            className="hidden md:flex items-center gap-1 px-2.5 min-h-[36px] bg-orange-50 border border-orange-200 rounded-full text-xs font-black text-orange-700"
+          <Pill
+            variant="streak"
+            size="sm"
+            icon={<Flame className="w-4 h-4 fill-orange-500 text-orange-500" aria-hidden="true" />}
+            className="hidden md:flex"
           >
-            <Flame className="w-4 h-4 fill-orange-500 text-orange-500" aria-hidden="true" />
             <span className="tabular-nums">{profile.streak}</span>
             <span className="sr-only">ngày liên tiếp</span>
-          </div>
+          </Pill>
 
           {/* Stars indicator */}
-          <div
-            title={`Tổng số sao: ${profile.stars}`}
-            className="hidden sm:flex items-center gap-1 px-2.5 min-h-[36px] bg-amber-50 border border-amber-200 rounded-full text-xs font-black text-amber-700"
+          <Pill
+            variant="star"
+            size="sm"
+            icon={<Star className="w-4 h-4 fill-amber-400 text-amber-500" aria-hidden="true" />}
+            className="hidden sm:flex"
           >
-            <Star className="w-4 h-4 fill-amber-400 text-amber-500" aria-hidden="true" />
             <span className="tabular-nums">{profile.stars}</span>
             <span className="sr-only">ngôi sao</span>
-          </div>
+          </Pill>
 
           {/* XP counter — T01B/3: chỉ hiện từ xl (1280+) để không tràn ở 1024 */}
-          <div
-            title={`Điểm kinh nghiệm: ${profile.xp} XP`}
-            className="hidden xl:flex items-center gap-1 px-2.5 min-h-[36px] bg-purple-50 border border-purple-200 rounded-full text-xs font-black text-purple-700"
+          <Pill
+            variant="level"
+            size="sm"
+            icon={<Sparkles className="w-3.5 h-3.5 text-purple-600" aria-hidden="true" />}
+            className="hidden xl:flex"
           >
-            <Sparkles className="w-3.5 h-3.5 text-purple-600" aria-hidden="true" />
             <span className="tabular-nums">{profile.xp} XP</span>
-          </div>
+          </Pill>
 
           {/* Avatar Shop Button */}
-          <button
+          <KidButton
+            variant="secondary"
+            size="md"
+            className="min-w-[44px] min-h-[44px] px-3"
             onClick={() => {
               sound.playClick();
               onOpenShop();
             }}
             aria-label="Tủ đồ thời trang và Linh thú"
-            className="min-w-[44px] min-h-[44px] flex items-center justify-center bg-amber-100 hover:bg-amber-200 text-amber-900 rounded-xl transition-transform active:scale-95 cursor-pointer"
-          >
-            <ShoppingBag className="w-4 h-4" aria-hidden="true" />
-          </button>
+            leftIcon={<ShoppingBag className="w-4 h-4" aria-hidden="true" />}
+          />
 
           {/* Sound Mute Toggle — hidden on extremely narrow widths (200% zoom):
               it duplicates the Parent Dashboard sound control and every game
               has its own mute toggle, so nothing becomes unreachable. */}
-          <button
+          <KidButton
+            variant="secondary"
+            size="md"
+            className="min-w-[44px] min-h-[44px] max-[300px]:hidden px-3"
             onClick={handleToggleSound}
             aria-label={isMuted ? 'Bật âm thanh' : 'Tắt âm thanh'}
             aria-pressed={isMuted}
-            className="min-w-[44px] min-h-[44px] max-[300px]:hidden items-center justify-center bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition-transform active:scale-95 cursor-pointer flex"
-          >
-            {isMuted ? (
+            leftIcon={isMuted ? (
               <VolumeX className="w-4 h-4 text-rose-500" aria-hidden="true" />
             ) : (
               <Volume2 className="w-4 h-4" aria-hidden="true" />
             )}
-          </button>
+          />
 
           {/* Parent Mode Gate button */}
-          <button
+          <KidButton
+            variant="primary"
+            size="md"
+            className="min-h-[44px] min-w-[44px] px-3"
             onClick={() => {
               sound.playClick();
               onOpenParent();
             }}
             aria-label="Khu vực dành cho Ba Mẹ"
-            className="min-h-[44px] min-w-[44px] px-3 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-black flex items-center justify-center gap-1.5 transition-transform active:scale-95 cursor-pointer"
-          >
-            <Shield className="w-3.5 h-3.5 text-amber-400" aria-hidden="true" />
-            <span className="hidden lg:inline">Ba Mẹ</span>
-          </button>
+            leftIcon={<Shield className="w-3.5 h-3.5 text-amber-400" aria-hidden="true" />}
+            rightIcon={<span className="hidden lg:inline">Ba Mẹ</span>}
+          />
         </div>
       </div>
     </header>

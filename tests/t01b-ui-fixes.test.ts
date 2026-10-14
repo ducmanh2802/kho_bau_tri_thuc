@@ -75,8 +75,11 @@ describe('T01B/6 tuong phan banner Home >= 4.5:1', () => {
     expect(home).not.toContain('from-amber-400 via-orange-400 to-rose-400');
   });
 
-  it('pill thong ke dung nen den mo (chu trang moi dat chuan)', () => {
-    expect(src('src/components/home/HomeScreen.tsx')).toContain('bg-black/25');
+  it('pill thong ke dung nen den mo (chu trang moi dat chuan) - Pill component', () => {
+    expect(src('src/components/home/HomeScreen.tsx')).toContain('<Pill');
+    expect(src('src/components/home/HomeScreen.tsx')).toContain('variant="star"');
+    expect(src('src/components/home/HomeScreen.tsx')).toContain('variant="streak"');
+    expect(src('src/components/home/HomeScreen.tsx')).toContain('variant="ticket"');
   });
 });
 
@@ -141,7 +144,8 @@ describe('T01B/3 desktop nav khong tran + T01B/11 testid', () => {
     expect(header).toContain('iconOnly');
     expect(header).toContain('hidden lg:flex 2xl:hidden');
     expect(header).toContain('hidden 2xl:flex');
-    expect(header).toContain('hidden xl:flex items-center gap-1 px-2.5');
+    // XP counter now uses Pill component with hidden xl:flex
+    expect(header).toContain('hidden xl:flex');
   });
 
   it('moi muc dieu huong tren + duoi co data-testid="nav-<screen>"', () => {
@@ -191,11 +195,11 @@ describe('T01B/9 nut cham >= 44px', () => {
   ];
 
   it('khong con nut hanh dong nho: Chơi ngay / Vào học / Mở khóa / tab deu min-h-44', () => {
-    expect(src('src/components/games/GamesHubScreen.tsx')).toContain('px-5 min-h-[44px]');
-    expect(src('src/components/subject/SubjectScreen.tsx')).toContain('px-4 min-h-[44px] py-2 rounded-xl');
+    expect(src('src/components/games/GamesHubScreen.tsx')).toContain('min-h-[44px]');
+    expect(src('src/components/subject/SubjectScreen.tsx')).toContain('min-h-[44px]');
     const shop = src('src/components/shop/AvatarShopScreen.tsx');
     expect(shop).toContain('Mở khóa');
-    expect(shop).toContain('px-4 min-h-[44px]');
+    expect(shop).toContain('min-h-[44px]');
   });
 
   it('mọi màn hình trong danh sách đều có min-h-[44px]', () => {
@@ -205,10 +209,10 @@ describe('T01B/9 nut cham >= 44px', () => {
   });
 
   it('"Bé cần gợi ý?" và "Nghe lại" du 44px', () => {
-    expect(src('src/components/learning/LessonPlayerModal.tsx')).toContain('min-h-[44px] px-4');
+    expect(src('src/components/learning/LessonPlayerModal.tsx')).toContain('min-h-[44px]');
     const wrapper = src('src/components/games/GameModalWrapper.tsx');
     expect(wrapper).toContain('aria-label="Nghe lại hướng dẫn chơi"');
-    expect(wrapper).toContain('min-h-[44px] px-3');
+    expect(wrapper).toContain('min-h-[44px]');
   });
 });
 

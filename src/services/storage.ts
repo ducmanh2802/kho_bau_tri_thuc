@@ -73,7 +73,7 @@ const STORAGE_KEYS = {
  *    counters, misconception map, retention evidence). Missing fields on older
  *    payloads are backfilled by the sanitizer, so no learning history is reset.
  */
-export const STORAGE_SCHEMA_VERSION = 'P41-v1';
+export const STORAGE_SCHEMA_VERSION = 'P42-v1';
 
 /** Schema version for the game-progress store (separate key from the Learning OS). */
 export const GAME_PROGRESS_SCHEMA_VERSION = 1;
@@ -105,10 +105,12 @@ const MIGRATIONS: Record<string, (raw: Record<string, unknown>) => Record<string
     ...raw,
     sessionState: raw.sessionState ?? null,
   }),
+  // T03A — Night mode setting in ParentSettings. Default false.
+  'P42-v1': (raw) => ({ ...raw }),
 };
 
 /** Every schema version the app has ever written, oldest first. */
-const SCHEMA_HISTORY = ['P28-v1', 'P29-v2', 'P30-v1', 'P41-v1'] as const;
+const SCHEMA_HISTORY = ['P28-v1', 'P29-v2', 'P30-v1', 'P41-v1', 'P42-v1'] as const;
 
 const SESSION_PROFILE_KINDS: SessionProfileKind[] = ['QUICK', 'STANDARD', 'DEEP', 'EXTENDED'];
 
@@ -352,6 +354,7 @@ const DEFAULT_PARENT_SETTINGS: ParentSettings = {
   allowAdvancedQuestions: false,
   reviewIntensity: 'standard',
   optionalBreaks: true,
+  nightMode: false,
 };
 
 function getTodayString(): string {
@@ -905,33 +908,34 @@ export class StorageService {
     }
   }
 
-  public static getParentSettings(): ParentSettings {
+public static getParentSettings(): ParentSettings {
     try {
       const data = localStorage.getItem(STORAGE_KEYS.PARENT_SETTINGS);
-if (data) {
-      const parsed = JSON.parse(data);
-      if (parsed && typeof parsed === 'object') {
-        return {
-          dailyLimitMinutes: typeof parsed.dailyLimitMinutes === 'number' ? parsed.dailyLimitMinutes : 20,
-          soundEnabled: typeof parsed.soundEnabled === 'boolean' ? parsed.soundEnabled : true,
-          musicEnabled: typeof parsed.musicEnabled === 'boolean' ? parsed.musicEnabled : true,
-          voiceEnabled: typeof parsed.voiceEnabled === 'boolean' ? parsed.voiceEnabled : true,
-          difficultyScale: ['easy', 'normal', 'advanced'].includes(parsed.difficultyScale)
-            ? parsed.difficultyScale
-            : 'normal',
-          questionAutoplay:
-            typeof parsed.questionAutoplay === 'boolean' ? parsed.questionAutoplay : true,
-          defaultSessionProfile: ['QUICK', 'STANDARD', 'DEEP', 'EXTENDED'].includes(parsed.defaultSessionProfile)
-            ? parsed.defaultSessionProfile
-            : 'STANDARD',
-          allowAdvancedQuestions: parsed.allowAdvancedQuestions === true,
-          reviewIntensity: ['light', 'standard', 'intensive'].includes(parsed.reviewIntensity)
-            ? parsed.reviewIntensity
-            : 'standard',
-          optionalBreaks: parsed.optionalBreaks === true,
-        };
+      if (data) {
+        const parsed = JSON.parse(data);
+        if (parsed && typeof parsed === 'object') {
+          return {
+            dailyLimitMinutes: typeof parsed.dailyLimitMinutes === 'number' ? parsed.dailyLimitMinutes : 20,
+            soundEnabled: typeof parsed.soundEnabled === 'boolean' ? parsed.soundEnabled : true,
+            musicEnabled: typeof parsed.musicEnabled === 'boolean' ? parsed.musicEnabled : true,
+            voiceEnabled: typeof parsed.voiceEnabled === 'boolean' ? parsed.voiceEnabled : true,
+            difficultyScale: ['easy', 'normal', 'advanced'].includes(parsed.difficultyScale)
+              ? parsed.difficultyScale
+              : 'normal',
+            questionAutoplay:
+              typeof parsed.questionAutoplay === 'boolean' ? parsed.questionAutoplay : true,
+            defaultSessionProfile: ['QUICK', 'STANDARD', 'DEEP', 'EXTENDED'].includes(parsed.defaultSessionProfile)
+              ? parsed.defaultSessionProfile
+              : 'STANDARD',
+            allowAdvancedQuestions: parsed.allowAdvancedQuestions === true,
+            reviewIntensity: ['light', 'standard', 'intensive'].includes(parsed.reviewIntensity)
+              ? parsed.reviewIntensity
+              : 'standard',
+            optionalBreaks: parsed.optionalBreaks === true,
+            nightMode: parsed.nightMode === true,
+          };
+        }
       }
-    }
     } catch {
       // Ignore
     }
