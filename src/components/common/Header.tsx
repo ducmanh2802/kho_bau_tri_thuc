@@ -67,11 +67,6 @@ export const Header: React.FC<HeaderProps> = ({
     { screen: 'achievements', label: 'Vườn Sao', icon: '🌳' },
   ];
 
-  /** Subset that provably fits beside the action pills at the xl breakpoint. */
-  const PRIMARY_NAV: NavEntry[] = navItems.filter((n) =>
-    ['home', 'reading_fluency', 'competition', 'daily_review'].includes(n.screen)
-  );
-
   return (
     <header className="sticky top-0 z-40 w-full bg-white/95 backdrop-blur-md border-b-2 border-amber-200/80 shadow-xs">
       <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 h-16 flex items-center justify-between gap-2 sm:gap-4">
@@ -95,16 +90,16 @@ export const Header: React.FC<HeaderProps> = ({
         {/*
           Zone 2: navigation (T01/B11 + T01B/3).
           >= 1024px (lg) only the top nav shows; < 1024px only the bottom nav
-          shows (see App.tsx). lg–xl shows the 4 primary destinations as
-          ICON-ONLY so the bar provably fits 1024px; xl+ shows the full set
-          with labels (fits 1280/1440).
+          shows (see App.tsx). lg–2xl shows ALL 7 destinations as ICON-ONLY
+          (hover/title + aria-label giữ tên đầy đủ) so the bar provably fits
+          1024/1280/1440; 2xl+ shows the full set with labels.
         */}
-        <nav aria-label="Điều hướng chính" className="hidden lg:flex xl:hidden items-center gap-1">
-          {PRIMARY_NAV.map((item) => (
+        <nav aria-label="Điều hướng chính" className="hidden lg:flex 2xl:hidden items-center gap-1">
+          {navItems.map((item) => (
             <NavLink key={item.screen} item={item} current={currentScreen} onNavigate={onNavigate} iconOnly />
           ))}
         </nav>
-        <nav aria-label="Điều hướng chính (đầy đủ)" className="hidden xl:flex items-center gap-1">
+        <nav aria-label="Điều hướng chính (đầy đủ)" className="hidden 2xl:flex items-center gap-1">
           {navItems.map((item) => (
             <NavLink key={item.screen} item={item} current={currentScreen} onNavigate={onNavigate} />
           ))}

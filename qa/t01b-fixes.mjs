@@ -30,6 +30,19 @@ export default async function run(page, ui) {
     if (!cond) errors.push(name + extra);
   };
 
+  // T01B/11: cung 1 testid ton tai o ca nav tren + nav duoi -> luon bam nut DANG HIEN.
+  async function navGo(screen) {
+    const candidates = page.getByTestId(`nav-${screen}`);
+    const n = await candidates.count();
+    for (let i = 0; i < n; i += 1) {
+      if (await candidates.nth(i).isVisible()) {
+        await candidates.nth(i).click(CLICK);
+        return;
+      }
+    }
+    throw new Error(`no visible nav-${screen}`);
+  }
+
   await page.evaluate(() => localStorage.clear());
   await page.goto(ui.origin + '/', { waitUntil: 'networkidle' });
   await page.waitForSelector('text=Xin chào', { timeout: 20000 });
@@ -92,7 +105,7 @@ export default async function run(page, ui) {
     await page.goto(ui.origin + '/', { waitUntil: 'networkidle' });
     await page.waitForSelector('text=Xin chào', { timeout: 20000 });
     // Mo hub qua bottom nav (testid moi)
-    await page.getByTestId('nav-games').click(CLICK);
+    await navGo('games');
     await page.waitForSelector('text=Đấu Trường Trò Chơi Trí Tuệ', { timeout: 20000 });
     await page.getByRole('button', { name: /Chơi ngay/ }).first().click(CLICK);
     await page.waitForSelector('[role="dialog"]', { timeout: 20000 });
@@ -124,15 +137,21 @@ export default async function run(page, ui) {
   await page.setViewportSize({ width: 375, height: 667 });
   await page.goto(ui.origin + '/', { waitUntil: 'networkidle' });
   await page.waitForSelector('text=Xin chào', { timeout: 20000 });
-  await page.getByTestId('nav-games').click(CLICK);
+  await navGo('games');
   await page.waitForSelector('text=Đấu Trường Trò Chơi Trí Tuệ', { timeout: 20000 });
   await page.getByRole('button', { name: /Chơi ngay/ }).first().click(CLICK);
   await page.waitForSelector('[role="dialog"]', { timeout: 20000 });
   const icons = await page.evaluate(() => {
     const instr = document.querySelector('[aria-label="Nghe hướng dẫn chơi"]');
     const mute = document.querySelector('[aria-label="Tắt âm thanh trò chơi"], [aria-label="Bật âm thanh trò chơi"]');
-    const svg = (el) => (el ? el.innerHTML.slice(0, 120) : null);
-    return { instr: !!instr, mute: !!mute, distinct: !!instr && !!mute && svg(instr) !== svg(mute) };
+    // lucide-react dat ten icon vao class svg: lucide-megaphone vs lucide-volume-2
+    const svgClass = (el) => {
+      const svg = el ? el.querySelector('svg') : null;
+      return svg ? svg.getAttribute('class') : null;
+    };
+    const a = svgClass(instr);
+    const b = svgClass(mute);
+    return { instr: !!instr, mute: !!mute, a, b, distinct: !!a && !!b && a !== b };
   });
   out.gameIcons = icons;
   check('game-icons-distinct', icons.distinct, JSON.stringify(icons));
@@ -178,7 +197,7 @@ export default async function run(page, ui) {
   // ---- 4. doi man hinh cuon ve dau trang ----
   await page.goto(ui.origin + '/', { waitUntil: 'networkidle' });
   await page.evaluate(() => window.scrollTo(0, 2000));
-  await page.getByTestId('nav-games').click(CLICK);
+  await navGo('games');
   await page.waitForTimeout(500);
   const scrollY = await page.evaluate(() => window.scrollY);
   out.scrollAfterNav = scrollY;
@@ -189,13 +208,18 @@ export default async function run(page, ui) {
   await page.waitForSelector('text=Xin chào', { timeout: 20000 });
   const touch = await page.evaluate(() => {
     const res = {};
+    const visible = (sel) =>
+      Array.from(document.querySelectorAll(sel)).find((el) => {
+        const r = el.getBoundingClientRect();
+        return r.width > 0 && r.height > 0;
+      }) || null;
     const probe = (name, el) => {
       if (!el) { res[name] = null; return; }
       const r = el.getBoundingClientRect();
       res[name] = Math.round(Math.min(r.width, r.height) >= 44 ? 44 : Math.min(r.width, r.height));
     };
     const btns = Array.from(document.querySelectorAll('button'));
-    probe('bottom-nav', document.querySelector('[data-testid="nav-games"]'));
+    probe('bottom-nav', visible('[data-testid="nav-games"]'));
     probe('top-parent', document.querySelector('header [aria-label="Khu vực dành cho Ba Mẹ"]'));
     const hint = btns.find((b) => /Bản Đồ Học Tập/.test(b.textContent || ''));
     probe('home-cta', hint);
@@ -205,14 +229,13 @@ export default async function run(page, ui) {
   check('touch-targets-home', Object.values(touch).every((v) => v === 44), JSON.stringify(touch));
 
   // ---- 10. WorldMap dem game dong ----
-  await page.getByTestId('nav-world_map').click(CLICK);
+  await navGo('world_map');
   await page.waitForTimeout(600);
   const mapText = await page.evaluate(() => document.body.innerText);
   const mCount = (mapText.match(/(\d+)\s*Mini-Game/) || [])[1];
   out.worldMapCount = mCount || null;
-  const catalogLen = await page.evaluate(() => window.__GAMES_COUNT__ ?? null);
-  void catalogLen;
   check('worldmap-no-hardcoded-10', !/10\+\s*Mini-Game/.test(mapText));
+  check('worldmap-count-dynamic', !!mCount && Number(mCount) >= 18, `(count=${mCount})`);
 
   return { ok: errors.length === 0, errors, out };
 }
