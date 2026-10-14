@@ -2,38 +2,18 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { GameModalWrapper } from './GameModalWrapper';
 import { sound } from '../../services/sound';
 import { useGameStage } from '../../hooks/useGameStage';
-import { defaultRoundsPerTier, getTierMeta, numericOptions, seededRng } from '../../data/gameLevels';
+import { defaultRoundsPerTier, getTierMeta } from '../../data/gameLevels';
+import { buildTowerRounds } from '../../data/games/number_tower';
+import type { TowerRound } from '../../data/games/number_tower';
 
-interface TowerRound {
-  part1: number;
-  total: number;
-  missing: number;
-  options: number[];
-}
-
-function buildTowerRounds(tier: number): TowerRound[] {
-  const rng = seededRng(1300 + tier * 37);
-  const roundsPerTier = defaultRoundsPerTier();
-  const count = roundsPerTier[tier - 1];
-  const maxTotal = tier <= 1 ? 5 : tier <= 3 ? 10 : 20;
-  const rounds: TowerRound[] = [];
-  for (let i = 0; i < count; i++) {
-    const total = Math.floor(rng() * (maxTotal - 1)) + 2;
-    const part1 = Math.floor(rng() * (total === 0 ? 1 : total));
-    const missing = total - part1;
-    const floor = tier >= 3 ? 1 : 0;
-    const options = numericOptions(missing, 4, seededRng(1300 + tier * 37 + i * 131), floor, maxTotal);
-    rounds.push({ part1, total, missing, options });
-  }
-  return rounds;
-}
+export { buildTowerRounds };
 
 export const NumberTowerGame: React.FC<{ onExit: () => void }> = ({ onExit }) => {
   const roundsPerTier = useMemo(() => defaultRoundsPerTier(), []);
   const stage = useGameStage({ gameId: 'number_tower', roundsPerTier, advanceDelayMs: 1200 });
   const [towerBlocks, setTowerBlocks] = useState<number[]>([]);
 
-  const rounds = useMemo(() => buildTowerRounds(stage.tier), [stage.tier]);
+  const rounds = useMemo(() => buildTowerRounds(stage.tier, stage.nonce), [stage.tier, stage.nonce]);
   const current = rounds[stage.roundIdx];
   const maxTotal = stage.tier <= 1 ? 5 : stage.tier <= 3 ? 10 : 20;
 

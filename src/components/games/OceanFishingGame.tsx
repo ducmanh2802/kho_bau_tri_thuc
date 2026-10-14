@@ -2,48 +2,12 @@ import React, { useMemo, useState } from 'react';
 import { GameModalWrapper } from './GameModalWrapper';
 import { sound } from '../../services/sound';
 import { useGameStage } from '../../hooks/useGameStage';
-import { defaultRoundsPerTier, getTierMeta, numericOptions, seededRng, shuffleSeeded } from '../../data/gameLevels';
+import { defaultRoundsPerTier, getTierMeta } from '../../data/gameLevels';
+import { buildFishRounds } from '../../data/games/ocean_fishing';
+import type { FishItem, FishQuestion } from '../../data/games/ocean_fishing';
 
-export interface FishItem {
-  val: number;
-  emoji: string;
-  color: string;
-}
-
-export interface FishQuestion {
-  expr: string;
-  ans: number;
-  fishPool: FishItem[];
-}
-
-const FISH_EMOJI = ['🐠', '🐟', '🐡'] as const;
-const FISH_COLORS = ['text-amber-500', 'text-blue-500', 'text-rose-500', 'text-emerald-500', 'text-purple-500', 'text-teal-500'] as const;
-
-/**
- * T02/A2 — every subtraction keeps a >= b (result >= 0) within the Grade-1
- * range. `seed` overrides the deterministic tier+nonce seed for tests.
- */
-export function buildFishRounds(tier: number, nonce = 0, seed?: number): FishQuestion[] {
-  const roundsPerTier = defaultRoundsPerTier();
-  const count = roundsPerTier[tier - 1];
-  const maxA = tier <= 1 ? 5 : tier <= 3 ? 10 : 20;
-  const rounds: FishQuestion[] = [];
-  for (let i = 0; i < count; i++) {
-    const rngI = seededRng(seed ?? 2300 + tier * 53 + nonce * 1009 + i * 157);
-    const a = Math.max(2, Math.floor(rngI() * maxA) + 1);
-    // T02/A2 — b is always within 1..a so a - b >= 0 (never negative).
-    const b = Math.max(1, Math.floor(rngI() * a) + 1);
-    const ans = a - b;
-    const vals = numericOptions(ans, 4, rngI, 0, maxA);
-    const fishPool = vals.map((val, idx) => ({
-      val,
-      emoji: FISH_EMOJI[idx % FISH_EMOJI.length],
-      color: FISH_COLORS[Math.floor(rngI() * FISH_COLORS.length)],
-    }));
-    rounds.push({ expr: `${a} - ${b}`, ans, fishPool: shuffleSeeded(fishPool, seededRng(2300 + tier * 53 + i * 911)) });
-  }
-  return rounds;
-}
+export { buildFishRounds };
+export type { FishItem, FishQuestion };
 
 export const OceanFishingGame: React.FC<{ onExit: () => void }> = ({ onExit }) => {
   const roundsPerTier = useMemo(() => defaultRoundsPerTier(), []);

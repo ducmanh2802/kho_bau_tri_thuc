@@ -34,7 +34,7 @@ export interface GameStage {
   prevBestStars: number;
   /** Play count for the current tier (T02/B5 replay shuffling). */
   nonce: number;
-  submitCorrect: () => void;
+  submitCorrect: (starsOverride?: number) => void;
   submitWrong: () => void;
   startNextTier: () => void;
   restartGame: () => void;
@@ -61,6 +61,9 @@ export function useGameStage(options: UseGameStageOptions): GameStage {
   );
   const [roundIdx, setRoundIdx] = useState(0);
   const [score, setScore] = useState(0);
+  // T02B/B16 — score inside the CURRENT tier only (best score is stored
+  // per tier; the cumulative `score` above stays for HUD display).
+  const [tierScore, setTierScore] = useState(0);
   const [mistakesInTier, setMistakesInTier] = useState(0);
   const [locked, setLocked] = useState(false);
   const [phase, setPhase] = useState<GameStagePhase>('playing');
@@ -97,9 +100,10 @@ export function useGameStage(options: UseGameStageOptions): GameStage {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tierSafe]);
 
-  const submitCorrect = () => {
+  const submitCorrect = (starsOverride?: number) => {
     if (locked || phase !== 'playing') return;
     setScore((s) => s + 1);
+    setTierScore((s) => s + 1);
     setLocked(true);
     if (timerRef.current) window.clearTimeout(timerRef.current);
     timerRef.current = window.setTimeout(() => {
@@ -107,7 +111,12 @@ export function useGameStage(options: UseGameStageOptions): GameStage {
       if (roundIdx + 1 < roundTotal) {
         setRoundIdx((i) => i + 1);
       } else {
-        const stars = computeStars(mistakesInTier);
+        // T02B/B13 — explicit stars (e.g. ColoringCanvas coverage) win;
+        // otherwise stars come from real mistakes in THIS tier.
+        const stars =
+          typeof starsOverride === 'number'
+            ? Math.min(Math.max(Math.round(starsOverride), 1), 3)
+            : computeStars(mistakesInTier);
         // T02/B2 — capture best BEFORE persisting so the reward receipt
         // can pay only the delta on replays.
         try {
@@ -115,7 +124,8 @@ export function useGameStage(options: UseGameStageOptions): GameStage {
         } catch {
           setPrevBestStars(0);
         }
-        StorageService.completeGameTier(gameId, tierSafe, stars, score + 1);
+        // T02B/B16 — persist the PER-TIER score, never the cumulative total.
+        StorageService.completeGameTier(gameId, tierSafe, stars, tierScore + 1);
         setStarsEarned(stars);
         setPhase(isLastTier ? 'allComplete' : 'tierComplete');
       }
@@ -131,6 +141,7 @@ export function useGameStage(options: UseGameStageOptions): GameStage {
     if (phase !== 'tierComplete') return;
     setTier((t) => clampTier(t + 1));
     setRoundIdx(0);
+    setTierScore(0);
     setMistakesInTier(0);
     setLocked(false);
     setPhase('playing');
@@ -145,6 +156,7 @@ export function useGameStage(options: UseGameStageOptions): GameStage {
     setTier(resumeTier);
     setRoundIdx(0);
     setScore(0);
+    setTierScore(0);
     setMistakesInTier(0);
     setLocked(false);
     setPhase('playing');

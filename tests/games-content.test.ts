@@ -77,7 +77,7 @@ describe('T02/A spelling duel content', () => {
         byEmoji.set(item.emoji, list);
       }
     }
-    expect(byEmoji.get('🙏')).toContain('ngh'); // …iêng (was ng)
+    expect(byEmoji.get('🙇')).toContain('ngh'); // …iêng đầu chào (was ng; T02B: 🙏→🙇 cho đúng nghĩa)
     expect(byEmoji.get('🐣')).toContain('n'); // …on nớt (was ng)
     expect(byEmoji.get('🪿')).toContain('ng'); // ngỗng (was g)
     expect(byEmoji.get('🍎')).toContain('tr'); // trái cây (was …ái bàn)
@@ -183,7 +183,7 @@ describe('T02/A shape sorting labels', () => {
     expect(names).not.toContain('Hòn bi sắt');
     expect(names).not.toContain('Điểm an toàn');
     expect(names).not.toContain('Gói kẹo vuông');
-    expect(names).toContain('Mũ sinh nhật');
+    expect(names).toContain('Nón lá'); // T02B: thay "Mũ sinh nhật" 🎉 (sai hình) bằng nón lá 👒 hình chóp rõ ràng
     expect(names).toContain('Hòn bi ve');
     expect(names).toContain('Miếng bánh pizza');
     expect(names).toContain('Bánh chưng xanh');
@@ -226,7 +226,7 @@ describe('T02/A color balloon palette', () => {
     expect(names).not.toContain('TURQUOISE');
     expect(names).not.toContain('LIME');
     expect(names).toContain('WHITE');
-    const allowed = new Set(['RED', 'BLUE', 'GREEN', 'YELLOW', 'PURPLE', 'ORANGE', 'PINK', 'BLACK', 'WHITE', 'BROWN', 'GRAY']);
+    const allowed = new Set(['RED', 'BLUE', 'GREEN', 'YELLOW', 'PURPLE', 'ORANGE', 'PINK', 'BLACK', 'WHITE', 'BROWN', 'GREY']); // T02B: GREY (Anh–Anh)
     for (const n of names) expect(allowed.has(n)).toBe(true);
   });
 });

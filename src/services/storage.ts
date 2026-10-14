@@ -1643,6 +1643,10 @@ if (data) {
       localStorage.removeItem(STORAGE_KEYS.LEARNING_OS_STORE);
       localStorage.removeItem(STORAGE_KEYS.READING_STORE);
       localStorage.removeItem(STORAGE_KEYS.KIDBOX_STORE);
+      // T02B/B14 — parent reset also clears tier/star progress and the
+      // play-nonce store so a fresh start really starts fresh.
+      localStorage.removeItem(STORAGE_KEYS.GAME_PROGRESS);
+      localStorage.removeItem(STORAGE_KEYS.GAME_NONCE);
     } catch {
       // Storage unavailable: nothing to clear.
     }

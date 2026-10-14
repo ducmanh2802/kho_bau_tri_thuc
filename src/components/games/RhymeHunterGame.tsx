@@ -2,94 +2,19 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { GameModalWrapper } from './GameModalWrapper';
 import { sound } from '../../services/sound';
 import { useGameStage } from '../../hooks/useGameStage';
-import { defaultRoundsPerTier, getTierMeta, pickDistinct, roundsForTier, seededRng, shuffleSeeded } from '../../data/gameLevels';
+import { defaultRoundsPerTier, getTierMeta, roundsForTier } from '../../data/gameLevels';
+import {
+  DISTRACTOR_POOL,
+  RHYME_FAMILIES,
+  buildRhymeRounds,
+  containsRhyme,
+  stripTones,
+} from '../../data/games/rhyme_hunter';
+import type { RhymeFruit, RhymeRound } from '../../data/games/rhyme_hunter';
 
-export interface RhymeFruit {
-  id: string;
-  word: string;
-  hasRhyme: boolean;
-  emoji: string;
-  picked: boolean;
-}
-
-export interface RhymeRound {
-  targetRhyme: string;
-  targetDescription: string;
-  fruits: RhymeFruit[];
-}
-
-export const RHYME_FAMILIES: { rhyme: string; words: string[] }[] = [
-  { rhyme: 'an', words: ['cái bàn', 'bạn Lan', 'cái can', 'cái khăn'] },
-  { rhyme: 'on', words: ['chú thỏ con', 'lon ton', 'ngọn cỏ', 'cái nón'] },
-  { rhyme: 'at', words: ['hạt cát', 'ca hát', 'bát ngát', 'mặt đất'] },
-  { rhyme: 'ach', words: ['quyển sách', 'tách trà', 'vá rách', 'viên gạch'] },
-  { rhyme: 'anh', words: ['cây xanh', 'anh trai', 'bức tranh', 'cành chanh'] },
-  { rhyme: 'ay', words: ['máy bay', 'đôi tay', 'cỏ may', 'bàn tay'] },
-];
-
-export const DISTRACTOR_POOL = [
-  'con cá', 'hoa sen', 'mặt trời', 'quả cam', 'búp bê',
-  'con vịt', 'cây bàng', 'củ cà rốt', 'quả táo', 'đám mây',
-  'con chó', 'bông hồng', 'chú mèo', 'cái ghế', 'quả chuối',
-];
-
-const FRUIT_EMOJI = ['🍎', '🍐', '🍊', '🍑', '🍓', '🍇', '🍉', '🍒', '🥭', '🍌'] as const;
-
-/** Lowercase + stripped of tones/diacritics for rhyme matching. */
-export function stripTones(s: string): string {
-  return s
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/đ/g, 'd')
-    .replace(/Đ/g, 'd');
-}
-
-/** T02/A3 — does the word contain the target rhyme (tone-insensitive)? */
-export function containsRhyme(word: string, rhyme: string): boolean {
-  return stripTones(word).includes(stripTones(rhyme));
-}
+export { DISTRACTOR_POOL, RHYME_FAMILIES, buildRhymeRounds, containsRhyme, stripTones };
 
 const ROUNDS_PER_TIER = defaultRoundsPerTier();
-
-/**
- * T02/A3 — decoys are filtered by RHYME (a decoy must never contain the
- * target rhyme), and every tier builds >= 5 rounds by cycling families.
- * `seed` overrides the deterministic tier+nonce seed for tests.
- */
-export function buildRhymeRounds(tier: number, nonce = 0, seed?: number): RhymeRound[] {
-  const base = seed ?? 5600 + tier * 61 + nonce * 1009;
-  const count = Math.max(5, roundsForTier(tier));
-  const rng = seededRng(base);
-  const fams = shuffleSeeded(RHYME_FAMILIES, rng);
-  const targetCount = tier <= 2 ? 2 : tier <= 4 ? 3 : 4;
-  const rounds: RhymeRound[] = [];
-  let fruitId = 0;
-  for (let i = 0; i < count; i++) {
-    const fam = fams[i % fams.length];
-    const roundRng = seededRng(base + i * 101);
-    const targets = pickDistinct(fam.words, 4, roundRng).slice(0, targetCount);
-    const distractorCount = Math.max(2, 6 - targetCount);
-    const safeDecoys = DISTRACTOR_POOL.filter(
-      (w) => !fam.words.includes(w) && !containsRhyme(w, fam.rhyme)
-    );
-    const distractors = pickDistinct(
-      safeDecoys,
-      distractorCount,
-      seededRng(base + i * 101 + 7)
-    );
-    const fruits: RhymeFruit[] = [
-      ...targets.map((w) => ({ id: `r${i}-${fruitId++}`, word: w, hasRhyme: true, emoji: FRUIT_EMOJI[Math.floor(roundRng() * FRUIT_EMOJI.length)], picked: false })),
-      ...distractors.map((w) => ({ id: `r${i}-${fruitId++}`, word: w, hasRhyme: false, emoji: FRUIT_EMOJI[Math.floor(roundRng() * FRUIT_EMOJI.length)], picked: false })),
-    ];
-    rounds.push({
-      targetRhyme: fam.rhyme,
-      targetDescription: `vần "${fam.rhyme.toUpperCase()}"`,
-      fruits: shuffleSeeded(fruits, seededRng(base + i * 733)),
-    });
-  }
-  return rounds;
-}
 
 export const RhymeHunterGame: React.FC<{ onExit: () => void }> = ({ onExit }) => {
   const stage = useGameStage({ gameId: 'rhyme_hunter', roundsPerTier: ROUNDS_PER_TIER, advanceDelayMs: 1200 });
