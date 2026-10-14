@@ -27,9 +27,20 @@ export const AchievementsGardenScreen: React.FC<AchievementsGardenScreenProps> =
     sound.speak('Cây tri thức lớn thêm một chút rồi! Bé chăm chỉ quá!');
   };
 
-  // Tree growth stage based on completed lessons
-  const treeStage = Math.min(4, Math.floor(profile.completedLessons.length / 2) + 1);
-  const treeEmoji = ['🌱', '🌿', '🪴', '🌳', '🌲'][treeStage - 1];
+  // T01/B13 — Tree growth stage based on completed lessons.
+  // 0 lessons MUST show "Hạt giống" (previously even 0 showed "Đang Nở Hoa").
+  const lessonCount = profile.completedLessons.length;
+  const treeStageInfo =
+    lessonCount <= 0
+      ? { stage: 1, emoji: '🌱', label: 'Hạt giống' }
+      : lessonCount <= 2
+      ? { stage: 2, emoji: '🌿', label: 'Nảy mầm' }
+      : lessonCount <= 4
+      ? { stage: 3, emoji: '🪴', label: 'Cây non' }
+      : lessonCount <= 7
+      ? { stage: 4, emoji: '🌳', label: 'Cây lớn' }
+      : { stage: 5, emoji: '🌲', label: 'Đang Nở Hoa 🌸' };
+  const treeEmoji = treeStageInfo.emoji;
 
   return (
     <div className="w-full max-w-4xl mx-auto px-4 py-6 md:py-8 space-y-6 select-none">
@@ -77,10 +88,10 @@ export const AchievementsGardenScreen: React.FC<AchievementsGardenScreenProps> =
         <div className="flex flex-col items-center justify-center p-4 bg-white/60 rounded-3xl border-2 border-emerald-200 shadow-inner z-10 shrink-0 min-w-[200px]">
           <span className="text-7xl md:text-8xl animate-bounce mb-2">{treeEmoji}</span>
           <span className="text-xs font-black text-emerald-950 font-display">
-            Cây Cấp {treeStage}: Đang Nở Hoa 🌸
+            Cây Cấp {treeStageInfo.stage}: {treeStageInfo.label}
           </span>
           <span className="text-[11px] text-slate-500 font-semibold mt-0.5">
-            {profile.completedLessons.length} bài học tích lũy
+            {lessonCount} bài học tích lũy
           </span>
         </div>
       </div>

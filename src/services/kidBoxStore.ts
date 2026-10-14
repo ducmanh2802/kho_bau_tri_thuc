@@ -14,6 +14,7 @@ import { isKidBoxSkillId } from '../data/kidBoxTaxonomy';
 import { KIDBOX_BRIDGE_UNIT_ID, KIDBOX_COURSE_ID, KIDBOX_LEVEL_ID } from '../data/kidBoxCurriculum';
 import { KIDBOX_POLICY } from '../config/policy';
 import { readJSONObject, writeJSON } from './storage';
+import { localDateKey } from './dateUtils';
 
 /**
  * §29 PERSISTENCE for the Kid's Box Companion track.
@@ -36,7 +37,7 @@ export const KIDBOX_STORE_SCHEMA_VERSION = 'kidbox-store-v1';
 export const DAY_MS = 86400000;
 
 export function todayISO(now: number = Date.now()): string {
-  return new Date(now).toISOString().split('T')[0];
+  return localDateKey(new Date(now));
 }
 
 export function emptyDayCounters(): KidBoxDayCounters {

@@ -1,6 +1,10 @@
 # CURRENT — KHO BÁU TRI THỨC (Lớp 1)
 
-**Updated:** 2026-10-06 — P39 Learning OS Decision Engine certified.
+**Updated:** 2026-10-14 — P42/T01 hotfix certified.
+
+## P42
+
+- T01 (p42/T01): hero gradient + localDateKey + review/weekly achievement rules + nav lg-breakpoint + self-host fonts + tree/game-count — typecheck/test(409)/build PASS, xem `docs/opencode/reports/T01_REPORT.md`.
 
 ## Phase states (real, evidence-backed)
 

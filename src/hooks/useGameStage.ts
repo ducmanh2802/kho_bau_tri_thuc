@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { GAME_LEVEL_POLICY } from '../config/policy';
 import { clampTier, getTierMeta, type GameTierMeta } from '../data/gameLevels';
 import { StorageService } from '../services/storage';
@@ -61,6 +61,17 @@ export function useGameStage(options: UseGameStageOptions): GameStage {
   const [phase, setPhase] = useState<GameStagePhase>('playing');
   const [starsEarned, setStarsEarned] = useState(0);
   const timerRef = useRef<number | null>(null);
+
+  // T01/B10 — never leave a pending advance timer running after unmount
+  // (closing the game modal mid-delay previously leaked the timeout).
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) {
+        window.clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
+    };
+  }, []);
 
   const tierSafe = clampTier(tier);
   const roundTotal = roundsPerTier[Math.min(tierSafe - 1, roundsPerTier.length - 1)] ?? 1;

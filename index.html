@@ -13,9 +13,9 @@
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/manifest.webmanifest" />
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@600;700&family=Nunito:wght@500;600;700;800;900&display=swap" rel="stylesheet">
+    <!-- T01/B12: fonts are self-hosted in /public/fonts (offline-first). No Google Fonts. -->
+    <link rel="preload" href="/fonts/nunito-800-latin.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="/fonts/nunito-800-vietnamese.woff2" as="font" type="font/woff2" crossorigin />
   </head>
   <body class="bg-amber-50/40 text-slate-800 antialiased select-none font-sans overflow-x-hidden">
     <div id="root"></div>

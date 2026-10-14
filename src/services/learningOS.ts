@@ -14,6 +14,7 @@ import {
   SessionFatigueState,
 } from '../types/learningOS';
 import { SessionProfileKind, SubjectType } from '../types';
+import { localDateKey } from './dateUtils';
 import { getAllSkills } from '../data/curriculum';
 import { COMPETITION_SKILLS } from '../data/competitionTaxonomy';
 import { ADAPTIVE_DIFFICULTY_POLICY, SPEED_POLICY } from '../config/policy';
@@ -696,7 +697,7 @@ export class LearningOS {
    */
   public static generateDailyPlan(
     knowledgeMap: Record<string, KnowledgeState>,
-    dateString: string = new Date().toISOString().split('T')[0],
+    dateString: string = localDateKey(),
     fatigue?: SessionFatigueState,
     policyVersion: string = LEARNING_OS_POLICY.POLICY_VERSION,
     trackActions: LearningAction[] = []

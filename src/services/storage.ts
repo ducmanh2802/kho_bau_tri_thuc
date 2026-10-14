@@ -19,6 +19,7 @@ import {
   SubjectType,
 } from '../types';
 import { getAllSkills } from '../data/curriculum';
+import { localDateKey, diffDateKeys } from './dateUtils';
 import { LearningOS, LEARNING_OS_POLICY } from './learningOS';
 import { ReadingEngine } from './readingEngine';
 import { CompetitionEngine } from './competitionEngine';
@@ -52,6 +53,7 @@ const STORAGE_KEYS = {
   READING_STORE: 'kho_bau_reading_store',
   KIDBOX_STORE: 'kho_bau_kidbox_store',
   GAME_PROGRESS: 'kho_bau_game_progress',
+  REVIEW_DAYS: 'kho_bau_review_days',
 };
 
 /**
@@ -301,7 +303,7 @@ export const INITIAL_ACHIEVEMENTS: Achievement[] = [
   {
     id: 'ach_review_pro',
     title: 'Trí Nhớ Siêu Phàm',
-    description: 'Hoàn thành 1 lượt Ôn Tập Thông Minh',
+    description: 'Hoàn thành Ôn Tập Thông Minh 5 ngày khác nhau',
     icon: '💡',
     unlocked: false,
     xpReward: 75,
@@ -331,7 +333,7 @@ const DEFAULT_CHILD_PROFILE: ChildProfile = {
   gems: 0,
   tickets: 0,
   streak: 1,
-  lastActiveDate: new Date().toISOString().split('T')[0],
+  lastActiveDate: localDateKey(),
   unlockedItems: ['hat_cap', 'glasses_nerd', 'bag_dino'],
   completedLessons: [],
   completedWeeklyChallenges: [],
@@ -351,7 +353,7 @@ const DEFAULT_PARENT_SETTINGS: ParentSettings = {
 };
 
 function getTodayString(): string {
-  return new Date().toISOString().split('T')[0];
+  return localDateKey();
 }
 
 function createDefaultQuests(): DailyQuest[] {
@@ -852,15 +854,14 @@ export class StorageService {
             isDemoData: raw.isDemoData === true,
           };
 
-          // Verify streak progression
+          // Verify streak progression (T01/B8: local calendar days; old UTC
+          // keys are still YYYY-MM-DD so they keep working).
           const today = getTodayString();
           if (sanitized.lastActiveDate !== today) {
-            const lastDate = new Date(sanitized.lastActiveDate);
-            const currDate = new Date(today);
-            const diffDays = Math.round((currDate.getTime() - lastDate.getTime()) / (1000 * 3600 * 24));
+            const diffDays = diffDateKeys(sanitized.lastActiveDate, today);
             if (diffDays === 1) {
               sanitized.streak += 1;
-            } else if (diffDays > 1) {
+            } else if (diffDays === null || diffDays > 1) {
               sanitized.streak = 1;
             }
             sanitized.lastActiveDate = today;
@@ -1332,10 +1333,62 @@ if (data) {
     StorageService.checkAchievements();
   }
 
+  /** Distinct local-day keys on which the child finished a daily review. */
+  public static getReviewCompletedDays(): string[] {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEYS.REVIEW_DAYS);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          return parsed.filter((d): d is string => typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d));
+        }
+      }
+    } catch {
+      // Ignore — fall through to empty
+    }
+    return [];
+  }
+
+  public static saveReviewCompletedDays(days: string[]): void {
+    try {
+      localStorage.setItem(STORAGE_KEYS.REVIEW_DAYS, JSON.stringify(days));
+    } catch {
+      // Ignore
+    }
+  }
+
+  /**
+   * T01/B10 — records one finished daily-review session for today
+   * (idempotent per day) and re-checks achievements.
+   */
+  public static recordDailyReviewCompleted(dateKey: string = getTodayString()): string[] {
+    const days = StorageService.getReviewCompletedDays();
+    if (!days.includes(dateKey)) {
+      days.push(dateKey);
+      StorageService.saveReviewCompletedDays(days);
+    }
+    StorageService.checkAchievements();
+    return days;
+  }
+
+  /**
+   * T01/B10 — records a finished weekly challenge (idempotent per id)
+   * and re-checks achievements.
+   */
+  public static recordWeeklyChallengeCompleted(challengeId: string): void {
+    const profile = StorageService.getChildProfile();
+    if (!profile.completedWeeklyChallenges.includes(challengeId)) {
+      profile.completedWeeklyChallenges = [...profile.completedWeeklyChallenges, challengeId];
+      StorageService.saveChildProfile(profile);
+    }
+    StorageService.checkAchievements();
+  }
+
   public static checkAchievements() {
     const profile = StorageService.getChildProfile();
     const analytics = StorageService.getAnalytics();
     const achs = StorageService.getAchievements();
+    const reviewDays = StorageService.getReviewCompletedDays();
     let updated = false;
 
     for (const a of achs) {
@@ -1351,6 +1404,9 @@ if (data) {
         shouldUnlock = true;
       if (a.id === 'ach_gamer_fun' && analytics.gamesPlayedCount >= 3) shouldUnlock = true;
       if (a.id === 'ach_streak_3' && profile.streak >= 3) shouldUnlock = true;
+      // T01/B10 — previously these two achievements had no unlock rule.
+      if (a.id === 'ach_review_pro' && reviewDays.length >= 5) shouldUnlock = true;
+      if (a.id === 'ach_weekly_hero' && profile.completedWeeklyChallenges.length >= 1) shouldUnlock = true;
 
       if (shouldUnlock) {
         a.unlocked = true;

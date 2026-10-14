@@ -19,21 +19,43 @@
  * The cache name carries a version so a new deploy purges the previous cache.
  */
 
-const CACHE_VERSION = 'kho-bau-v1';
+const CACHE_VERSION = 'kho-bau-v2';
 const SHELL_CACHE = `${CACHE_VERSION}-shell`;
 const ASSET_CACHE = `${CACHE_VERSION}-assets`;
 const SHELL_URL = '/index.html';
+
+/** T01/B12 — self-hosted fonts precached for offline use. */
+const FONT_URLS = [
+  '/fonts/nunito-500-latin.woff2',
+  '/fonts/nunito-500-vietnamese.woff2',
+  '/fonts/nunito-600-latin.woff2',
+  '/fonts/nunito-600-vietnamese.woff2',
+  '/fonts/nunito-700-latin.woff2',
+  '/fonts/nunito-700-vietnamese.woff2',
+  '/fonts/nunito-800-latin.woff2',
+  '/fonts/nunito-800-vietnamese.woff2',
+  '/fonts/nunito-900-latin.woff2',
+  '/fonts/nunito-900-vietnamese.woff2',
+  '/fonts/comfortaa-600-latin.woff2',
+  '/fonts/comfortaa-600-vietnamese.woff2',
+  '/fonts/comfortaa-700-latin.woff2',
+  '/fonts/comfortaa-700-vietnamese.woff2',
+];
 
 /** Asset extensions we are willing to cache. */
 const CACHEABLE_DESTINATIONS = ['script', 'style', 'font', 'image', 'worker'];
 
 self.addEventListener('install', (event) => {
-  // Precache only the shell. Precaching hashed bundles here is impossible
-  // (this file is static) and is not needed: they get cached on first use.
+  // Precache the shell + self-hosted fonts (best-effort, never blocks).
   event.waitUntil(
     caches
       .open(SHELL_CACHE)
-      .then((cache) => cache.add(new Request(SHELL_URL, { cache: 'reload' })))
+      .then((cache) =>
+        cache
+          .add(new Request(SHELL_URL, { cache: 'reload' }))
+          .then(() => Promise.allSettled(FONT_URLS.map((u) => cache.add(new Request(u, { cache: 'reload' })))))
+          .then(() => undefined)
+      )
       .catch(() => {
         /* Precache is best-effort: a failure must not block activation. */
       })

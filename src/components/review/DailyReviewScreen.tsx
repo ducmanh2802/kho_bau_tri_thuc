@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Lesson, Question } from '../../types';
 import { AdaptiveService, SmartReviewSet } from '../../services/adaptive';
+import { StorageService } from '../../services/storage';
 import { sound } from '../../services/sound';
 import { LessonPlayerModal } from '../learning/LessonPlayerModal';
 import { ArrowLeft, Lightbulb, Play, CheckCircle2, AlertCircle, RefreshCw } from 'lucide-react';
@@ -174,6 +175,27 @@ export const DailyReviewScreen: React.FC<DailyReviewScreenProps> = ({
           lesson={reviewLesson}
           onClose={() => setIsReviewing(false)}
           onComplete={() => {
+            // T01/B10 — a finished review counts toward ach_review_pro (5 days).
+            StorageService.recordDailyReviewCompleted();
+            // Also progresses the daily-review quest like other completions.
+            try {
+              const quests = StorageService.getDailyQuests();
+              const profile = StorageService.getChildProfile();
+              quests.forEach((q) => {
+                if (q.type === 'daily_review' && !q.completed) {
+                  q.currentCount += 1;
+                  if (q.currentCount >= q.targetCount) {
+                    q.completed = true;
+                    profile.stars += q.rewardStars;
+                    profile.xp += q.rewardXp;
+                    StorageService.saveChildProfile(profile);
+                  }
+                }
+              });
+              StorageService.saveDailyQuests(quests);
+            } catch {
+              // Quest progress is best-effort
+            }
             onProfileUpdate();
           }}
         />
