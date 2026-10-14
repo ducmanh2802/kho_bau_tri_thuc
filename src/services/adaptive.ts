@@ -1,7 +1,7 @@
 import { Question, SkillMastery, SubjectType } from '../types';
 import { getAllQuestions, getAllSkills } from '../data/curriculum';
 import { StorageService } from './storage';
-import { READING_SKILLS } from '../data/readingContent';
+import { READING_SKILLS } from '../data/readingTaxonomy';
 import type { ReadingProfile, ReadingStage } from '../types/reading';
 
 export interface SmartReviewSet {

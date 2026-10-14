@@ -67,27 +67,147 @@ const ALL_QUESTION_TYPES = [
 ];
 
 /**
- * Strips diacritics + punctuation and lowercases, so semantic duplicates that
- * differ only in accents/spacing are detected as duplicates.
+ * Normalises a prompt for duplicate detection.
+ *
+ * T02C — KEEPS Vietnamese diacritics (NFC): "má" ≠ "mà", "ăn" ≠ "ân".
+ * Only case and punctuation/spacing are folded, so a true rewording with
+ * different punctuation still matches while tone-different words never do.
  */
 export function normalizeForDuplicateCheck(text: string): string {
   return text
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
+    .normalize('NFC')
+    .toLowerCase()
     .replace(/[^\p{L}\p{N}]+/gu, ' ')
-    .trim()
-    .toLowerCase();
+    .trim();
+}
+
+/** Token set of a prompt, computed ONCE per question (T02C perf). */
+export function tokenizeForDuplicateCheck(text: string): Set<string> {
+  return new Set(normalizeForDuplicateCheck(text).split(' ').filter(Boolean));
+}
+
+/** Jaccard similarity over precomputed token sets, in the 0-1 range. */
+export function jaccardSimilaritySets(a: Set<string>, b: Set<string>): number {
+  if (a.size === 0 || b.size === 0) return 0;
+  const [small, big] = a.size <= b.size ? [a, b] : [b, a];
+  let intersection = 0;
+  for (const t of small) if (big.has(t)) intersection += 1;
+  const union = a.size + b.size - intersection;
+  return union === 0 ? 0 : intersection / union;
 }
 
 /** Jaccard similarity over word tokens, in the 0-1 range. */
 export function semanticSimilarity(a: string, b: string): number {
-  const tokensA = new Set(normalizeForDuplicateCheck(a).split(' ').filter(Boolean));
-  const tokensB = new Set(normalizeForDuplicateCheck(b).split(' ').filter(Boolean));
-  if (tokensA.size === 0 || tokensB.size === 0) return 0;
-  let intersection = 0;
-  for (const t of tokensA) if (tokensB.has(t)) intersection += 1;
-  const union = tokensA.size + tokensB.size - intersection;
-  return union === 0 ? 0 : intersection / union;
+  return jaccardSimilaritySets(tokenizeForDuplicateCheck(a), tokenizeForDuplicateCheck(b));
+}
+
+export interface DuplicateScanItem {
+  id: string;
+  prompt: string;
+  /**
+   * Comparisons run ONLY inside the same group (T02C perf + precision).
+   * Convention: `${subject}::${skillId}`.
+   */
+  group: string;
+}
+
+export interface DuplicatePair {
+  /** Earlier item in input order (the "previous" question). */
+  aId: string;
+  /** Later item in input order (the question being flagged). */
+  bId: string;
+  group: string;
+  similarity: number;
+  severity: 'ERROR' | 'WARNING';
+}
+
+/**
+ * T02C — fast near-duplicate scan for thousands of questions.
+ *
+ * Each prompt is tokenized ONCE; comparisons run only inside the same
+ * subject+skill group; inside a group an inverted token index restricts
+ * pairs to questions sharing at least one token, with a length-ratio upper
+ * bound (`min/max < warningThreshold` can never reach the threshold) pruning
+ * the rest. Thresholds are unchanged: ERROR at
+ * `CONTENT_POLICY.DUPLICATE_PROMPT_SIMILARITY`, WARNING at 0.75.
+ *
+ * Deterministic: input order in, pairs out in (aIndex, bIndex) order.
+ */
+export function findNearDuplicates(
+  items: DuplicateScanItem[],
+  opts?: { errorThreshold?: number; warningThreshold?: number }
+): DuplicatePair[] {
+  const errorAt = opts?.errorThreshold ?? CONTENT_POLICY.DUPLICATE_PROMPT_SIMILARITY;
+  const warnAt = opts?.warningThreshold ?? 0.75;
+
+  const tokens = items.map((item) => tokenizeForDuplicateCheck(item.prompt));
+
+  const byGroup = new Map<string, number[]>();
+  items.forEach((item, index) => {
+    const list = byGroup.get(item.group);
+    if (list) list.push(index);
+    else byGroup.set(item.group, [index]);
+  });
+
+  const pairs: DuplicatePair[] = [];
+  for (const indices of byGroup.values()) {
+    if (indices.length < 2) continue;
+
+    // Inverted index: token -> member positions (positions into `indices`).
+    const postings = new Map<string, number[]>();
+    indices.forEach((itemIndex, pos) => {
+      for (const token of tokens[itemIndex]) {
+        const list = postings.get(token);
+        if (list) list.push(pos);
+        else postings.set(token, [pos]);
+      }
+    });
+
+    const seen = new Set<string>();
+    indices.forEach((itemIndex, pos) => {
+      const setA = tokens[itemIndex];
+      if (setA.size === 0) return;
+      // Candidate partners: members sharing ≥ 1 token with this question.
+      const candidates = new Set<number>();
+      for (const token of setA) {
+        for (const otherPos of postings.get(token) ?? []) {
+          if (otherPos > pos) candidates.add(otherPos);
+        }
+      }
+      for (const otherPos of candidates) {
+        const key = pos * indices.length + otherPos;
+        if (seen.has(`${key}`)) continue;
+        seen.add(`${key}`);
+        const otherIndex = indices[otherPos];
+        const setB = tokens[otherIndex];
+        // Length-ratio upper bound for Jaccard: intersection ≤ min,
+        // union ≥ max, so sim ≤ min/max. Skip when even that can't warn.
+        const minSize = Math.min(setA.size, setB.size);
+        const maxSize = Math.max(setA.size, setB.size);
+        if (maxSize === 0 || minSize / maxSize < warnAt) continue;
+        const sim = jaccardSimilaritySets(setA, setB);
+        if (sim >= errorAt) {
+          pairs.push({
+            aId: items[itemIndex].id,
+            bId: items[otherIndex].id,
+            group: items[itemIndex].group,
+            similarity: sim,
+            severity: 'ERROR',
+          });
+        } else if (sim >= warnAt) {
+          pairs.push({
+            aId: items[itemIndex].id,
+            bId: items[otherIndex].id,
+            group: items[itemIndex].group,
+            similarity: sim,
+            severity: 'WARNING',
+          });
+        }
+      }
+    });
+  }
+
+  return pairs;
 }
 
 /**
@@ -425,7 +545,6 @@ export function runContentValidation(): ValidationReport {
 
   // --- Competition bank ----------------------------------------------------
   const seenIds = new Set<string>();
-  const seenPrompts: { id: string; prompt: string }[] = [];
 
   for (const q of COMPETITION_QUESTIONS) {
     if (seenIds.has(q.id)) {
@@ -439,27 +558,28 @@ export function runContentValidation(): ValidationReport {
     seenIds.add(q.id);
 
     issues.push(...validateCompetitionQuestion(q));
+  }
 
-    for (const prev of seenPrompts) {
-      if (prev.id === q.id) continue;
-      const sim = semanticSimilarity(prev.prompt, q.prompt);
-      if (sim >= CONTENT_POLICY.DUPLICATE_PROMPT_SIMILARITY) {
-        issues.push({
-          severity: 'ERROR',
-          scope: `competition:${q.id}`,
-          code: 'SEMANTIC_DUPLICATE',
-          message: `Câu trùng ý với "${prev.id}" (độ tương đồng ${sim.toFixed(2)}).`,
-        });
-      } else if (sim >= 0.75) {
-        issues.push({
-          severity: 'WARNING',
-          scope: `competition:${q.id}`,
-          code: 'NEAR_DUPLICATE',
-          message: `Câu gần giống "${prev.id}" (độ tương đồng ${sim.toFixed(2)}).`,
-        });
-      }
+  // T02C — near-duplicate scan: tokenize once, compare only inside the same
+  // subject+skill group, keep Vietnamese diacritics (má ≠ mà).
+  for (const pair of findNearDuplicates(
+    COMPETITION_QUESTIONS.map((q) => ({ id: q.id, prompt: q.prompt, group: `${q.subject}::${q.skillId}` }))
+  )) {
+    if (pair.severity === 'ERROR') {
+      issues.push({
+        severity: 'ERROR',
+        scope: `competition:${pair.bId}`,
+        code: 'SEMANTIC_DUPLICATE',
+        message: `Câu trùng ý với "${pair.aId}" (độ tương đồng ${pair.similarity.toFixed(2)}).`,
+      });
+    } else {
+      issues.push({
+        severity: 'WARNING',
+        scope: `competition:${pair.bId}`,
+        code: 'NEAR_DUPLICATE',
+        message: `Câu gần giống "${pair.aId}" (độ tương đồng ${pair.similarity.toFixed(2)}).`,
+      });
     }
-    seenPrompts.push({ id: q.id, prompt: q.prompt });
   }
 
   // --- Blueprints ----------------------------------------------------------
@@ -505,29 +625,25 @@ export function runContentValidation(): ValidationReport {
   const curriculumQuestions = getCurriculumQuestions();
   for (const q of curriculumQuestions) issues.push(...validateCurriculumQuestion(q));
 
-  // Curriculum near-duplicate detection (within subject)
-  const seenCurriculumPrompts: { id: string; prompt: string }[] = [];
-  for (const q of curriculumQuestions) {
-    for (const prev of seenCurriculumPrompts) {
-      if (prev.id === q.id) continue;
-      const sim = semanticSimilarity(prev.prompt, q.prompt);
-      if (sim >= CONTENT_POLICY.DUPLICATE_PROMPT_SIMILARITY) {
-        issues.push({
-          severity: 'ERROR',
-          scope: `curriculum:${q.id}`,
-          code: 'SEMANTIC_DUPLICATE',
-          message: `Câu hỏi chương trình trùng ý với "${prev.id}" (độ tương đồng ${sim.toFixed(2)}).`,
-        });
-      } else if (sim >= 0.75) {
-        issues.push({
-          severity: 'WARNING',
-          scope: `curriculum:${q.id}`,
-          code: 'NEAR_DUPLICATE',
-          message: `Câu hỏi chương trình gần giống "${prev.id}" (độ tương đồng ${sim.toFixed(2)}).`,
-        });
-      }
+  // Curriculum near-duplicate detection (within subject+skill — T02C).
+  for (const pair of findNearDuplicates(
+    curriculumQuestions.map((q) => ({ id: q.id, prompt: q.prompt, group: `${q.subject}::${q.skillId}` }))
+  )) {
+    if (pair.severity === 'ERROR') {
+      issues.push({
+        severity: 'ERROR',
+        scope: `curriculum:${pair.bId}`,
+        code: 'SEMANTIC_DUPLICATE',
+        message: `Câu hỏi chương trình trùng ý với "${pair.aId}" (độ tương đồng ${pair.similarity.toFixed(2)}).`,
+      });
+    } else {
+      issues.push({
+        severity: 'WARNING',
+        scope: `curriculum:${pair.bId}`,
+        code: 'NEAR_DUPLICATE',
+        message: `Câu hỏi chương trình gần giống "${pair.aId}" (độ tương đồng ${pair.similarity.toFixed(2)}).`,
+      });
     }
-    seenCurriculumPrompts.push({ id: q.id, prompt: q.prompt });
   }
 
   // Curriculum skill depth check (each skill should have >= 2 questions)

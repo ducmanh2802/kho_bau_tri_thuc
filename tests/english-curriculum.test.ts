@@ -3,7 +3,8 @@ import { ENGLISH_TOPICS } from '../src/data/englishCurriculum';
 
 describe('English Curriculum Quality & Pedagogical Invariants', () => {
   it('contains 11 age-appropriate topics for primary Grade 1 English learners', () => {
-    expect(ENGLISH_TOPICS.length).toBe(11);
+    // T02C — lower bound (T12+ will add topics; the list below must keep existing).
+    expect(ENGLISH_TOPICS.length).toBeGreaterThanOrEqual(11);
     const expectedIds = [
       'eng-alphabet',
       'eng-numbers',
