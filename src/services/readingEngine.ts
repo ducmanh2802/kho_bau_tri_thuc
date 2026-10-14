@@ -25,6 +25,7 @@ import {
 import { StorageService } from './storage';
 import type { LearningEvidence } from '../types/learningOS';
 import { SEED_POLICY } from '../config/policy';
+import { createEmptyReadingProfile, gateForReadingStage } from './readingDefaults';
 
 const SEED_SALT = SEED_POLICY.READING_SEED_SALT;
 
@@ -281,30 +282,9 @@ export class ReadingEngine {
   // ==========================================================
 
   public static emptyProfile(): ReadingProfile {
-    const stageStates = {} as Record<ReadingStage, ReadingStageState>;
-    STAGE_ORDER.forEach((stage, index) => {
-      stageStates[stage] = {
-        stage,
-        accuracy: 0,
-        accuracyGate: ReadingEngine.gateForStage(stage),
-        // Only the first stage starts unlocked; the rest open as gates are met.
-        isUnlocked: index === 0,
-        isCompleted: false,
-        attempts: 0,
-      };
-    });
-
-    return {
-      currentStage: 'ACCURACY',
-      stageStates,
-      skillStates: {},
-      readingIndex: 0,
-      accuracyIndex: 0,
-      fluencyIndex: 0,
-      comprehensionIndex: 0,
-      headline: 'Mình bắt đầu luyện đọc chắc nhé!',
-      encouragement: 'Bé cứ đọc từ từ, mình luôn ở đây đồng hành cùng bé!',
-    };
+    // T02C — single source of truth lives in `readingDefaults` so the
+    // first-load chunk can build the same shape without this engine.
+    return createEmptyReadingProfile();
   }
 
   /**
@@ -312,20 +292,7 @@ export class ReadingEngine {
    * gate, so a fast-but-inaccurate reader can never skip the comprehension work.
    */
   public static gateForStage(stage: ReadingStage): number {
-    switch (stage) {
-      case 'ACCURACY':
-        return READING_POLICY.ACCURACY_GATE;
-      case 'FLUENCY':
-        return READING_POLICY.ACCURACY_GATE;
-      case 'COMPREHENSION':
-        return READING_POLICY.COMPREHENSION_GATE;
-      case 'PROCESSING_SPEED':
-        return READING_POLICY.COMPREHENSION_ACCURACY_GATE;
-      case 'COMPETITION_SPEED':
-        return READING_POLICY.COMPREHENSION_ACCURACY_GATE;
-      default:
-        return READING_POLICY.ACCURACY_GATE;
-    }
+    return gateForReadingStage(stage);
   }
 
   /**

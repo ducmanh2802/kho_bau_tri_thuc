@@ -21,9 +21,10 @@ import {
 import { getAllSkills } from '../data/curriculum';
 import { localDateKey, diffDateKeys } from './dateUtils';
 import { LearningOS, LEARNING_OS_POLICY } from './learningOS';
-import { ReadingEngine } from './readingEngine';
-import { CompetitionEngine } from './competitionEngine';
-import { getBlueprintById } from '../data/competitionBlueprints';
+// T02C — storage (first-load chunk) must NOT import CompetitionEngine,
+// ReadingEngine or the competition/reading banks. The demo seeder lives in
+// `./demoSeed` and the default reading profile in `./readingDefaults`.
+import { createEmptyReadingProfile } from './readingDefaults';
 import {
   ADAPTIVE_DIFFICULTY_POLICY,
   GAME_LEVEL_POLICY,
@@ -36,11 +37,8 @@ import type {
   EvidenceDifficulty,
   SessionState,
 } from '../types/learningOS';
-import type { CompetitionExamResult, ErrorCategory, QuestionResponse } from '../types/competition';
+import type { CompetitionExamResult, ErrorCategory } from '../types/competition';
 import type { ReadingMetrics, ReadingProfile, ReadingSkillState, ReadingStage, ReadingStageState } from '../types/reading';
-
-/** Fixed seed so the demo paper is byte-for-byte reproducible. */
-const DEMO_SEED = 20250101;
 
 const STORAGE_KEYS = {
   CHILD_PROFILE: 'kho_bau_child_profile',
@@ -517,7 +515,7 @@ export class StorageService {
   /** Loads the reading fluency profile, defaulting to a pristine ladder. */
   public static getReadingProfile(): ReadingProfile {
     const raw = readJSONObject(STORAGE_KEYS.READING_STORE);
-    if (!raw) return ReadingEngine.emptyProfile();
+    if (!raw) return createEmptyReadingProfile();
     return StorageService.sanitizeReadingProfile(raw);
   }
 
@@ -566,7 +564,7 @@ export class StorageService {
    * Rebuilds a valid reading profile from an arbitrary payload.
    */
   private static sanitizeReadingProfile(raw: Record<string, unknown>): ReadingProfile {
-    const base = ReadingEngine.emptyProfile();
+    const base = createEmptyReadingProfile();
     const p = (raw.profile && typeof raw.profile === 'object' ? raw.profile : raw) as Partial<ReadingProfile>;
 
     const stageStates = { ...base.stageStates };
@@ -1678,131 +1676,4 @@ if (data) {
     }
   }
 
-  /**
-   * Seeds realistic demo data for evaluators/parents to test diagnostic reports
-   * without affecting initial clean profile creation for new users.
-   *
-   * SAFETY (§1.2): the resulting profile is explicitly flagged with
-   * `isDemoData: true` so the UI can label every screen that shows these
-   * fabricated numbers, and so parents are never misled into believing a real
-   * learner produced them.
-   */
-  public static seedDemoProfile() {
-    const today = getTodayString();
-    const demoProfile: ChildProfile = {
-      id: 'child_demo',
-      name: 'Bé Minh',
-      grade: 1,
-      avatarBase: 'bear',
-      equipped: {
-        hat: 'hat_cap',
-        glasses: 'glasses_nerd',
-        backpack: 'bag_dino',
-      },
-      xp: 220,
-      stars: 18,
-      gems: 5,
-      tickets: 4,
-      streak: 4,
-      lastActiveDate: today,
-      unlockedItems: ['hat_cap', 'glasses_nerd', 'bag_dino', 'hat_party'],
-      completedLessons: ['vn-les-1', 'vn-les-2', 'math-les-1', 'math-les-2', 'eng-les-1'],
-      completedWeeklyChallenges: ['week_1'],
-      isDemoData: true,
-    };
-    StorageService.saveChildProfile(demoProfile);
-
-    const analytics = StorageService.getAnalytics();
-    analytics.totalMinutesSpent = 45;
-    analytics.minutesToday = 15;
-    analytics.totalQuestionsAnswered = 24;
-    analytics.totalCorrect = 19;
-    analytics.lessonsCompletedCount = 5;
-    analytics.gamesPlayedCount = 4;
-
-    // Seed skill masteries
-    if (analytics.skillMastery['vn_alphabet']) {
-      analytics.skillMastery['vn_alphabet'].attempts = 6;
-      analytics.skillMastery['vn_alphabet'].correctCount = 6;
-      analytics.skillMastery['vn_alphabet'].status = 'MASTERED';
-    }
-    if (analytics.skillMastery['math_counting_10']) {
-      analytics.skillMastery['math_counting_10'].attempts = 5;
-      analytics.skillMastery['math_counting_10'].correctCount = 5;
-      analytics.skillMastery['math_counting_10'].status = 'MASTERED';
-    }
-    if (analytics.skillMastery['math_subtraction_10']) {
-      analytics.skillMastery['math_subtraction_10'].attempts = 5;
-      analytics.skillMastery['math_subtraction_10'].correctCount = 1;
-      analytics.skillMastery['math_subtraction_10'].wrongCount = 4;
-      analytics.skillMastery['math_subtraction_10'].status = 'NEEDS_REVIEW';
-    }
-    if (analytics.skillMastery['eng_phonics_letters']) {
-      analytics.skillMastery['eng_phonics_letters'].attempts = 4;
-      analytics.skillMastery['eng_phonics_letters'].correctCount = 3;
-      analytics.skillMastery['eng_phonics_letters'].wrongCount = 1;
-      analytics.skillMastery['eng_phonics_letters'].status = 'PRACTICING';
-    }
-
-    analytics.recentErrors = [
-      {
-        questionId: 'math-q4-2',
-        subject: 'toan',
-        prompt: '10 - 4 = ...',
-        timestamp: new Date().toISOString(),
-      },
-    ];
-
-    StorageService.saveAnalytics(analytics);
-
-    // Seed a sample competition exam result.
-    // IMPORTANT: the demo paper is produced by the real CompetitionEngine from
-    // scripted demo answers, so it can never drift from production scoring logic.
-    const demoBlueprint = getBlueprintById('bp-math-mini-01');
-    let sampleExam: CompetitionExamResult | null = null;
-    if (demoBlueprint) {
-      const demoQuestions = CompetitionEngine.assembleExamQuestions(demoBlueprint, DEMO_SEED);
-      const demoResponses: QuestionResponse[] = demoQuestions.map((q, idx) => {
-        // 5 of 6 answered correctly on purpose so reports show a realistic mix.
-        const isCorrect = idx !== 3;
-        return {
-          questionId: q.id,
-          userAnswer: isCorrect ? q.correctAnswer : q.options[q.options.length - 1],
-          isCorrect,
-          timeSpentSeconds: isCorrect ? 12 + idx : 26,
-        };
-      });
-      sampleExam = CompetitionEngine.scoreSession(
-        demoBlueprint,
-        demoQuestions,
-        demoResponses,
-        110,
-        [],
-        DEMO_SEED
-      );
-      sampleExam.id = 'demo_exam_01';
-    }
-
-    const compStore: CompetitionHistoryStore = {
-      examResults: sampleExam ? [sampleExam] : [],
-      practicedSkills: sampleExam
-        ? Object.entries(sampleExam.skillBreakdown).reduce<
-            Record<string, { attempts: number; correct: number; lastPracticed: string }>
-          >((acc, [skillId, stat]) => {
-            acc[skillId] = { attempts: stat.total, correct: stat.correct, lastPracticed: today };
-            return acc;
-          }, {})
-        : {},
-      speedTrialsCompleted: 0,
-      remediationPlans: [
-        {
-          generatedDate: today,
-          targetSkills: ['MATH-SUBTRACTION'],
-          completed: false,
-        },
-      ],
-    };
-
-    StorageService.saveCompetitionHistory(compStore);
-  }
 }

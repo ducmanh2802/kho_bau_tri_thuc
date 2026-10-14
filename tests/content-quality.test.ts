@@ -63,10 +63,14 @@ describe('P29 — content quality gate (§15)', () => {
     }
   });
 
-  it('detects duplicates robustly across diacritics and punctuation', () => {
-    expect(normalizeForDuplicateCheck('Bé đang đọc sách!')).toBe(
-      normalizeForDuplicateCheck('be đang đọc sách')
+  it('keeps Vietnamese diacritics when detecting duplicates (T02C: má ≠ mà, ăn ≠ ân)', () => {
+    // Tone-different words are different questions and must never match.
+    expect(normalizeForDuplicateCheck('Má đi chợ')).not.toBe(normalizeForDuplicateCheck('Mà đi chợ'));
+    expect(normalizeForDuplicateCheck('Bé ăn cơm')).not.toBe(normalizeForDuplicateCheck('Bé ân cơm'));
+    expect(semanticSimilarity('Má đi chợ mua rau', 'Mà đi chợ mua rau')).toBeLessThan(
+      CONTENT_POLICY.DUPLICATE_PROMPT_SIMILARITY
     );
+    // Identical meaning with different punctuation/case still matches.
     expect(semanticSimilarity('Tính: 6 + 4 = ?', 'Tính 6 + 4 =?')).toBe(1);
     expect(semanticSimilarity('Tính: 6 + 4 = ?', 'Con gì nào sống dưới nước?')).toBeLessThan(0.3);
   });

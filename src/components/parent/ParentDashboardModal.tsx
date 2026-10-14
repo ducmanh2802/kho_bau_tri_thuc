@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { StorageService } from '../../services/storage';
+import { seedDemoProfile } from '../../services/demoSeed';
 import { AdaptiveService, ParentDiagnosticReport, ReadingProgressReport } from '../../services/adaptive';
 import { DecisionEngine } from '../../services/decisionEngine';
 import { adaptiveDifficulty, describeLevel } from '../../services/adaptiveDifficulty';
@@ -193,7 +194,7 @@ const [activeTab, setActiveTab] = useState<
   };
 
   const handleSeedDemoData = () => {
-    StorageService.seedDemoProfile();
+    seedDemoProfile();
     sound.playStar();
     setShowSeedConfirm(false);
     setResetSuccessMessage(

@@ -4,6 +4,14 @@
  * Goals (§25): the app must keep working with the network unavailable.
  * Safety: this file must NEVER be able to break the app.
  *
+ * T02C — one versioned cache (`kho-bau-v3`) + a build-generated precache
+ * manifest. `__PRECACHE_MANIFEST__` is replaced with the real list of
+ * same-origin URLs (every JS/CSS chunk, fonts, icons) by
+ * `scripts/sw-precache.mjs` during `npm run build`. In environments where the
+ * placeholder was never replaced (dev server), the `typeof` guard below
+ * degrades to an empty list — the worker still installs and still caches
+ * lazily at runtime.
+ *
  * Strategy — deliberately conservative:
  *   - NAVIGATION  : network-first, fall back to the cached shell.
  *                   Network-first is the SAFE choice: a stale HTML file could
@@ -13,18 +21,22 @@
  *   - STATIC ASSETS (hashed JS/CSS/fonts): stale-while-revalidate.
  *                   Filenames are content-hashed, so a cached hit can never be
  *                   wrong for the current build.
- *   - CROSS-ORIGIN (Google Fonts): stale-while-revalidate, failures tolerated.
+ *   - CROSS-ORIGIN: stale-while-revalidate, failures tolerated.
  *   - NEVER cache non-GET requests or anything that is not http(s).
  *
  * The cache name carries a version so a new deploy purges the previous cache.
  */
 
-const CACHE_VERSION = 'kho-bau-v2';
-const SHELL_CACHE = `${CACHE_VERSION}-shell`;
-const ASSET_CACHE = `${CACHE_VERSION}-assets`;
+const CACHE_VERSION = 'kho-bau-v3';
+const CACHE_NAME = CACHE_VERSION;
 const SHELL_URL = '/index.html';
 
-/** T01/B12 — self-hosted fonts precached for offline use. */
+/** T02C — replaced at build time with every same-origin URL to precache. */
+const PRECACHE_MANIFEST =
+  typeof __PRECACHE_MANIFEST__ !== 'undefined' ? __PRECACHE_MANIFEST__ : [];
+
+/** T01/B12 — self-hosted fonts precached for offline use (fallback when the
+ *  build manifest is unavailable, e.g. an unpatched dev copy). */
 const FONT_URLS = [
   '/fonts/nunito-500-latin.woff2',
   '/fonts/nunito-500-vietnamese.woff2',
@@ -46,16 +58,18 @@ const FONT_URLS = [
 const CACHEABLE_DESTINATIONS = ['script', 'style', 'font', 'image', 'worker'];
 
 self.addEventListener('install', (event) => {
-  // Precache the shell + self-hosted fonts (best-effort, never blocks).
+  // Precache the build manifest (shell + every known chunk/font/icon).
+  // Best-effort, never blocks: a failure must not block activation.
   event.waitUntil(
     caches
-      .open(SHELL_CACHE)
-      .then((cache) =>
-        cache
-          .add(new Request(SHELL_URL, { cache: 'reload' }))
-          .then(() => Promise.allSettled(FONT_URLS.map((u) => cache.add(new Request(u, { cache: 'reload' })))))
-          .then(() => undefined)
-      )
+      .open(CACHE_NAME)
+      .then((cache) => {
+        const targets = (Array.isArray(PRECACHE_MANIFEST) && PRECACHE_MANIFEST.length > 0
+          ? PRECACHE_MANIFEST
+          : [SHELL_URL, ...FONT_URLS]
+        ).map((u) => new Request(u, { cache: 'reload' }));
+        return Promise.allSettled(targets.map((req) => cache.add(req))).then(() => undefined);
+      })
       .catch(() => {
         /* Precache is best-effort: a failure must not block activation. */
       })
@@ -113,7 +127,7 @@ self.addEventListener('message', (event) => {
 async function handleNavigation(request) {
   try {
     const fresh = await fetch(request);
-    const cache = await caches.open(SHELL_CACHE);
+    const cache = await caches.open(CACHE_NAME);
     cache.put(SHELL_URL, fresh.clone());
     return fresh;
   } catch (error) {
@@ -172,14 +186,14 @@ self.addEventListener('fetch', (event) => {
 
   // 2) Same-origin hashed assets: safe to serve from cache.
   if (url.origin === self.location.origin && CACHEABLE_DESTINATIONS.includes(request.destination)) {
-    event.respondWith(staleWhileRevalidate(request, ASSET_CACHE));
+    event.respondWith(staleWhileRevalidate(request, CACHE_NAME));
     return;
   }
 
   // 3) Cross-origin (Google Fonts): best-effort only.
   if (url.origin !== self.location.origin) {
     event.respondWith(
-      staleWhileRevalidate(request, ASSET_CACHE).catch(() =>
+      staleWhileRevalidate(request, CACHE_NAME).catch(() =>
         fetch(request).catch(() => Response.error())
       )
     );

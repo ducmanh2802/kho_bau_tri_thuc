@@ -3,7 +3,8 @@ import { VIETNAMESE_TOPICS } from '../src/data/vietnameseCurriculum';
 
 describe('Vietnamese Curriculum Quality & Deterministic Invariants', () => {
   it('contains 12 comprehensive topics covering primary Grade 1 milestones', () => {
-    expect(VIETNAMESE_TOPICS.length).toBe(12);
+    // T02C — lower bound (T10+ will add topics; the list below must keep existing).
+    expect(VIETNAMESE_TOPICS.length).toBeGreaterThanOrEqual(12);
     const expectedIds = [
       'vn-chu-cai',
       'vn-dau-thanh',

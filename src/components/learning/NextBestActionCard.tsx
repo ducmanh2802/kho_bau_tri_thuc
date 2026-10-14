@@ -1,7 +1,8 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { ActiveScreen, LearningAction } from '../../types';
 import type { DecisionOutput, DecisionRecommendation, SessionKind } from '../../types';
-import { DecisionEngine } from '../../services/decisionEngine';
+// T02C — DecisionEngine (competition/Kid's Box/curriculum) is loaded on
+// demand so Home's first paint does not pay for the whole content bank.
 import { StorageService } from '../../services/storage';
 import { sound } from '../../services/sound';
 import { ChevronRight, Lightbulb, Target, Zap, Clock, ListChecks, Sparkles } from 'lucide-react';
@@ -63,17 +64,59 @@ const SESSION_BADGE: Record<SessionKind, string> = {
 export const NextBestActionCard: React.FC<NextBestActionCardProps> = ({ onNavigate }) => {
   const [expanded, setExpanded] = useState<string | null>(null);
   const [planOpen, setPlanOpen] = useState(false);
+  // T02C — async decision: the engine chunk loads after first paint.
+  const [decision, setDecision] = useState<DecisionOutput | null>(null);
+  const [loadFailed, setLoadFailed] = useState(false);
 
-  const decision: DecisionOutput = useMemo(() => DecisionEngine.decide(), []);
-  const recommendations = decision.recommendations.slice(0, 3);
-  const dailyPlan = decision.dailyPlan;
-  const sessionPlan = decision.sessionPlan;
+  useEffect(() => {
+    let live = true;
+    import('../../services/decisionEngine')
+      .then((m) => {
+        if (!live) return;
+        try {
+          setDecision(m.DecisionEngine.decide());
+        } catch {
+          setLoadFailed(true);
+        }
+      })
+      .catch(() => {
+        if (live) setLoadFailed(true);
+      });
+    return () => {
+      live = false;
+    };
+  }, []);
+
+  const recommendations = useMemo(
+    () => (decision ? decision.recommendations.slice(0, 3) : []),
+    [decision]
+  );
+  const dailyPlan = decision?.dailyPlan;
+  const sessionPlan = decision?.sessionPlan;
 
   const explanation = useMemo(() => {
     if (expanded === null) return null;
     const action = recommendations.find((a) => a.id === expanded);
     return action?.explanation ?? null;
   }, [expanded, recommendations]);
+
+  // Engine failed to load (offline first visit with uncached chunk, etc.):
+  // stay silent — the card is a recommendation, never a blocker.
+  if (loadFailed) return null;
+  // Still loading the engine chunk: stable skeleton keeps layout calm.
+  if (!decision || !dailyPlan || !sessionPlan) {
+    return (
+      <section
+        className="bg-white rounded-3xl p-5 md:p-6 border-2 border-blue-200 shadow-sm space-y-3"
+        data-testid="decision-engine-loading"
+        aria-busy="true"
+      >
+        <div className="h-5 w-48 rounded-lg bg-slate-100 animate-pulse" />
+        <div className="h-16 rounded-2xl bg-slate-50 border-2 border-slate-100 animate-pulse" />
+        <div className="h-16 rounded-2xl bg-slate-50 border-2 border-slate-100 animate-pulse" />
+      </section>
+    );
+  }
 
   if (recommendations.length === 0 && dailyPlan.items.length === 0) return null;
 
