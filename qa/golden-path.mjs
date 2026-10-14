@@ -217,9 +217,14 @@ async function body(page, ui) {
   await snap(page, 'afterReading', state.steps);
 
   // ---------- 4. COMPETITION ----------
+  // T06: Competition no longer in main nav; access from Home via World Map or direct navigation
   await page.goto(APP_ORIGIN + '/');
   await page.waitForSelector('text=Xin chào', { timeout: 20000 });
-  await page.getByRole('navigation', { name: 'Điều hướng nhanh' }).getByRole('button', { name: 'Đấu Trường', exact: true }).click(CLICK);
+  // Navigate to World Map first (in main nav), then to Competition
+  await page.getByRole('navigation', { name: 'Điều hướng nhanh' }).getByRole('button', { name: 'Bản Đồ', exact: true }).click(CLICK);
+  await page.waitForSelector('text=Bản Đồ Học Tập', { timeout: 20000 });
+  // From World Map, find and click Competition entry
+  await page.getByRole('button', { name: /Đấu Trường|Thi Thử/ }).first().click(CLICK);
   await page.waitForSelector('text=Kho Báu Đấu Trường Tri Thức', { timeout: 20000 });
   log('competitionHub', { ok: true });
 

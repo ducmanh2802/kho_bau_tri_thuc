@@ -6,6 +6,7 @@ import { HomeScreen } from './components/home/HomeScreen';
 import { WorldMapScreen } from './components/world/WorldMapScreen';
 import { SubjectScreen } from './components/subject/SubjectScreen';
 import { DailyReviewScreen } from './components/review/DailyReviewScreen';
+import { NAVIGATION } from './config/navigation';
 
 /**
  * CODE SPLITTING (P31)
@@ -61,16 +62,8 @@ const ScreenFallback: React.FC<{ label: string }> = ({ label }) => (
   </div>
 );
 
-/** Quick-access destinations for the sticky bottom navigation bar. */
-const BOTTOM_NAV: { screen: ActiveScreen; label: string; shortLabel: string; icon: string }[] = [
-  { screen: 'home', label: 'Trang Chủ', shortLabel: 'Trang Chủ', icon: '🏠' },
-  { screen: 'world_map', label: 'Bản Đồ', shortLabel: 'Bản Đồ', icon: '🗺️' },
-  { screen: 'reading_fluency', label: 'Luyện Đọc', shortLabel: 'L.Đọc', icon: '📖' },
-  { screen: 'competition', label: 'Đấu Trường', shortLabel: 'Đ.Trường', icon: '🏆' },
-  { screen: 'games', label: 'Trò Chơi', shortLabel: 'T.Chơi', icon: '🎮' },
-  { screen: 'daily_review', label: 'Ôn Tập', shortLabel: 'Ôn Tập', icon: '💡' },
-  { screen: 'achievements', label: 'Vườn Sao', shortLabel: 'V.Sao', icon: '🌳' },
-];
+/** Quick-access destinations for the sticky bottom navigation bar (T06). */
+const BOTTOM_NAV = NAVIGATION;
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState<ActiveScreen>('home');
@@ -249,36 +242,39 @@ export default function App() {
       </main>
 
       {/*
-        T01/B11 — sticky bottom nav ONLY below lg (1024px). At lg+ the Header
-        top nav is the single navigation. 7 compact tabs fit 375px without
-        clipping: flex-1 + min-w-0, short labels, 44px+ touch targets.
+        T01/B11 + T06 — sticky bottom nav ONLY below lg (1024px). At lg+ the Header
+        top nav is the single navigation. 5 compact tabs fit 375px without
+        clipping: flex-1 + min-w-0, labels ≥ 14px, 44px+ touch targets.
+        Active item uses subject-themed color (T06).
       */}
       <nav
         aria-label="Điều hướng nhanh"
         className="lg:hidden fixed bottom-0 inset-x-0 bg-white/95 backdrop-blur-md border-t border-amber-200 flex items-stretch gap-0.5 px-1.5 pt-1.5 pb-[max(0.375rem,env(safe-area-inset-bottom))] z-30 shadow-lg"
       >
-        {BOTTOM_NAV.map((tab) => (
-          <button
-            key={tab.screen}
-            onClick={() => setCurrentScreen(tab.screen)}
-            aria-current={currentScreen === tab.screen ? 'page' : undefined}
-            // T01B/11 — QA hook thống nhất + accessible name đầy đủ: nhãn hiển
-            // thị rút gọn (vừa 375px) nhưng script QA vẫn tìm bằng tên đầy đủ.
-            data-testid={`nav-${tab.screen}`}
-            aria-label={tab.label}
-            title={tab.label}
-            className={`flex-1 min-w-0 min-h-[48px] flex flex-col items-center justify-center gap-0.5 text-[10px] font-bold rounded-xl transition-all px-0.5 ${
-              currentScreen === tab.screen
-                ? 'text-amber-600 font-black bg-amber-50'
-                : 'text-slate-500'
-            }`}
-          >
-            <span className="text-lg leading-none" aria-hidden="true">
-              {tab.icon}
-            </span>
-            <span className="truncate max-w-full leading-tight">{tab.shortLabel}</span>
-          </button>
-        ))}
+        {BOTTOM_NAV.map((tab) => {
+          const activeColor = tab.subjectColor ?? 'amber';
+          return (
+            <button
+              key={tab.screen}
+              onClick={() => setCurrentScreen(tab.screen)}
+              aria-current={currentScreen === tab.screen ? 'page' : undefined}
+              // T01B/11 — QA hook thống nhất + accessible name đầy đủ.
+              data-testid={`nav-${tab.screen}`}
+              aria-label={tab.label}
+              title={tab.label}
+              className={`flex-1 min-w-0 min-h-[48px] flex flex-col items-center justify-center gap-0.5 font-bold rounded-xl transition-all px-0.5 ${
+                currentScreen === tab.screen
+                  ? `text-${activeColor}-600 font-black bg-${activeColor}-50`
+                  : 'text-slate-500'
+              }`}
+            >
+              <span className="text-xl leading-none" aria-hidden="true">
+                {tab.icon}
+              </span>
+              <span className="text-[14px] truncate max-w-full leading-tight">{tab.shortLabel}</span>
+            </button>
+          );
+        })}
       </nav>
 
       {/* Parent Dashboard Modal */}

@@ -3,6 +3,7 @@ import { ActiveScreen, ChildProfile } from '../../types';
 import { sound } from '../../services/sound';
 import { Star, Sparkles, Flame, Volume2, VolumeX, Shield, ShoppingBag } from 'lucide-react';
 import { KidButton, Pill } from '../ui';
+import { NAVIGATION, getSubjectColor } from '../../config/navigation';
 
 interface HeaderProps {
   currentScreen: ActiveScreen;
@@ -12,35 +13,36 @@ interface HeaderProps {
   onOpenShop: () => void;
 }
 
-type NavEntry = { screen: ActiveScreen; label: string; icon: string };
-
 const NavLink: React.FC<{
-  item: NavEntry;
+  item: (typeof NAVIGATION)[number];
   current: ActiveScreen;
   onNavigate: (screen: ActiveScreen) => void;
   /** T01B/3 — ở 1024–1280 chỉ hiện icon (vừa khít, không tràn). */
   iconOnly?: boolean;
-}> = ({ item, current, onNavigate, iconOnly = false }) => (
-  <button
-    onClick={() => {
-      sound.playClick();
-      onNavigate(item.screen);
-    }}
-    aria-current={current === item.screen ? 'page' : undefined}
-    // T01B/11 — QA hook thống nhất cho mọi mục điều hướng.
-    data-testid={`nav-${item.screen}`}
-    aria-label={item.label}
-    title={item.label}
-    className={`min-h-[44px] ${iconOnly ? 'min-w-[44px] px-2.5 justify-center' : 'px-3'} rounded-xl font-bold text-sm flex items-center gap-1.5 transition-all whitespace-nowrap cursor-pointer ${
-      current === item.screen
-        ? 'bg-amber-100 text-amber-950 font-black shadow-xs'
-        : 'text-slate-600 hover:text-amber-950 hover:bg-amber-50/60'
-    }`}
-  >
-    <span aria-hidden="true">{item.icon}</span>
-    {iconOnly ? <span className="sr-only">{item.label}</span> : <span>{item.label}</span>}
-  </button>
-);
+}> = ({ item, current, onNavigate, iconOnly = false }) => {
+  const activeColor = getSubjectColor(item.screen);
+  return (
+    <button
+      onClick={() => {
+        sound.playClick();
+        onNavigate(item.screen);
+      }}
+      aria-current={current === item.screen ? 'page' : undefined}
+      // T01B/11 — QA hook thống nhất cho mọi mục điều hướng.
+      data-testid={`nav-${item.screen}`}
+      aria-label={item.label}
+      title={item.label}
+      className={`min-h-[44px] ${iconOnly ? 'min-w-[44px] px-2.5 justify-center' : 'px-3'} rounded-xl font-bold text-sm flex items-center gap-1.5 transition-all whitespace-nowrap cursor-pointer ${
+        current === item.screen
+          ? `bg-${activeColor}-100 text-${activeColor}-950 font-black shadow-xs`
+          : 'text-slate-600 hover:text-amber-950 hover:bg-amber-50/60'
+      }`}
+    >
+      <span aria-hidden="true">{item.icon}</span>
+      {iconOnly ? <span className="sr-only">{item.label}</span> : <span>{item.label}</span>}
+    </button>
+  );
+};
 
 export const Header: React.FC<HeaderProps> = ({
   currentScreen,
@@ -58,15 +60,8 @@ export const Header: React.FC<HeaderProps> = ({
     if (!next) sound.playClick();
   };
 
-  const navItems: NavEntry[] = [
-    { screen: 'home', label: 'Trang Chủ', icon: '🏠' },
-    { screen: 'world_map', label: 'Bản Đồ', icon: '🗺️' },
-    { screen: 'reading_fluency', label: 'Luyện Đọc', icon: '📖' },
-    { screen: 'competition', label: 'Đấu Trường', icon: '🏆' },
-    { screen: 'games', label: 'Trò Chơi', icon: '🎮' },
-    { screen: 'daily_review', label: 'Ôn Tập', icon: '💡' },
-    { screen: 'achievements', label: 'Vườn Sao', icon: '🌳' },
-  ];
+  // Use single navigation config (T06) — exactly 5 items
+  const navItems = NAVIGATION;
 
   return (
     <header className="sticky top-0 z-40 w-full bg-[var(--color-kb-card)]/95 backdrop-blur-md border-b-2 border-amber-200/80 shadow-xs">
@@ -90,9 +85,9 @@ export const Header: React.FC<HeaderProps> = ({
         </KidButton>
 
         {/*
-          Zone 2: navigation (T01/B11 + T01B/3).
+          Zone 2: navigation (T01/B11 + T01B/3 + T06).
           >= 1024px (lg) only the top nav shows; < 1024px only the bottom nav
-          shows (see App.tsx). lg–2xl shows ALL 7 destinations as ICON-ONLY
+          shows (see App.tsx). lg–2xl shows ALL 5 destinations as ICON-ONLY
           (hover/title + aria-label giữ tên đầy đủ) so the bar provably fits
           1024/1280/1440; 2xl+ shows the full set with labels.
         */}

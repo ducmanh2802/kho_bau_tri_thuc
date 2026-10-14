@@ -85,10 +85,13 @@ async function answerByType(page, type) {
 async function runOneExam(page, origin, blueprintIndex, subjectLabel) {
   await page.goto(origin + '/');
   await page.waitForSelector('text=Xin chào', { timeout: 20000 });
+  // T06: Competition no longer in main nav; access from World Map
   await page
     .getByRole('navigation', { name: 'Điều hướng nhanh' })
-    .getByRole('button', { name: 'Đấu Trường', exact: true })
+    .getByRole('button', { name: 'Bản Đồ', exact: true })
     .click(CLICK);
+  await page.waitForSelector('text=Bản Đồ Học Tập', { timeout: 20000 });
+  await page.getByRole('button', { name: /Đấu Trường|Thi Thử/ }).first().click(CLICK);
   await page.waitForSelector('text=Kho Báu Đấu Trường Tri Thức', { timeout: 20000 });
 
   // The hub is filtered by subject, so sweeping one subject only ever reveals

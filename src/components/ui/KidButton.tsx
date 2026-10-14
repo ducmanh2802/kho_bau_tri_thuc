@@ -2,7 +2,7 @@ import React from 'react';
 import { sound } from '../../services/sound';
 
 export type KidButtonVariant = 'primary' | 'secondary' | 'subject-viet' | 'subject-math' | 'subject-english' | 'subject-life' | 'subject-games';
-export type KidButtonSize = 'md' | 'lg';
+export type KidButtonSize = 'md' | 'lg' | 'xl';
 
 export interface KidButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: KidButtonVariant;
@@ -27,6 +27,7 @@ const variantClasses: Record<KidButtonVariant, string> = {
 const sizeClasses: Record<KidButtonSize, string> = {
   md: 'min-h-[52px] px-6 py-3 text-base',
   lg: 'min-h-[60px] px-8 py-4 text-lg',
+  xl: 'min-h-[68px] px-10 py-5 text-xl',
 };
 
 export const KidButton: React.FC<KidButtonProps> = ({

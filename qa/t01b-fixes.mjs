@@ -68,15 +68,19 @@ export default async function run(page, ui) {
   out.updateBannerFirstLoad = updateCount;
   check('update-banner-hidden-first-load', updateCount === 0, `(count=${updateCount})`);
 
-  // ---- 11. testid nav-<screen> tren + duoi ----
+  // ---- 11. testid nav-<screen> tren + duoi (T06: 5 items) ----
   const navIds = await page.evaluate(() =>
     Array.from(document.querySelectorAll('[data-testid^="nav-"]')).map((el) =>
       el.getAttribute('data-testid')
     )
   );
   out.navTestIds = [...new Set(navIds)].sort();
-  for (const s of ['home', 'world_map', 'reading_fluency', 'competition', 'games', 'daily_review', 'achievements']) {
+  for (const s of ['home', 'world_map', 'games', 'reading_fluency', 'achievements']) {
     check(`nav-testid-${s}`, navIds.includes(`nav-${s}`));
+  }
+  // Ensure old screens are NOT in bottom/top nav anymore
+  for (const s of ['competition', 'daily_review']) {
+    check(`nav-testid-${s}-absent`, !navIds.includes(`nav-${s}`), `nav-${s} should not be in main nav`);
   }
 
   // ---- 3. desktop menu 1024/1280/1440: khong tran, nut Ba Me thay duoc ----
