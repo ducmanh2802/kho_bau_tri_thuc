@@ -27,11 +27,14 @@ describe('Curriculum Deterministic Correctness & Invariants', () => {
 
       if (q.type === 'ordering') {
         expect(Array.isArray(q.options)).toBe(true);
-        expect(Array.isArray(q.correctAnswer)).toBe(true);
+        expect(typeof q.correctAnswer).toBe('string');
         // All ordered words must be present in options
-        for (const word of q.correctAnswer as string[]) {
+        const orderedWords = (q.correctAnswer as string).split('|').filter(Boolean);
+        for (const word of orderedWords) {
           expect(q.options).toContain(word);
         }
+        expect(q.orderingItems).toBeDefined();
+        expect(Array.isArray(q.orderingItems)).toBe(true);
       }
     }
   });

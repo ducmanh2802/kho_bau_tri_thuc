@@ -426,27 +426,126 @@ function validateCurriculumQuestion(q: Question): ValidationIssue[] {
     }
   }
 
-  if (Array.isArray(q.correctAnswer)) {
-    for (const item of q.correctAnswer) {
-      if (!q.options?.includes(item)) push('ANSWER_NOT_IN_OPTIONS', `Đáp án "${item}" không có trong options.`);
+  // Type-specific validation
+  switch (q.type) {
+    case 'multiple-choice':
+    case 'image-choice':
+    case 'audio-choice':
+    case 'true-false': {
+      if (!q.options || q.options.length < 2) {
+        push('TOO_FEW_OPTIONS', `Loại ${q.type} cần ít nhất 2 phương án.`);
+      }
+      if (q.options && new Set(q.options).size !== q.options.length) {
+        push('DUPLICATE_OPTIONS', 'Options bị trùng.');
+      }
+      if (Array.isArray(q.correctAnswer)) {
+        for (const item of q.correctAnswer) {
+          if (!q.options?.includes(item)) push('ANSWER_NOT_IN_OPTIONS', `Đáp án "${item}" không có trong options.`);
+        }
+      } else if (!q.options?.includes(q.correctAnswer)) {
+        push('ANSWER_NOT_IN_OPTIONS', 'Đáp án đúng phải nằm trong options.');
+      }
+      if (q.type !== 'true-false' && q.options && q.options.length < 3) {
+        push('FEW_OPTIONS', `Loại ${q.type} nên có ít nhất 3 phương án (hiện có ${q.options.length}).`, 'WARNING');
+      }
+      break;
     }
-  } else if (!q.options?.includes(q.correctAnswer)) {
-    push('ANSWER_NOT_IN_OPTIONS', 'Đáp án đúng phải nằm trong options.');
-  }
-  if (q.options && new Set(q.options).size !== q.options.length)
-    push('DUPLICATE_OPTIONS', 'Options bị trùng.');
-
-  // Choice types should have at least 3 options for Grade 1 (2 is too easy to guess)
-  if (q.options && ['multiple-choice', 'image-choice', 'audio-choice', 'fill-blank'].includes(q.type)) {
-    if (q.options.length < 3) {
-      push('FEW_OPTIONS', `Loại ${q.type} nên có ít nhất 3 phương án (hiện có ${q.options.length}).`, 'WARNING');
+    case 'fill-blank': {
+      if (!q.options || q.options.length < 2) {
+        push('TOO_FEW_OPTIONS', 'Câu điền chỗ trống cần ít nhất 2 phương án.');
+      }
+      if (q.options && new Set(q.options).size !== q.options.length) {
+        push('DUPLICATE_OPTIONS', 'Options bị trùng.');
+      }
+      if (typeof q.correctAnswer === 'string' && !q.options?.includes(q.correctAnswer)) {
+        push('ANSWER_NOT_IN_OPTIONS', 'Đáp án đúng phải nằm trong options.');
+      }
+      break;
     }
+    case 'matching': {
+      if (!q.matchingPairs || q.matchingPairs.length < 2) {
+        push('MISSING_PAIRS', 'Câu nối cần ít nhất 2 cặp.');
+      } else {
+        const lefts = q.matchingPairs.map((p) => p.left);
+        if (new Set(lefts).size !== lefts.length) {
+          push('DUPLICATE_PAIR_LEFT', 'Có mục bên trái bị trùng nhau.');
+        }
+        const expected = lefts
+          .map((l) => `${l}=${q.matchingPairs!.find((p) => p.left === l)!.right}`)
+          .join('|');
+        const normalize = (s: string) => s.replace(/\s+/g, ' ').trim().toLocaleLowerCase('vi');
+        if (normalize(q.correctAnswer as string) !== normalize(expected)) {
+          push('PAIR_ANSWER_MISMATCH', 'correctAnswer không khớp với matchingPairs.');
+        }
+        for (const pair of q.matchingPairs) {
+          if (!q.options?.includes(pair.right)) {
+            push('PAIR_OPTION_MISSING', `Phương án "${pair.right}" không có trong options.`);
+          }
+        }
+      }
+      break;
+    }
+    case 'ordering': {
+      const items = q.orderingItems ?? [];
+      if (items.length < 2) {
+        push('MISSING_ORDER_ITEMS', 'Câu sắp xếp cần ít nhất 2 phần tử.');
+      }
+      if (q.options && items.length !== q.options.length) {
+        push('ORDER_OPTIONS_MISMATCH', 'orderingItems và options phải cùng độ dài.');
+      }
+      for (const item of items) {
+        if (!q.options?.includes(item)) {
+          push('ORDER_OPTION_MISSING', `Ô "${item}" không có trong options.`);
+        }
+      }
+      if (typeof q.correctAnswer === 'string') {
+        const canonical = q.correctAnswer.split('|').filter(Boolean);
+        if (canonical.length !== items.length) {
+          push('ORDER_ANSWER_LENGTH', 'correctAnswer phải chứa đúng số phần tử của orderingItems.');
+        }
+        if (new Set(canonical).size !== canonical.length) {
+          push('ORDER_ANSWER_DUPLICATE', 'correctAnswer của câu sắp xếp có phần tử lặp.');
+        }
+      }
+      break;
+    }
+    case 'drag-drop':
+    case 'classify': {
+      if (!q.categoryBuckets || q.categoryBuckets.length < 2) {
+        push('MISSING_BUCKETS', 'Câu phân loại/kéo thả cần ít nhất 2 nhóm.');
+      }
+      if (q.categoryBuckets && !q.categoryBuckets.includes(q.correctAnswer as string)) {
+        push('ANSWER_NOT_IN_BUCKET', 'Đáp án đúng phải là một trong các nhóm đã khai báo.');
+      }
+      break;
+    }
+    case 'math-expression': {
+      if (!q.options || q.options.length < 2) {
+        push('TOO_FEW_OPTIONS', 'Câu biểu thức toán học cần ít nhất 2 phương án.');
+      }
+      if (q.options && new Set(q.options).size !== q.options.length) {
+        push('DUPLICATE_OPTIONS', 'Options bị trùng.');
+      }
+      if (typeof q.correctAnswer === 'string' && !q.options?.includes(q.correctAnswer)) {
+        push('ANSWER_NOT_IN_OPTIONS', 'Đáp án đúng phải nằm trong options.');
+      }
+      break;
+    }
+    default:
+      break;
   }
 
   return issues;
 }
 
-const CHOICE_LIKE_CURRICULUM_TYPES = ['multiple-choice', 'image-choice', 'audio-choice', 'fill-blank'];
+const CHOICE_LIKE_CURRICULUM_TYPES = [
+  'multiple-choice',
+  'image-choice',
+  'audio-choice',
+  'fill-blank',
+  'true-false',
+  'math-expression',
+];
 
 export interface CurriculumPositionStat {
   total: number;

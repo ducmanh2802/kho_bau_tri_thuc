@@ -45,10 +45,13 @@ describe('Vietnamese Curriculum Quality & Deterministic Invariants', () => {
 
           if (q.type === 'ordering') {
             expect(Array.isArray(q.options)).toBe(true);
-            expect(Array.isArray(q.correctAnswer)).toBe(true);
-            for (const item of q.correctAnswer as string[]) {
-              expect(q.options).toContain(item);
+            expect(typeof q.correctAnswer).toBe('string');
+            const orderedWords = (q.correctAnswer as string).split('|').filter(Boolean);
+            for (const word of orderedWords) {
+              expect(q.options).toContain(word);
             }
+            expect(q.orderingItems).toBeDefined();
+            expect(Array.isArray(q.orderingItems)).toBe(true);
           }
         }
       }

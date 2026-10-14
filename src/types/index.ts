@@ -14,7 +14,8 @@ export type QuestionType =
   | 'image-choice'
   | 'audio-choice'
   | 'math-expression'
-  | 'true-false';
+  | 'true-false'
+  | 'classify';
 
 export interface Question {
   id: string;
@@ -29,6 +30,9 @@ export interface Question {
   options?: string[];
   correctAnswer: string | string[]; // Can be string or array for ordering/matching
   pairs?: { left: string; right: string }[];
+  matchingPairs?: { left: string; right: string }[];
+  orderingItems?: string[];
+  categoryBuckets?: string[];
   hint?: string;
   explanation?: string;
 }

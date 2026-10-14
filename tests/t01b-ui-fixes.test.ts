@@ -258,6 +258,23 @@ describe('T01B/11 QA hooks', () => {
   });
 
   it('answer-option testid van giu (00_RULES #11)', () => {
-    expect(src('src/components/learning/LessonPlayerModal.tsx')).toContain('data-testid="answer-option"');
+    // Check in choice-style question renderer components
+    const choiceComponents = [
+      'src/components/learning/questions/ChoiceQuestion.tsx',
+      'src/components/learning/questions/ImageChoiceQuestion.tsx',
+      'src/components/learning/questions/TrueFalseQuestion.tsx',
+      'src/components/learning/questions/FillBlankQuestion.tsx',
+      'src/components/learning/questions/OrderingQuestion.tsx',
+      'src/components/learning/questions/MathExpressionQuestion.tsx',
+    ];
+    for (const comp of choiceComponents) {
+      expect(src(comp), comp).toContain('data-testid="answer-option"');
+    }
+    // MatchingQuestion uses match-left and match-right
+    expect(src('src/components/learning/questions/MatchingQuestion.tsx'), 'MatchingQuestion').toContain('data-testid="match-left"');
+    expect(src('src/components/learning/questions/MatchingQuestion.tsx'), 'MatchingQuestion').toContain('data-testid="match-right"');
+    // DragDropQuestion uses drag-item and drop-bucket
+    expect(src('src/components/learning/questions/DragDropQuestion.tsx'), 'DragDropQuestion').toContain('data-testid="drag-item"');
+    expect(src('src/components/learning/questions/DragDropQuestion.tsx'), 'DragDropQuestion').toContain('data-testid="drop-bucket"');
   });
 });
