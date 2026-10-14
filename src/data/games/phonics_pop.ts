@@ -46,8 +46,9 @@ export const POOLS: PhonicsItem[][] = [
     { word: 'ZEBRA', vietnamese: 'ngựa vằn', emoji: '🦓', sound: 'z', options: ['Z', 'S', 'X'], answer: 'Z' },
   ],
   // T02B/B7 — tier blend: đáp án + nhiễu đều là blend (không hỏi chữ đơn).
+  // T02D: RED (chữ đơn R) còn sót → CRAB (blend CR).
   [
-    { word: 'RED', vietnamese: 'màu đỏ', emoji: '🔴', sound: 'r', options: ['R', 'L', 'W'], answer: 'R' },
+    { word: 'CRAB', vietnamese: 'con cua', emoji: '🦀', sound: 'cr', options: ['CR', 'BR', 'GR'], answer: 'CR' },
     { word: 'BLUE', vietnamese: 'màu xanh', emoji: '🔵', sound: 'bl', options: ['BL', 'GR', 'ST'], answer: 'BL' },
     { word: 'GREEN', vietnamese: 'màu xanh lá', emoji: '🟢', sound: 'gr', options: ['GR', 'BL', 'FR'], answer: 'GR' },
     { word: 'STAR', vietnamese: 'ngôi sao', emoji: '⭐', sound: 'st', options: ['ST', 'BL', 'GR'], answer: 'ST' },

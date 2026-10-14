@@ -56,7 +56,7 @@ export const POOLS: QuizItem[][] = [
   [
     { prompt: 'Nhìn chiếc đồng hồ này, bé cho biết mấy giờ?', emoji: '🕔', options: ['5 giờ', '12 giờ', '6 giờ'], answer: '5 giờ', hint: 'Nhìn kim ngắn nhé!' },
     { prompt: 'Bé có 3 tờ 2000đ. Tổng mấy?', emoji: '💵', options: ['6000đ', '5000đ', '7000đ'], answer: '6000đ', hint: 'Cộng từng tờ một' },
-    { prompt: 'Cái bàn cao 70cm, ghế cao 40cm. Bàn hơn ghế mấy?', emoji: '🪑', options: ['30cm', '110cm', '20cm'], answer: '30cm', hint: 'Lấy chỗ cao trừ chỗ thấp' },
+    { prompt: 'Cái bàn cao 70cm, ghế cao 40cm. Bàn hơn ghế mấy?', emoji: '🪑', options: ['30cm', '10cm', '20cm'], answer: '30cm', hint: 'Lấy chỗ cao trừ chỗ thấp' },
     { prompt: 'Hôm nay thứ Sáu, 2 ngày nữa là hôm nào?', emoji: '📆', options: ['Chủ Nhật', 'Thứ Bảy', 'Thứ Hai'], answer: 'Chủ Nhật', hint: 'Đếm tới hai ngày' },
     { prompt: 'Sợi dây nào dài nhất?', emoji: '📐', options: ['100cm', '90cm', '9cm'], answer: '100cm', hint: 'Số nào lớn nhất?' },
     { prompt: 'Lan có 6 quả cam, thêm 3 quả. Tất cả mấy?', emoji: '🍊', options: ['9 quả', '8 quả', '10 quả'], answer: '9 quả', hint: 'Cộng hai nhóm lại' },

@@ -4,6 +4,8 @@
  * T02B/B6: vật có hình dạng rõ ràng, emoji khớp hình; bánh chưng không còn
  * trùng icon rổ (rổ chữ nhật dùng 💳); xoài bầu dục → bóng rổ; sô-cô-la
  * thanh/chăn dài/khăn choàng/gạch/bánh mì được thay bằng vật chuẩn hình.
+ * T02D: "Nón lá" 👒 (mũ tròn rộng vành, dễ nhầm) → "Ngọn núi" ⛰️ (chóp
+ * tam giác rõ ràng).
  */
 
 import { defaultRoundsPerTier, pickDistinct, seededRng } from '../gameLevels';
@@ -37,7 +39,7 @@ export const SHAPE_POOL: ShapeItem[] = [
   { name: 'Biển báo nguy hiểm', emoji: '⚠️', category: 'tam-giac', hint: 'Biển cảnh báo 3 cạnh' },
   { name: 'Miếng bánh pizza', emoji: '🍕', category: 'tam-giac', hint: 'Lát bánh 3 cạnh' },
   { name: 'Thước ê ke', emoji: '📐', category: 'tam-giac', hint: 'Thước vẽ góc 3 cạnh' },
-  { name: 'Nón lá', emoji: '👒', category: 'tam-giac', hint: 'Nón lá chóp nhọn' },
+  { name: 'Ngọn núi', emoji: '⛰️', category: 'tam-giac', hint: 'Ngọn núi cao hình chóp' },
   { name: 'Mái nhà', emoji: '🏠', category: 'tam-giac', hint: 'Mái nhà 3 cạnh' },
   // Hình chữ nhật
   { name: 'Cuốn sách bài tập', emoji: '📘', category: 'chu-nhat', hint: 'Sách hai cạnh dài hai cạnh ngắn' },
