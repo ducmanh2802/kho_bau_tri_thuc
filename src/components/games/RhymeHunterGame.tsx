@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { GameModalWrapper } from './GameModalWrapper';
+import { GameModalWrapper, useGameFeedback } from './GameModalWrapper';
 import { sound } from '../../services/sound';
 import { useGameStage } from '../../hooks/useGameStage';
 import { defaultRoundsPerTier, getTierMeta, roundsForTier } from '../../data/gameLevels';
@@ -10,21 +10,81 @@ import {
   containsRhyme,
   stripTones,
 } from '../../data/games/rhyme_hunter';
+import { getGameItems, GameItem } from '../../services/gameContent';
 import type { RhymeFruit, RhymeRound } from '../../data/games/rhyme_hunter';
 
 export { DISTRACTOR_POOL, RHYME_FAMILIES, buildRhymeRounds, containsRhyme, stripTones };
 
 const ROUNDS_PER_TIER = defaultRoundsPerTier();
 
+interface RhymeGameItem extends GameItem {
+  targetRhyme: string;
+  targetDescription: string;
+  fruits: RhymeFruit[];
+}
+
+function buildRoundsFromGameItems(items: GameItem[], tier: number, seed: number): RhymeGameItem[] {
+  const rounds: RhymeGameItem[] = [];
+  for (const item of items) {
+    const targetRhyme = item.prompt.match(/vần\s+"([^"]+)"/i)?.[1] || 'an';
+    const targetDescription = `vần "${targetRhyme.toUpperCase()}"`;
+    const options = item.options.slice(0, 6);
+    const targetWords = options.filter(opt => {
+      if (item.answer.includes(opt)) return true;
+      return containsRhyme(opt, targetRhyme);
+    });
+    const distractorWords = options.filter(opt => !targetWords.includes(opt));
+
+    const fruits: RhymeFruit[] = [
+      ...targetWords.map((w, idx) => ({
+        id: `r-${item.id}-${idx}`,
+        word: w,
+        hasRhyme: true,
+        emoji: '🍎',
+        picked: false,
+      })),
+      ...distractorWords.map((w, idx) => ({
+        id: `r-${item.id}-d-${idx}`,
+        word: w,
+        hasRhyme: false,
+        emoji: '🍐',
+        picked: false,
+      })),
+    ];
+
+    rounds.push({
+      ...item,
+      targetRhyme,
+      targetDescription,
+      fruits: fruits.slice(0, 8),
+    });
+  }
+  return rounds;
+}
+
 export const RhymeHunterGame: React.FC<{ onExit: () => void }> = ({ onExit }) => {
   const stage = useGameStage({ gameId: 'rhyme_hunter', roundsPerTier: ROUNDS_PER_TIER, advanceDelayMs: 1200 });
-  const [roundsState, setRoundsState] = useState<RhymeRound[]>([]);
-
-  const rounds = useMemo(() => buildRhymeRounds(stage.tier, stage.nonce), [stage.tier, stage.nonce]);
+  const { reportCorrect, reportWrong, showCorrectAnswer, correctAnswer } = useGameFeedback();
+  const [gameItems, setGameItems] = useState<GameItem[]>([]);
+  const [roundsState, setRoundsState] = useState<RhymeGameItem[]>([]);
 
   useEffect(() => {
-    setRoundsState(rounds.map((r) => ({ ...r, fruits: r.fruits.map((f) => ({ ...f, picked: false })) })));
-  }, [rounds]);
+    const items = getGameItems({
+      subject: 'tieng-viet',
+      kinds: ['rhyme'],
+      count: ROUNDS_PER_TIER[stage.tier - 1] || 5,
+      tier: stage.tier,
+      seed: stage.nonce,
+    });
+    setGameItems(items);
+  }, [stage.tier, stage.nonce]);
+
+  useEffect(() => {
+    if (gameItems.length > 0) {
+      const rounds = buildRoundsFromGameItems(gameItems, stage.tier, stage.nonce);
+      setRoundsState(rounds.map((r) => ({ ...r, fruits: r.fruits.map((f) => ({ ...f, picked: false })) })));
+    }
+  }, [gameItems, stage.tier, stage.nonce]);
 
   const currentRound = roundsState[stage.roundIdx];
   if (!currentRound) return null;
@@ -38,7 +98,7 @@ export const RhymeHunterGame: React.FC<{ onExit: () => void }> = ({ onExit }) =>
 
     if (fruit.hasRhyme) {
       sound.playCorrect();
-      sound.speak(`Đúng rồi! "${fruit.word}" có ${currentRound.targetDescription}!`);
+      reportCorrect(fruit.word);
 
       const updated = roundsState.map((r, ri) =>
         ri === stage.roundIdx
@@ -54,6 +114,7 @@ export const RhymeHunterGame: React.FC<{ onExit: () => void }> = ({ onExit }) =>
       }
     } else {
       sound.playWrong();
+      reportWrong(fruit.word, currentRound.targetDescription);
       sound.speak(`Từ "${fruit.word}" chưa đúng rồi, bé hãy tìm quả có ${currentRound.targetDescription} nhé!`);
       stage.submitWrong();
     }
@@ -83,6 +144,7 @@ export const RhymeHunterGame: React.FC<{ onExit: () => void }> = ({ onExit }) =>
       onExit={onExit}
       instructions={`Bé hãy hái các quả mang từ chứa [ ${currentRound.targetDescription} ]!`}
       audioInstruction={`Hãy hái các quả chứa ${currentRound.targetDescription}`}
+      praiseSubject="VIETNAMESE"
     >
       <div className="w-full h-full relative rounded-3xl bg-gradient-to-b from-sky-200 via-emerald-100 to-emerald-200 overflow-hidden border-2 border-emerald-300 p-4 flex flex-col justify-between">
         {/* Mission HUD */}
@@ -105,13 +167,16 @@ export const RhymeHunterGame: React.FC<{ onExit: () => void }> = ({ onExit }) =>
                 f.picked
                   ? 'opacity-20 scale-90 border-slate-300 bg-slate-100'
                   : 'bg-white/90 hover:bg-white border-amber-300 hover:border-amber-400 shadow-md hover:scale-105'
-              }`}
+              } ${showCorrectAnswer && f.hasRhyme && !f.picked ? 'border-4 border-emerald-500 ring-2 ring-emerald-500 animate-pulse' : ''}`}
             >
               <span className="text-4xl md:text-5xl mb-1 animate-pulse-subtle">{f.emoji}</span>
               <span className="text-sm md:text-base font-black text-amber-950 tracking-wide">
                 {f.word}
               </span>
               <span className="text-[10px] text-blue-600 font-bold mt-0.5">Bấm để hái</span>
+              {showCorrectAnswer && f.hasRhyme && !f.picked && (
+                <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-1 rounded-full mt-1">✓ Đúng</span>
+              )}
             </button>
           ))}
         </div>
