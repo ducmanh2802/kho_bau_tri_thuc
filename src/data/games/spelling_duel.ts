@@ -3,7 +3,8 @@
  *
  * T02B/B9: "sách vở" bỏ nhiễu "xách vở" (từ đúng thứ hai) → "sách vỡ";
  * "nồi súp" bỏ "xúp" → "cúp"; "...ông bão" (giông/dông đều đúng) → câu
- * "...ạ cụ" chỉ một đáp án; "ghe" = thuyền nhỏ (sửa nghĩa gợi ý);
+ * "Con ...ế mèn" (T02D: chỉ d đúng — "Cháu chào ...ạ cụ!" không tự nhiên);
+ * "ghe" = thuyền nhỏ (sửa nghĩa gợi ý);
  * "nghiêng" = nghiêng đầu chào (sửa nghĩa); T3 "Điền vần" → "Điền chữ";
  * kéo ✏️→✂️, nghé 🌾→🐃, gấu 🐻→🧸; gợi ý không lộ chữ trong đáp án.
  */
@@ -72,13 +73,14 @@ export const POOLS: SpellingItem[][] = [
     { prompt: 'Điền chữ còn thiếu: ...ái cây', emoji: '🍎', options: ['tr', 'ch', 's'], answer: 'tr', hint: 'Ăn vào khỏe người' },
     { prompt: 'Điền chữ còn thiếu: ...e mưa', emoji: '🌧️', options: ['ch', 'tr', 'x'], answer: 'ch', hint: 'Giơ ô khi trời đổ' },
   ],
-  // T6: thử thách d/gi/r + tổng hợp (giông/dông đều đúng → thay bằng "...ạ cụ")
+  // T6: thử thách d/gi/r + tổng hợp ("...ông bão" giông/dông đều đúng nên bỏ;
+  // T02D: "Cháu chào ...ạ cụ!" không phải câu tự nhiên → "Con ...ế mèn")
   [
     { prompt: 'Chọn từ viết đúng:', emoji: '🍉', options: ['dưa hấu', 'giưa hấu', 'rưa hấu'], answer: 'dưa hấu', hint: 'Quả to ruột đỏ hạt đen' },
     { prompt: 'Chọn từ viết đúng:', emoji: '👩‍🏫', options: ['giáo viên', 'dáo viên', 'ráo viên'], answer: 'giáo viên', hint: 'Người dạy bé học' },
     { prompt: 'Chọn từ viết đúng:', emoji: '🐍', options: ['con rắn', 'con dắn', 'con giắn'], answer: 'con rắn', hint: 'Loài bò sát dài trườn đi' },
     { prompt: 'Chọn từ viết đúng:', emoji: '🌧️', options: ['giọt mưa', 'dọt mưa', 'rọt mưa'], answer: 'giọt mưa', hint: 'Hạt nước rơi từ mây' },
-    { prompt: 'Điền chữ còn thiếu: Cháu chào ...ạ cụ!', emoji: '👴', options: ['d', 'gi', 'r'], answer: 'd', hint: 'Chào người lớn tuổi' },
+    { prompt: 'Điền chữ còn thiếu: Con ...ế mèn', emoji: '🦗', options: ['d', 'gi', 'r'], answer: 'd', hint: 'Chú nhỏ kêu rỉ rả ngoài đồng' },
     { prompt: 'Điền chữ còn thiếu: ...ễ dàng', emoji: '😊', options: ['d', 'gi', 'r'], answer: 'd', hint: 'Làm một cái là xong' },
     { prompt: 'Điền chữ còn thiếu: ...ổ bánh', emoji: '🍞', options: ['r', 'd', 'gi'], answer: 'r', hint: 'Đựng bánh mới ra lò' },
     { prompt: 'Chọn câu viết đúng chính tả:', emoji: '🏫', options: ['Bé đến trường học bài', 'Bé đến chường học bài', 'Bé đến trường học bải'], answer: 'Bé đến trường học bài', hint: 'Câu nói về buổi sáng' },

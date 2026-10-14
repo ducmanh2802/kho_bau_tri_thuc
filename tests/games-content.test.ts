@@ -183,7 +183,8 @@ describe('T02/A shape sorting labels', () => {
     expect(names).not.toContain('Hòn bi sắt');
     expect(names).not.toContain('Điểm an toàn');
     expect(names).not.toContain('Gói kẹo vuông');
-    expect(names).toContain('Nón lá'); // T02B: thay "Mũ sinh nhật" 🎉 (sai hình) bằng nón lá 👒 hình chóp rõ ràng
+    expect(names).not.toContain('Nón lá'); // T02D: 👒 là mũ tròn rộng vành, không phải tam giác → "Ngọn núi" ⛰️
+    expect(names).toContain('Ngọn núi'); // T02D: chóp núi hình tam giác rõ ràng
     expect(names).toContain('Hòn bi ve');
     expect(names).toContain('Miếng bánh pizza');
     expect(names).toContain('Bánh chưng xanh');

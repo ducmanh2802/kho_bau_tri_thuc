@@ -441,10 +441,10 @@ describe('T02B/C rhyme hunter', () => {
 describe('T02B/C shape sorting', () => {
   it('clear shapes only; baskets distinct from items; rounds distinct', () => {
     const names = SHAPE_POOL.map((s) => s.name);
-    for (const bad of ['Quả xoài', 'Sô cô la vuông', 'Chiếc khăn mùi xoa', 'Mũ sinh nhật', 'Tấm gạch vuông', 'Chiếc bánh mì', 'Quả dưa hấu', 'Cờ sina', 'Hòn bi sắt']) {
+    for (const bad of ['Quả xoài', 'Sô cô la vuông', 'Chiếc khăn mùi xoa', 'Mũ sinh nhật', 'Tấm gạch vuông', 'Chiếc bánh mì', 'Quả dưa hấu', 'Cờ sina', 'Hòn bi sắt', 'Nón lá']) {
       expect(names, bad).not.toContain(bad);
     }
-    for (const good of ['Quả bóng rổ', 'Xúc xắc', 'Nón lá', 'Viên gạch', 'Quyển vở', 'Bánh chưng xanh', 'Hòn bi ve', 'Miếng bánh pizza']) {
+    for (const good of ['Quả bóng rổ', 'Xúc xắc', 'Ngọn núi', 'Viên gạch', 'Quyển vở', 'Bánh chưng xanh', 'Hòn bi ve', 'Miếng bánh pizza']) {
       expect(names, good).toContain(good);
     }
     for (const s of SHAPE_POOL) {
@@ -493,7 +493,8 @@ describe('T02B/C phonics pop', () => {
     expect(byWord.get('FIVE')!.options).not.toContain('PH');
     expect(byWord.get('FATHER')!.options).not.toContain('PH');
     // Blend tier: answers and distractors are blends (no lone first letters).
-    for (const w of ['BLUE', 'GREEN', 'STAR', 'FROG', 'CLOCK', 'PLANT', 'TRAIN']) {
+    // T02D: +CRAB (RED chữ đơn đã thay bằng blend CR).
+    for (const w of ['BLUE', 'GREEN', 'STAR', 'FROG', 'CLOCK', 'PLANT', 'TRAIN', 'CRAB']) {
       const item = byWord.get(w)!;
       expect(item.answer.length, w).toBe(2);
       for (const o of item.options) expect(o.length, `${w} option ${o}`).toBe(2);
@@ -529,8 +530,12 @@ describe('T02B/C spelling duel', () => {
     expect(opts('🎒')).not.toContain('xách vở');
     expect(opts('🍲')).not.toContain('nồi xúp');
     expect(all.some((i) => i.prompt.includes('ông bão'))).toBe(false);
-    const daCu = all.find((i) => i.prompt.includes('ạ cụ'))!;
-    expect(daCu.answer).toBe('d');
+    // T02D: "...ạ cụ" không tự nhiên → "Con ...ế mèn" (chỉ d đúng).
+    expect(all.some((i) => i.prompt.includes('ạ cụ'))).toBe(false);
+    const deMen = all.find((i) => i.prompt.includes('ế mèn'))!;
+    expect(deMen).toBeDefined();
+    expect(deMen.answer).toBe('d');
+    expect([...deMen.options].sort()).toEqual(['d', 'gi', 'r']);
     // ghe = small boat, not a seat.
     const ghe = all.find((i) => i.prompt.includes('e đánh cá'))!;
     expect(ghe.answer).toBe('gh');
