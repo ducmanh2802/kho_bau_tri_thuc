@@ -81,10 +81,13 @@ export default async function run(page, ui) {
     // Competition hub on the same viewport.
     await page.goto(APP_ORIGIN);
     await page.waitForSelector('text=Xin chào', { timeout: 20000 });
+    // T06: Competition no longer in main nav; access from World Map
     await page
       .getByRole('navigation', { name: 'Điều hướng nhanh' })
-      .getByRole('button', { name: 'Đấu Trường', exact: true })
+      .getByRole('button', { name: 'Bản Đồ', exact: true })
       .click(CLICK);
+    await page.waitForSelector('text=Bản Đồ Học Tập', { timeout: 20000 });
+    await page.getByRole('button', { name: /Đấu Trường|Thi Thử/ }).first().click(CLICK);
     await page.waitForSelector('text=Kho Báu Đấu Trường Tri Thức', { timeout: 20000 });
     await page.waitForTimeout(400);
     const hubOverflow = await overflowPx(page);
