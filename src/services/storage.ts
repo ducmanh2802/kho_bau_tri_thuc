@@ -54,6 +54,7 @@ const STORAGE_KEYS = {
   KIDBOX_STORE: 'kho_bau_kidbox_store',
   GAME_PROGRESS: 'kho_bau_game_progress',
   REVIEW_DAYS: 'kho_bau_review_days',
+  GAME_NONCE: 'kho_bau_game_nonce',
 };
 
 /**
@@ -409,6 +410,13 @@ function createDefaultQuests(): DailyQuest[] {
       type: 'daily_review',
     },
   ];
+}
+
+export interface TierRewardReceipt {
+  starsAwarded: number;
+  xpAwarded: number;
+  isFirstClear: boolean;
+  isNewBest: boolean;
 }
 
 export class StorageService {
@@ -1302,6 +1310,106 @@ if (data) {
     }
     store.updatedAt = new Date().toISOString();
     StorageService.saveGameProgressStore(store);
+  }
+
+  // --- T02/B5 play nonce: how many times each tier was started -------------
+  // Builders mix the nonce into their seed so every replay shuffles
+  // differently, while tests stay deterministic by passing an explicit seed.
+
+  private static readNonceStore(): Record<string, Record<string, number>> {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEYS.GAME_NONCE);
+      if (raw) {
+        const parsed = JSON.parse(raw) as Record<string, unknown>;
+        if (parsed && typeof parsed === 'object') {
+          const out: Record<string, Record<string, number>> = {};
+          for (const [gid, val] of Object.entries(parsed)) {
+            if (val && typeof val === 'object' && !Array.isArray(val)) {
+              const tiers: Record<string, number> = {};
+              for (const [tk, n] of Object.entries(val as Record<string, unknown>)) {
+                if (typeof n === 'number' && Number.isFinite(n) && n >= 0) tiers[tk] = Math.floor(n);
+              }
+              out[gid] = tiers;
+            }
+          }
+          return out;
+        }
+      }
+    } catch {
+      // Corrupt nonce store degrades to empty — never blocks play.
+    }
+    return {};
+  }
+
+  /** Current play count for a game tier (0 = never started). */
+  public static getPlayNonce(gameId: string, tier: number): number {
+    const store = StorageService.readNonceStore();
+    return store[gameId]?.[String(Math.round(tier))] ?? 0;
+  }
+
+  /** Records one more play of a tier; returns the new nonce. */
+  public static bumpPlayNonce(gameId: string, tier: number): number {
+    const store = StorageService.readNonceStore();
+    const key = String(Math.round(tier));
+    const next = (store[gameId]?.[key] ?? 0) + 1;
+    store[gameId] = { ...(store[gameId] ?? {}), [key]: next };
+    try {
+      localStorage.setItem(STORAGE_KEYS.GAME_NONCE, JSON.stringify(store));
+    } catch {
+      // Ignore
+    }
+    return next;
+  }
+
+  /**
+   * T02/B2 — fair replay economy for tiered games.
+   *
+   * The hook persists best stars via completeGameTier; this awards ONLY the
+   * delta when the child beats their record, plus a small practice XP (~20%)
+   * on replays. First clears grant the full XP. `prevStars` must be the best
+   * BEFORE this completion (captured by useGameStage).
+   */
+  public static recordTierReward(
+    gameId: string,
+    tier: number,
+    stars: number,
+    xpFull: number,
+    score = 0,
+    prevStars = 0
+  ): TierRewardReceipt {
+    const safeStars = Math.min(Math.max(Math.round(stars), 1), 3);
+    const safePrev = Math.min(Math.max(Math.round(prevStars), 0), 3);
+    const isFirstClear = safePrev === 0;
+    const isNewBest = safeStars > safePrev;
+    const starsAwarded = isNewBest ? safeStars - safePrev : 0;
+    const xpAwarded = isFirstClear ? Math.round(xpFull) : Math.max(1, Math.round(xpFull * 0.2));
+    void score;
+
+    const profile = StorageService.getChildProfile();
+    profile.xp += xpAwarded;
+    profile.stars += starsAwarded;
+    StorageService.saveChildProfile(profile);
+
+    const analytics = StorageService.getAnalytics();
+    analytics.gamesPlayedCount += 1;
+    StorageService.saveAnalytics(analytics);
+
+    const quests = StorageService.getDailyQuests();
+    quests.forEach((q) => {
+      if (q.type === 'play_game' && !q.completed) {
+        q.currentCount += 1;
+        if (q.currentCount >= q.targetCount) {
+          q.completed = true;
+          profile.stars += q.rewardStars;
+          profile.xp += q.rewardXp;
+          StorageService.saveChildProfile(profile);
+        }
+      }
+    });
+    StorageService.saveDailyQuests(quests);
+
+    StorageService.checkAchievements();
+    return { starsAwarded, xpAwarded, isFirstClear, isNewBest };
   }
 
   // Record played mini game

@@ -5,7 +5,7 @@ import { sound } from '../../services/sound';
 import { GAME_LEVEL_POLICY } from '../../config/policy';
 import { getTierMeta, seededRng, shuffleSeeded } from '../../data/gameLevels';
 
-interface PhonicsItem {
+export interface PhonicsItem {
   word: string;
   vietnamese: string;
   emoji: string;
@@ -14,7 +14,7 @@ interface PhonicsItem {
   answer: string;
 }
 
-const POOLS: PhonicsItem[][] = [
+export const POOLS: PhonicsItem[][] = [
   [
     { word: 'CAT', vietnamese: 'con mèo', emoji: '🐱', sound: 'k', options: ['C', 'B', 'D'], answer: 'C' },
     { word: 'DOG', vietnamese: 'con chó', emoji: '🐶', sound: 'd', options: ['D', 'B', 'P'], answer: 'D' },
@@ -34,8 +34,8 @@ const POOLS: PhonicsItem[][] = [
   [
     { word: 'SHIP', vietnamese: 'con tàu', emoji: '🚢', sound: 'sh', options: ['SH', 'S', 'CH'], answer: 'SH' },
     { word: 'CHICK', vietnamese: 'gà con', emoji: '🐤', sound: 'ch', options: ['CH', 'SH', 'TH'], answer: 'CH' },
-    { word: 'THIN', vietnamese: 'gầy', emoji: '📏', sound: 'th', options: ['TH', 'T', 'H'], answer: 'TH' },
-    { word: 'PHO', vietnamese: 'phở (phone)', emoji: '📞', sound: 'ph', options: ['PH', 'P', 'F'], answer: 'PH' },
+    { word: 'THIN', vietnamese: 'gầy, mỏng', emoji: '🧍', sound: 'th', options: ['TH', 'T', 'H'], answer: 'TH' },
+    { word: 'PHONE', vietnamese: 'điện thoại', emoji: '📞', sound: 'ph', options: ['PH', 'P', 'F'], answer: 'PH' },
     { word: 'KITE', vietnamese: 'cái diều', emoji: '🪁', sound: 'k', options: ['K', 'C', 'G'], answer: 'K' },
     { word: 'ZEBRA', vietnamese: 'ngựa vằn', emoji: '🦓', sound: 'z', options: ['Z', 'S', 'X'], answer: 'Z' },
   ],
@@ -48,7 +48,7 @@ const POOLS: PhonicsItem[][] = [
     { word: 'CLOCK', vietnamese: 'đồng hồ', emoji: '⏰', sound: 'cl', options: ['CL', 'C', 'K'], answer: 'CL' },
   ],
   [
-    { word: 'ONE', vietnamese: 'số một', emoji: '1️⃣', sound: 'w', options: ['O', 'W', 'N'], answer: 'O' },
+    { word: 'ORANGE', vietnamese: 'quả cam', emoji: '🍊', sound: 'o', options: ['O', 'A', 'E'], answer: 'O' },
     { word: 'TWO', vietnamese: 'số hai', emoji: '2️⃣', sound: 't', options: ['T', 'W', 'O'], answer: 'T' },
     { word: 'THREE', vietnamese: 'số ba', emoji: '3️⃣', sound: 'th', options: ['TH', 'T', 'H'], answer: 'TH' },
     { word: 'FIVE', vietnamese: 'số năm', emoji: '5️⃣', sound: 'f', options: ['F', 'V', 'PH'], answer: 'F' },
@@ -56,7 +56,7 @@ const POOLS: PhonicsItem[][] = [
     { word: 'FATHER', vietnamese: 'bố', emoji: '👨', sound: 'f', options: ['F', 'PH', 'V'], answer: 'F' },
   ],
   [
-    { word: 'SCHOOL', vietnamese: 'trường học', emoji: '🏫', sound: 's', options: ['SCH', 'S', 'SH'], answer: 'SCH' },
+    { word: 'SCHOOL', vietnamese: 'trường học', emoji: '🏫', sound: 's', options: ['S', 'C', 'H'], answer: 'S' },
     { word: 'BOOK', vietnamese: 'quyển sách', emoji: '📖', sound: 'b', options: ['B', 'P', 'D'], answer: 'B' },
     { word: 'PENCIL', vietnamese: 'bút chì', emoji: '✏️', sound: 'p', options: ['P', 'B', 'Q'], answer: 'P' },
     { word: 'FRIEND', vietnamese: 'bạn bè', emoji: '🧒', sound: 'fr', options: ['FR', 'F', 'FL'], answer: 'FR' },
@@ -72,12 +72,12 @@ export const PhonicsPopGame: React.FC<{ onExit: () => void }> = ({ onExit }) => 
 
   const pool = POOLS[Math.min(stage.tier - 1, POOLS.length - 1)];
   const item = useMemo(() => {
-    const list = shuffleSeeded(pool, seededRng(stage.tier * 3000 + 5));
+    const list = shuffleSeeded(pool, seededRng(stage.tier * 3000 + 5 + stage.nonce * 101));
     return list[stage.roundIdx % list.length];
-  }, [pool, stage.tier, stage.roundIdx]);
+  }, [pool, stage.tier, stage.roundIdx, stage.nonce]);
   const options = useMemo(
-    () => shuffleSeeded(item.options, seededRng(stage.tier * 911 + stage.roundIdx * 37)),
-    [item, stage.tier, stage.roundIdx]
+    () => shuffleSeeded(item.options, seededRng(stage.tier * 911 + stage.roundIdx * 37 + stage.nonce * 17)),
+    [item, stage.tier, stage.roundIdx, stage.nonce]
   );
 
   const speakWord = () => sound.speak(item.word, 'en-GB');
@@ -100,6 +100,7 @@ export const PhonicsPopGame: React.FC<{ onExit: () => void }> = ({ onExit }) => 
 
   return (
     <GameModalWrapper
+      gameId="phonics_pop"
       title="Phonics Pop — Bắn Âm Tiếng Anh"
       subtitle="Nghe từ, chọn âm đầu đúng theo giọng Anh-Anh"
       mascotEmoji="🎈"
@@ -115,7 +116,8 @@ export const PhonicsPopGame: React.FC<{ onExit: () => void }> = ({ onExit }) => 
       nextTierMeta={stage.tier + 1 <= stage.tierCount ? getTierMeta(stage.tier + 1) : undefined}
       onNextTier={stage.startNextTier}
       earnedXp={stage.xpEarned}
-      earnedStars={2}
+      earnedStars={stage.starsEarned}
+      prevBestStars={stage.prevBestStars}
       onRestart={stage.restartGame}
       onExit={onExit}
       instructions={`What is the beginning sound of "${item.word}" (${item.vietnamese})?`}

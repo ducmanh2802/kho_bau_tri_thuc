@@ -2,10 +2,9 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { GameModalWrapper } from './GameModalWrapper';
 import { sound } from '../../services/sound';
 import { useGameStage } from '../../hooks/useGameStage';
-import { GAME_LEVEL_POLICY } from '../../config/policy';
-import { getTierMeta, pickDistinct, seededRng, shuffleSeeded } from '../../data/gameLevels';
+import { defaultRoundsPerTier, getTierMeta, pickDistinct, roundsForTier, seededRng, shuffleSeeded } from '../../data/gameLevels';
 
-interface RhymeFruit {
+export interface RhymeFruit {
   id: string;
   word: string;
   hasRhyme: boolean;
@@ -13,22 +12,22 @@ interface RhymeFruit {
   picked: boolean;
 }
 
-interface RhymeRound {
+export interface RhymeRound {
   targetRhyme: string;
   targetDescription: string;
   fruits: RhymeFruit[];
 }
 
-const RHYME_FAMILIES: { rhyme: string; words: string[] }[] = [
-  { rhyme: 'an', words: ['cái bàn', 'bạn Lan', 'cái can'] },
-  { rhyme: 'on', words: ['chú thỏ con', 'lon ton', 'ngọn cỏ'] },
-  { rhyme: 'at', words: ['hạt cát', 'ca hát', 'bát ngát'] },
-  { rhyme: 'ach', words: ['quyển sách', 'tách trà', 'vá rách'] },
-  { rhyme: 'anh', words: ['cây xanh', 'anh trai', 'bức tranh'] },
-  { rhyme: 'ay', words: ['máy bay', 'đôi tay', 'cỏ may'] },
+export const RHYME_FAMILIES: { rhyme: string; words: string[] }[] = [
+  { rhyme: 'an', words: ['cái bàn', 'bạn Lan', 'cái can', 'cái khăn'] },
+  { rhyme: 'on', words: ['chú thỏ con', 'lon ton', 'ngọn cỏ', 'cái nón'] },
+  { rhyme: 'at', words: ['hạt cát', 'ca hát', 'bát ngát', 'mặt đất'] },
+  { rhyme: 'ach', words: ['quyển sách', 'tách trà', 'vá rách', 'viên gạch'] },
+  { rhyme: 'anh', words: ['cây xanh', 'anh trai', 'bức tranh', 'cành chanh'] },
+  { rhyme: 'ay', words: ['máy bay', 'đôi tay', 'cỏ may', 'bàn tay'] },
 ];
 
-const DISTRACTOR_POOL = [
+export const DISTRACTOR_POOL = [
   'con cá', 'hoa sen', 'mặt trời', 'quả cam', 'búp bê',
   'con vịt', 'cây bàng', 'củ cà rốt', 'quả táo', 'đám mây',
   'con chó', 'bông hồng', 'chú mèo', 'cái ghế', 'quả chuối',
@@ -36,30 +35,57 @@ const DISTRACTOR_POOL = [
 
 const FRUIT_EMOJI = ['🍎', '🍐', '🍊', '🍑', '🍓', '🍇', '🍉', '🍒', '🥭', '🍌'] as const;
 
-const ROUNDS_PER_TIER = GAME_LEVEL_POLICY.TIERS.map(() => 3);
+/** Lowercase + stripped of tones/diacritics for rhyme matching. */
+export function stripTones(s: string): string {
+  return s
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'd');
+}
 
-function buildRhymeRounds(tier: number): RhymeRound[] {
-  const rng = seededRng(5600 + tier * 61);
-  const fams = pickDistinct(RHYME_FAMILIES, 3, rng);
+/** T02/A3 — does the word contain the target rhyme (tone-insensitive)? */
+export function containsRhyme(word: string, rhyme: string): boolean {
+  return stripTones(word).includes(stripTones(rhyme));
+}
+
+const ROUNDS_PER_TIER = defaultRoundsPerTier();
+
+/**
+ * T02/A3 — decoys are filtered by RHYME (a decoy must never contain the
+ * target rhyme), and every tier builds >= 5 rounds by cycling families.
+ * `seed` overrides the deterministic tier+nonce seed for tests.
+ */
+export function buildRhymeRounds(tier: number, nonce = 0, seed?: number): RhymeRound[] {
+  const base = seed ?? 5600 + tier * 61 + nonce * 1009;
+  const count = Math.max(5, roundsForTier(tier));
+  const rng = seededRng(base);
+  const fams = shuffleSeeded(RHYME_FAMILIES, rng);
   const targetCount = tier <= 2 ? 2 : tier <= 4 ? 3 : 4;
   const rounds: RhymeRound[] = [];
   let fruitId = 0;
-  for (const fam of fams) {
-    const targets = pickDistinct(fam.words, 3, rng).slice(0, targetCount);
+  for (let i = 0; i < count; i++) {
+    const fam = fams[i % fams.length];
+    const roundRng = seededRng(base + i * 101);
+    const targets = pickDistinct(fam.words, 4, roundRng).slice(0, targetCount);
     const distractorCount = Math.max(2, 6 - targetCount);
+    const safeDecoys = DISTRACTOR_POOL.filter(
+      (w) => !fam.words.includes(w) && !containsRhyme(w, fam.rhyme)
+    );
     const distractors = pickDistinct(
-      DISTRACTOR_POOL.filter((w) => !fam.words.includes(w)),
+      safeDecoys,
       distractorCount,
-      seededRng(5600 + tier * 61 + rounds.length * 101)
+      seededRng(base + i * 101 + 7)
     );
     const fruits: RhymeFruit[] = [
-      ...targets.map((w) => ({ id: `r${rounds.length}-${fruitId++}`, word: w, hasRhyme: true, emoji: FRUIT_EMOJI[Math.floor(rng() * FRUIT_EMOJI.length)], picked: false })),
-      ...distractors.map((w) => ({ id: `r${rounds.length}-${fruitId++}`, word: w, hasRhyme: false, emoji: FRUIT_EMOJI[Math.floor(rng() * FRUIT_EMOJI.length)], picked: false })),
+      ...targets.map((w) => ({ id: `r${i}-${fruitId++}`, word: w, hasRhyme: true, emoji: FRUIT_EMOJI[Math.floor(roundRng() * FRUIT_EMOJI.length)], picked: false })),
+      ...distractors.map((w) => ({ id: `r${i}-${fruitId++}`, word: w, hasRhyme: false, emoji: FRUIT_EMOJI[Math.floor(roundRng() * FRUIT_EMOJI.length)], picked: false })),
     ];
     rounds.push({
       targetRhyme: fam.rhyme,
       targetDescription: `vần "${fam.rhyme.toUpperCase()}"`,
-      fruits: shuffleSeeded(fruits, seededRng(5600 + tier * 61 + rounds.length * 733)),
+      fruits: shuffleSeeded(fruits, seededRng(base + i * 733)),
     });
   }
   return rounds;
@@ -69,7 +95,7 @@ export const RhymeHunterGame: React.FC<{ onExit: () => void }> = ({ onExit }) =>
   const stage = useGameStage({ gameId: 'rhyme_hunter', roundsPerTier: ROUNDS_PER_TIER, advanceDelayMs: 1200 });
   const [roundsState, setRoundsState] = useState<RhymeRound[]>([]);
 
-  const rounds = useMemo(() => buildRhymeRounds(stage.tier), [stage.tier]);
+  const rounds = useMemo(() => buildRhymeRounds(stage.tier, stage.nonce), [stage.tier, stage.nonce]);
 
   useEffect(() => {
     setRoundsState(rounds.map((r) => ({ ...r, fruits: r.fruits.map((f) => ({ ...f, picked: false })) })));
@@ -110,6 +136,7 @@ export const RhymeHunterGame: React.FC<{ onExit: () => void }> = ({ onExit }) =>
 
   return (
     <GameModalWrapper
+      gameId="rhyme_hunter"
       title="Săn Vần Trong Vườn Cây"
       subtitle="Hái những trái cây ngọt ngào chứa vần được yêu cầu"
       mascotEmoji="🐰"
@@ -125,7 +152,8 @@ export const RhymeHunterGame: React.FC<{ onExit: () => void }> = ({ onExit }) =>
       nextTierMeta={stage.tier + 1 <= stage.tierCount ? getTierMeta(stage.tier + 1) : undefined}
       onNextTier={stage.startNextTier}
       earnedXp={stage.xpEarned}
-      earnedStars={1}
+      earnedStars={stage.starsEarned}
+      prevBestStars={stage.prevBestStars}
       onRestart={stage.restartGame}
       onExit={onExit}
       instructions={`Bé hãy hái các quả mang từ chứa [ ${currentRound.targetDescription} ]!`}

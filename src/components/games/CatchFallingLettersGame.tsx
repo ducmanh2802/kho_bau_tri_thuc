@@ -102,6 +102,7 @@ export const CatchFallingLettersGame: React.FC<{ onExit: () => void }> = ({ onEx
 
   return (
     <GameModalWrapper
+      gameId="catch_letters"
       title="Bắt Chữ Cái Bay"
       subtitle="Bé nhanh tay chạm vào đúng chữ cái được yêu cầu nhé!"
       mascotEmoji="🐻"
@@ -117,7 +118,8 @@ export const CatchFallingLettersGame: React.FC<{ onExit: () => void }> = ({ onEx
       nextTierMeta={stage.tier + 1 <= stage.tierCount ? getTierMeta(stage.tier + 1) : undefined}
       onNextTier={stage.startNextTier}
       earnedXp={stage.xpEarned}
-      earnedStars={1}
+      earnedStars={stage.starsEarned}
+      prevBestStars={stage.prevBestStars}
       onRestart={stage.restartGame}
       onExit={onExit}
       instructions={`Bé ơi! Hãy chạm vào các bóng bóng mang chữ: [ ${targetChar} ]`}

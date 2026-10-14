@@ -5,7 +5,7 @@ import { sound } from '../../services/sound';
 import { GAME_LEVEL_POLICY } from '../../config/policy';
 import { getTierMeta, seededRng, shuffleSeeded } from '../../data/gameLevels';
 
-interface StoryItem {
+export interface StoryItem {
   story: string;
   emoji: string;
   question: string;
@@ -14,7 +14,7 @@ interface StoryItem {
   hint: string;
 }
 
-const POOLS: StoryItem[][] = [
+export const POOLS: StoryItem[][] = [
   [
     { story: 'Lan có 3 quả táo. Mẹ cho thêm 2 quả.', emoji: '🍎', question: 'Lan có tất cả mấy quả táo?', options: ['5 quả', '4 quả', '6 quả'], answer: '5 quả', hint: '3 + 2 = 5' },
     { story: 'Bé có 5 viên bi, cho bạn 1 viên.', emoji: '🔮', question: 'Bé còn mấy viên bi?', options: ['4 viên', '6 viên', '5 viên'], answer: '4 viên', hint: '5 - 1 = 4' },
@@ -39,29 +39,32 @@ const POOLS: StoryItem[][] = [
     { story: 'Tổ 1 trồng 11 cây, tổ 2 trồng 8 cây.', emoji: '🌳', question: 'Hai tổ trồng mấy cây?', options: ['19 cây', '18 cây', '20 cây'], answer: '19 cây', hint: '11 + 8 = 19' },
     { story: 'Bé có 16 sticker, dán hết 9 cái.', emoji: '⭐', question: 'Còn mấy sticker?', options: ['7 cái', '25 cái', '9 cái'], answer: '7 cái', hint: '16 - 9 = 7' },
   ],
+  // T4: cộng/trừ KHÔNG nhớ trong 100 (T02/A6)
   [
-    { story: 'Sáng nhiệt độ 25 độ, trưa tăng 7 độ.', emoji: '🌡️', question: 'Trưa mấy độ?', options: ['32 độ', '31 độ', '18 độ'], answer: '32 độ', hint: '25 + 7 = 32' },
-    { story: 'Thư viện có 30 sách, mượn 14 sách.', emoji: '📚', question: 'Còn mấy sách?', options: ['16 sách', '44 sách', '14 sách'], answer: '16 sách', hint: '30 - 14 = 16' },
-    { story: 'Bé chạy 12 vòng sáng, 9 vòng chiều.', emoji: '🏃', question: 'Cả ngày mấy vòng?', options: ['21 vòng', '20 vòng', '22 vòng'], answer: '21 vòng', hint: '12 + 9 = 21' },
-    { story: 'Hộp 25 bút, lấy ra 13 bút.', emoji: '🖊️', question: 'Còn mấy bút?', options: ['12 bút', '38 bút', '13 bút'], answer: '12 bút', hint: '25 - 13 = 12' },
-    { story: 'Ao có 17 con vịt, thêm 15 con.', emoji: '🦆', question: 'Có mấy con vịt?', options: ['32 con', '31 con', '30 con'], answer: '32 con', hint: '17 + 15 = 32' },
-    { story: 'Bánh chưng 40 cái, bán 25 cái.', emoji: '🍘', question: 'Còn mấy cái?', options: ['15 cái', '65 cái', '25 cái'], answer: '15 cái', hint: '40 - 25 = 15' },
+    { story: 'Hộp có 24 cái bánh, mẹ cho thêm 3 cái.', emoji: '🍪', question: 'Hộp có mấy cái bánh?', options: ['27 cái', '26 cái', '28 cái'], answer: '27 cái', hint: '24 + 3 = 27' },
+    { story: 'Lớp có 31 bạn, thêm 5 bạn mới.', emoji: '🧒', question: 'Lớp có mấy bạn?', options: ['36 bạn', '35 bạn', '37 bạn'], answer: '36 bạn', hint: '31 + 5 = 36' },
+    { story: 'Bé có 42 sticker, dán hết 11 cái.', emoji: '⭐', question: 'Còn mấy sticker?', options: ['31 cái', '32 cái', '30 cái'], answer: '31 cái', hint: '42 - 11 = 31' },
+    { story: 'Sân có 56 bông hoa, héo 23 bông.', emoji: '🌸', question: 'Còn mấy bông tươi?', options: ['33 bông', '32 bông', '34 bông'], answer: '33 bông', hint: '56 - 23 = 33' },
+    { story: 'Thư viện có 48 sách, cho mượn 15 sách.', emoji: '📚', question: 'Còn mấy sách?', options: ['33 sách', '32 sách', '34 sách'], answer: '33 sách', hint: '48 - 15 = 33' },
+    { story: 'Bé chạy 12 vòng sáng, 11 vòng chiều.', emoji: '🏃', question: 'Cả ngày mấy vòng?', options: ['23 vòng', '22 vòng', '24 vòng'], answer: '23 vòng', hint: '12 + 11 = 23' },
   ],
+  // T5: cộng/trừ KHÔNG nhớ trong 100
   [
-    { story: 'Mẹ đi chợ với 50 nghìn, mua rau 18 nghìn.', emoji: '🥬', question: 'Còn mấy nghìn?', options: ['32 nghìn', '68 nghìn', '18 nghìn'], answer: '32 nghìn', hint: '50 - 18 = 32' },
-    { story: 'Lớp 1A 32 bạn, lớp 1B 33 bạn.', emoji: '🏫', question: 'Hai lớp mấy bạn?', options: ['65 bạn', '64 bạn', '66 bạn'], answer: '65 bạn', hint: '32 + 33 = 65' },
-    { story: 'Sân bay có 48 máy bay, cất cánh 19 chiếc.', emoji: '✈️', question: 'Còn mấy chiếc?', options: ['29 chiếc', '67 chiếc', '19 chiếc'], answer: '29 chiếc', hint: '48 - 19 = 29' },
-    { story: 'Bé tiết kiệm 26 nghìn + 35 nghìn.', emoji: '🐷', question: 'Có mấy nghìn?', options: ['61 nghìn', '60 nghìn', '51 nghìn'], answer: '61 nghìn', hint: '26 + 35 = 61' },
-    { story: 'Vườn 60 hoa, héo 27 hoa.', emoji: '🌷', question: 'Còn mấy hoa tươi?', options: ['33 hoa', '87 hoa', '27 hoa'], answer: '33 hoa', hint: '60 - 27 = 33' },
-    { story: 'Truyện 70 trang, đọc 38 trang.', emoji: '📖', question: 'Còn mấy trang?', options: ['32 trang', '108 trang', '38 trang'], answer: '32 trang', hint: '70 - 38 = 32' },
+    { story: 'Mẹ đi chợ với 50 nghìn, mua rau 10 nghìn.', emoji: '🥬', question: 'Còn mấy nghìn?', options: ['40 nghìn', '60 nghìn', '30 nghìn'], answer: '40 nghìn', hint: '50 - 10 = 40' },
+    { story: 'Lớp 1A 32 bạn, lớp 1B 25 bạn.', emoji: '🏫', question: 'Hai lớp mấy bạn?', options: ['57 bạn', '56 bạn', '58 bạn'], answer: '57 bạn', hint: '32 + 25 = 57' },
+    { story: 'Sân bay có 48 máy bay, cất cánh 16 chiếc.', emoji: '✈️', question: 'Còn mấy chiếc?', options: ['32 chiếc', '31 chiếc', '33 chiếc'], answer: '32 chiếc', hint: '48 - 16 = 32' },
+    { story: 'Bé tiết kiệm 24 nghìn rồi thêm 35 nghìn.', emoji: '🐷', question: 'Có mấy nghìn?', options: ['59 nghìn', '58 nghìn', '60 nghìn'], answer: '59 nghìn', hint: '24 + 35 = 59' },
+    { story: 'Vườn 65 hoa, héo 24 hoa.', emoji: '🌷', question: 'Còn mấy hoa tươi?', options: ['41 hoa', '40 hoa', '42 hoa'], answer: '41 hoa', hint: '65 - 24 = 41' },
+    { story: 'Truyện 76 trang, đọc 34 trang.', emoji: '📖', question: 'Còn mấy trang?', options: ['42 trang', '41 trang', '43 trang'], answer: '42 trang', hint: '76 - 34 = 42' },
   ],
+  // T6: cộng/trừ KHÔNG nhớ trong 100
   [
-    { story: 'Trại hè 85 bạn, thêm 47 bạn đăng ký.', emoji: '⛺', question: 'Có mấy bạn?', options: ['132 bạn', '131 bạn', '38 bạn'], answer: '132 bạn', hint: '85 + 47 = 132' },
-    { story: 'Kho 100 thùng, xuất 56 thùng.', emoji: '📦', question: 'Còn mấy thùng?', options: ['44 thùng', '156 thùng', '56 thùng'], answer: '44 thùng', hint: '100 - 56 = 44' },
-    { story: 'Bé có 2 hộp, mỗi hộp 24 bút.', emoji: '🖍️', question: 'Có mấy bút? (24+24)', options: ['48 bút', '44 bút', '26 bút'], answer: '48 bút', hint: '24 + 24 = 48' },
-    { story: 'Sách 96 trang, đọc 59 trang.', emoji: '📕', question: 'Còn mấy trang?', options: ['37 trang', '155 trang', '59 trang'], answer: '37 trang', hint: '96 - 59 = 37' },
-    { story: 'Đội trống 34 bạn nam + 29 bạn nữ.', emoji: '🥁', question: 'Đội có mấy bạn?', options: ['63 bạn', '62 bạn', '5 bạn'], answer: '63 bạn', hint: '34 + 29 = 63' },
-    { story: 'Siêu thị 120 kẹo, bán 75 kẹo.', emoji: '🏪', question: 'Còn mấy kẹo?', options: ['45 kẹo', '195 kẹo', '75 kẹo'], answer: '45 kẹo', hint: '120 - 75 = 45' },
+    { story: 'Trại hè 52 bạn, thêm 34 bạn đăng ký.', emoji: '⛺', question: 'Có mấy bạn?', options: ['86 bạn', '85 bạn', '87 bạn'], answer: '86 bạn', hint: '52 + 34 = 86' },
+    { story: 'Kho 96 thùng, xuất 52 thùng.', emoji: '📦', question: 'Còn mấy thùng?', options: ['44 thùng', '43 thùng', '45 thùng'], answer: '44 thùng', hint: '96 - 52 = 44' },
+    { story: 'Bé có 23 bút chì và 24 bút màu.', emoji: '🖍️', question: 'Có mấy cái bút?', options: ['47 bút', '46 bút', '48 bút'], answer: '47 bút', hint: '23 + 24 = 47' },
+    { story: 'Sách 89 trang, đọc 56 trang.', emoji: '📕', question: 'Còn mấy trang?', options: ['33 trang', '32 trang', '34 trang'], answer: '33 trang', hint: '89 - 56 = 33' },
+    { story: 'Đội trống 34 bạn nam và 25 bạn nữ.', emoji: '🥁', question: 'Đội có mấy bạn?', options: ['59 bạn', '58 bạn', '60 bạn'], answer: '59 bạn', hint: '34 + 25 = 59' },
+    { story: 'Siêu thị 78 kẹo, bán 45 kẹo.', emoji: '🏪', question: 'Còn mấy kẹo?', options: ['33 kẹo', '32 kẹo', '34 kẹo'], answer: '33 kẹo', hint: '78 - 45 = 33' },
   ],
 ];
 
@@ -72,12 +75,12 @@ export const WordStoryGame: React.FC<{ onExit: () => void }> = ({ onExit }) => {
 
   const pool = POOLS[Math.min(stage.tier - 1, POOLS.length - 1)];
   const item = useMemo(() => {
-    const list = shuffleSeeded(pool, seededRng(stage.tier * 4000 + 9));
+    const list = shuffleSeeded(pool, seededRng(stage.tier * 4000 + 9 + stage.nonce * 101));
     return list[stage.roundIdx % list.length];
-  }, [pool, stage.tier, stage.roundIdx]);
+  }, [pool, stage.tier, stage.roundIdx, stage.nonce]);
   const options = useMemo(
-    () => shuffleSeeded(item.options, seededRng(stage.tier * 331 + stage.roundIdx * 91)),
-    [item, stage.tier, stage.roundIdx]
+    () => shuffleSeeded(item.options, seededRng(stage.tier * 331 + stage.roundIdx * 91 + stage.nonce * 17)),
+    [item, stage.tier, stage.roundIdx, stage.nonce]
   );
 
   const choose = (opt: string) => {
@@ -98,6 +101,7 @@ export const WordStoryGame: React.FC<{ onExit: () => void }> = ({ onExit }) => {
 
   return (
     <GameModalWrapper
+      gameId="word_story"
       title="Chuyện Kể Toán Học"
       subtitle="Đọc chuyện, giải toán lời văn như thám tử nhí"
       mascotEmoji="🔍"
@@ -113,7 +117,8 @@ export const WordStoryGame: React.FC<{ onExit: () => void }> = ({ onExit }) => {
       nextTierMeta={stage.tier + 1 <= stage.tierCount ? getTierMeta(stage.tier + 1) : undefined}
       onNextTier={stage.startNextTier}
       earnedXp={stage.xpEarned}
-      earnedStars={2}
+      earnedStars={stage.starsEarned}
+      prevBestStars={stage.prevBestStars}
       onRestart={stage.restartGame}
       onExit={onExit}
       instructions={item.story + ' ' + item.question}

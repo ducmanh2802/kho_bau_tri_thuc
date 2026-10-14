@@ -82,6 +82,7 @@ export const EnglishAnimalSoundGame: React.FC<{ onExit: () => void }> = ({ onExi
 
   return (
     <GameModalWrapper
+      gameId="animal_safari"
       title="Safari Tiếng Anh — Animal Explorer"
       subtitle="Lắng nghe tên loài vật bằng tiếng Anh và chạm đúng con thú"
       mascotEmoji="🦁"
@@ -97,7 +98,8 @@ export const EnglishAnimalSoundGame: React.FC<{ onExit: () => void }> = ({ onExi
       nextTierMeta={stage.tier + 1 <= stage.tierCount ? getTierMeta(stage.tier + 1) : undefined}
       onNextTier={stage.startNextTier}
       earnedXp={stage.xpEarned}
-      earnedStars={1}
+      earnedStars={stage.starsEarned}
+      prevBestStars={stage.prevBestStars}
       onRestart={stage.restartGame}
       onExit={onExit}
       instructions={`Listen & find: [ ${current.target.englishName} ] (${current.target.vietnameseMeaning})`}

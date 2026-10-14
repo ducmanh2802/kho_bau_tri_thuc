@@ -32,8 +32,23 @@ const PAIR_POOL = [
   { pairId: 16, label: 'Chiếc bánh', emoji: '🍰' },
 ];
 
-const GOALS_PER_TIER = [3, 4, 5, 6, 7, 8];
+export const GOALS_PER_TIER = [3, 4, 5, 6, 7, 8];
 const ROUNDS_PER_TIER = GOALS_PER_TIER.map(() => 1);
+
+/**
+ * T02/B4 — a mismatch counts as a mistake ONLY when the child has seen both
+ * cards' pairs before and still gets it wrong (first-time exploration is
+ * never punished).
+ */
+export function shouldCountMemoryMistake(
+  seenPairIds: readonly number[],
+  pairA: number,
+  pairB: number
+): boolean {
+  if (pairA === pairB) return false;
+  const seen = new Set(seenPairIds);
+  return seen.has(pairA) && seen.has(pairB);
+}
 
 export const MemoryCardsGame: React.FC<{ onExit: () => void }> = ({ onExit }) => {
   const stage = useGameStage({ gameId: 'memory_cards', roundsPerTier: ROUNDS_PER_TIER, advanceDelayMs: 900 });
@@ -41,6 +56,7 @@ export const MemoryCardsGame: React.FC<{ onExit: () => void }> = ({ onExit }) =>
   const [flippedIds, setFlippedIds] = useState<number[]>([]);
   const [matchedPairs, setMatchedPairs] = useState(0);
   const [moves, setMoves] = useState(0);
+  const [seenPairs, setSeenPairs] = useState<number[]>([]);
   const submittedRef = useRef(false);
 
   const goalPairs = GOALS_PER_TIER[Math.min(stage.tier - 1, GOALS_PER_TIER.length - 1)];
@@ -49,24 +65,26 @@ export const MemoryCardsGame: React.FC<{ onExit: () => void }> = ({ onExit }) =>
   const initGame = () => {
     const deck: CardItem[] = [];
     let idCounter = 1;
-    const shuffledPool = shuffleSeeded(pool, seededRng(10000 + stage.tier * 133));
+    const baseSeed = 10000 + stage.tier * 133 + stage.nonce * 101;
+    const shuffledPool = shuffleSeeded(pool, seededRng(baseSeed));
     shuffledPool.forEach((p) => {
       deck.push({ id: idCounter++, pairId: p.pairId, label: p.label, emoji: p.emoji, isFlipped: false, isMatched: false });
       deck.push({ id: idCounter++, pairId: p.pairId, label: p.label, emoji: p.emoji, isFlipped: false, isMatched: false });
     });
-    const shuffledDeck = shuffleSeeded(deck, seededRng(10000 + stage.tier * 133 + 17));
+    const shuffledDeck = shuffleSeeded(deck, seededRng(baseSeed + 17));
 
     setCards(shuffledDeck);
     setFlippedIds([]);
     setMatchedPairs(0);
     setMoves(0);
+    setSeenPairs([]);
     submittedRef.current = false;
   };
 
   useEffect(() => {
     initGame();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stage.tier]);
+  }, [stage.tier, stage.nonce]);
 
   const handleCardClick = (id: number) => {
     if (stage.locked || stage.phase !== 'playing') return;
@@ -88,6 +106,7 @@ export const MemoryCardsGame: React.FC<{ onExit: () => void }> = ({ onExit }) =>
       if (first && second && first.pairId === second.pairId) {
         sound.playCorrect();
         sound.speak(`Cặp ${first.label}!`);
+        setSeenPairs((prev) => Array.from(new Set([...prev, first.pairId])));
         setCards((prev) =>
           prev.map((c) =>
             c.id === firstId || c.id === secondId ? { ...c, isMatched: true } : c
@@ -101,9 +120,19 @@ export const MemoryCardsGame: React.FC<{ onExit: () => void }> = ({ onExit }) =>
           submittedRef.current = true;
           stage.submitCorrect();
         }
-      } else {
-        sound.playWrong();
-        stage.submitWrong();
+      } else if (first && second) {
+        // T02/B4 — first-time mismatches teach (no mistake); only repeat
+        // errors on already-seen pairs count against the stars.
+        const counts = shouldCountMemoryMistake(seenPairs, first.pairId, second.pairId);
+        setSeenPairs((prev) => Array.from(new Set([...prev, first.pairId, second.pairId])));
+        if (counts) {
+          sound.playWrong();
+          sound.speak('Hai thẻ này bé đã thấy rồi mà! Nhớ lại xem nào.');
+          stage.submitWrong();
+        } else {
+          sound.playClick();
+          sound.speak('Chưa giống nhau, bé nhớ vị trí hai thẻ này nhé!');
+        }
         setTimeout(() => {
           setCards((prev) =>
             prev.map((c) =>
@@ -118,6 +147,7 @@ export const MemoryCardsGame: React.FC<{ onExit: () => void }> = ({ onExit }) =>
 
   return (
     <GameModalWrapper
+      gameId="memory_cards"
       title="Lật Thẻ Trí Nhớ Vàng"
       subtitle="Tìm và ghép đúng các cặp hình giống nhau"
       mascotEmoji="🧠"
@@ -133,7 +163,8 @@ export const MemoryCardsGame: React.FC<{ onExit: () => void }> = ({ onExit }) =>
       nextTierMeta={stage.tier + 1 <= stage.tierCount ? getTierMeta(stage.tier + 1) : undefined}
       onNextTier={stage.startNextTier}
       earnedXp={stage.xpEarned}
-      earnedStars={1}
+      earnedStars={stage.starsEarned}
+      prevBestStars={stage.prevBestStars}
       onRestart={stage.restartGame}
       onExit={onExit}
       instructions={`Bé hãy lật từng thẻ để tìm ${goalPairs} cặp hình giống hệt nhau nhé!`}
