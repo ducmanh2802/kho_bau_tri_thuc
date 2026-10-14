@@ -29,6 +29,27 @@ const TEMPLATES = [
 
 const ROUNDS_PER_TIER = TEMPLATES.map(() => 1);
 
+/** T02/B3 — minimum painted share before "Hoàn thành" grants a reward. */
+export const MIN_PAINT_COVERAGE = 0.3;
+
+/**
+ * Share of pixels that differ from the blank white canvas.
+ * Pure (testable): pass any RGBA buffer, e.g. from getImageData().data.
+ */
+export function coverageFromPixels(data: Uint8ClampedArray | number[]): number {
+  if (data.length < 4) return 0;
+  const total = Math.floor(data.length / 4);
+  let painted = 0;
+  for (let i = 0; i < total; i++) {
+    const r = data[i * 4];
+    const g = data[i * 4 + 1];
+    const b = data[i * 4 + 2];
+    // The faint template outline (≈white) does not count as painting.
+    if (r < 235 || g < 235 || b < 235) painted++;
+  }
+  return painted / total;
+}
+
 export const ColoringCanvasGame: React.FC<{ onExit: () => void }> = ({ onExit }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [selectedColor, setSelectedColor] = useState(COLORS[0]);
@@ -36,6 +57,8 @@ export const ColoringCanvasGame: React.FC<{ onExit: () => void }> = ({ onExit })
   const [isEraser, setIsEraser] = useState(false);
   const [isDrawing, setIsDrawing] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState(TEMPLATES[0]);
+  const [coverage, setCoverage] = useState(0);
+  const [needMorePaint, setNeedMorePaint] = useState(false);
 
   const stage = useGameStage({ gameId: 'coloring_canvas', roundsPerTier: ROUNDS_PER_TIER, advanceDelayMs: 900 });
   const missionTemplate = TEMPLATES[Math.min(stage.tier - 1, TEMPLATES.length - 1)];
@@ -57,6 +80,8 @@ export const ColoringCanvasGame: React.FC<{ onExit: () => void }> = ({ onExit })
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     drawTemplateOutline(ctx, selectedTemplate.emoji);
+    setCoverage(0);
+    setNeedMorePaint(false);
   }, [selectedTemplate]);
 
   const drawTemplateOutline = (ctx: CanvasRenderingContext2D, emoji: string) => {
@@ -121,6 +146,20 @@ export const ColoringCanvasGame: React.FC<{ onExit: () => void }> = ({ onExit })
 
   const stopDrawing = () => {
     setIsDrawing(false);
+    refreshCoverage();
+  };
+
+  const refreshCoverage = () => {
+    try {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+      const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      setCoverage(coverageFromPixels(img.data));
+    } catch {
+      // Canvas unavailable (tests): keep last value.
+    }
   };
 
   const clearCanvas = () => {
@@ -133,6 +172,8 @@ export const ColoringCanvasGame: React.FC<{ onExit: () => void }> = ({ onExit })
     ctx.fillStyle = '#FFFFFF';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     drawTemplateOutline(ctx, selectedTemplate.emoji);
+    setCoverage(0);
+    setNeedMorePaint(false);
   };
 
   const stampIcon = (emoji: string) => {
@@ -146,10 +187,35 @@ export const ColoringCanvasGame: React.FC<{ onExit: () => void }> = ({ onExit })
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(emoji, 100 + Math.random() * 300, 80 + Math.random() * 200);
+    refreshCoverage();
   };
 
   const finishPainting = () => {
     if (stage.locked) return;
+    refreshCoverage();
+    const canvas = canvasRef.current;
+    let ratio = coverage;
+    try {
+      if (canvas) {
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          ratio = coverageFromPixels(img.data);
+          setCoverage(ratio);
+        }
+      }
+    } catch {
+      // Fall through with last known coverage.
+    }
+    // T02/B3 — an (almost) blank canvas earns nothing.
+    if (ratio < MIN_PAINT_COVERAGE) {
+      setNeedMorePaint(true);
+      sound.playClick();
+      sound.speak(`Bé mới tô được ${Math.round(ratio * 100)} phần trăm. Bé tô thêm chút nữa cho tranh rực rỡ nhé!`);
+      window.setTimeout(() => setNeedMorePaint(false), 2500);
+      return;
+    }
+    setNeedMorePaint(false);
     sound.playCorrect();
     sound.speak('Bức tranh của bé đẹp tuyệt vời!');
     setSelectedColor(COLORS[0]);
@@ -163,6 +229,7 @@ export const ColoringCanvasGame: React.FC<{ onExit: () => void }> = ({ onExit })
 
   return (
     <GameModalWrapper
+      gameId="coloring_canvas"
       title="Bé Tập Vẽ & Tô Màu Diệu Kỳ"
       subtitle={`Mỗi màn là một tác phẩm mới — màn này: "${missionTemplate.name}"`}
       mascotEmoji="🎨"
@@ -178,7 +245,8 @@ export const ColoringCanvasGame: React.FC<{ onExit: () => void }> = ({ onExit })
       nextTierMeta={stage.tier + 1 <= stage.tierCount ? getTierMeta(stage.tier + 1) : undefined}
       onNextTier={stage.startNextTier}
       earnedXp={stage.xpEarned}
-      earnedStars={1}
+      earnedStars={stage.starsEarned}
+      prevBestStars={stage.prevBestStars}
       onRestart={restartGame}
       onExit={onExit}
       instructions={`Hãy tô màu cho "${missionTemplate.name}" (${missionTemplate.emoji}) thật đẹp rồi bấm Hoàn thành nhé!`}
@@ -297,9 +365,14 @@ export const ColoringCanvasGame: React.FC<{ onExit: () => void }> = ({ onExit })
               className="px-4 py-2 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white rounded-xl shadow-md font-black text-xs md:text-sm flex items-center gap-1.5 active:scale-95 transition-transform"
             >
               <CheckCircle className="w-4 h-4" />
-              <span>Hoàn thành tranh 🎨</span>
+              <span>Hoàn thành tranh 🎨 ({Math.round(coverage * 100)}%)</span>
             </button>
           </div>
+          {needMorePaint && (
+            <p className="text-xs font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-3 py-1.5">
+              Bé tô thêm chút nữa (cần {Math.round(MIN_PAINT_COVERAGE * 100)}% tranh) rồi hẵng bấm Hoàn thành nhé! 💪
+            </p>
+          )}
         </div>
       </div>
     </GameModalWrapper>

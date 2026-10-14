@@ -57,6 +57,7 @@ export const NumberTowerGame: React.FC<{ onExit: () => void }> = ({ onExit }) =>
 
   return (
     <GameModalWrapper
+      gameId="number_tower"
       title="Xây Tháp Số Lên Mây"
       subtitle="Tìm viên gạch số còn thiếu để tháp số cao vút chạm cầu vồng"
       mascotEmoji="🏰"
@@ -72,7 +73,8 @@ export const NumberTowerGame: React.FC<{ onExit: () => void }> = ({ onExit }) =>
       nextTierMeta={stage.tier + 1 <= stage.tierCount ? getTierMeta(stage.tier + 1) : undefined}
       onNextTier={stage.startNextTier}
       earnedXp={stage.xpEarned}
-      earnedStars={1}
+      earnedStars={stage.starsEarned}
+      prevBestStars={stage.prevBestStars}
       onRestart={stage.restartGame}
       onExit={onExit}
       instructions={`Tìm viên gạch thích hợp: ${current.part1} + ? = ${current.total}`}

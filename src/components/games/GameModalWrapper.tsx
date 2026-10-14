@@ -32,6 +32,7 @@ interface GameModalWrapperProps {
   earnedXp?: number;
   earnedStars?: number;
   /** Level-progression fields (omit to use the simple free-play layout). */
+  gameId?: string;
   tier?: number;
   tierMeta?: GameTierMetaProp;
   tierCount?: number;
@@ -39,6 +40,8 @@ interface GameModalWrapperProps {
   roundNumber?: number;
   roundTotal?: number;
   starsEarned?: number;
+  /** Best stars before this completion (T02/B2 fair replay). */
+  prevBestStars?: number;
   nextTierMeta?: GameTierMetaProp;
   onNextTier?: () => void;
 }
@@ -58,6 +61,7 @@ export const GameModalWrapper: React.FC<GameModalWrapperProps> = ({
   audioLang = 'vi-VN',
   earnedXp = 25,
   earnedStars = 2,
+  gameId,
   tier,
   tierMeta,
   tierCount,
@@ -65,31 +69,45 @@ export const GameModalWrapper: React.FC<GameModalWrapperProps> = ({
   roundNumber,
   roundTotal,
   starsEarned,
+  prevBestStars = 0,
   nextTierMeta,
   onNextTier,
 }) => {
   const [isMuted, setIsMuted] = React.useState(sound.getMuted());
   const claimedKeys = React.useRef<Set<string>>(new Set());
+  const [receipt, setReceipt] = React.useState<{ stars: number; xp: number } | null>(null);
   const dialogRef = useFocusTrap<HTMLDivElement>(true);
 
   const isLevelGame = tier !== undefined && tierMeta !== undefined;
-  const rewardKey = `${tier ?? 1}-${phase}`;
+  const rewardKey = `${gameId ?? 'legacy'}-${tier ?? 1}-${phase}`;
 
-  /** Award XP/stars once per tier finish (tierComplete and the last allComplete). */
+  /**
+   * T02/B1+B2 — award XP/stars once per tier finish. Tiered games use the
+   * mistake-based starsEarned (no more hardcoded earnedStars) and replays pay
+   * only the record delta + 20% practice XP via recordTierReward.
+   */
   React.useEffect(() => {
     const finished = phase === 'tierComplete' || phase === 'allComplete';
     if (isLevelGame && finished && !claimedKeys.current.has(rewardKey)) {
       claimedKeys.current.add(rewardKey);
       sound.playLevelUp();
       fireCelebrationConfetti();
-      StorageService.recordGamePlayed(earnedXp, earnedStars);
+      const stars = starsEarned ?? earnedStars;
+      if (gameId && tier !== undefined) {
+        const r = StorageService.recordTierReward(gameId, tier, stars, earnedXp, score, prevBestStars);
+        setReceipt({ stars: r.starsAwarded, xp: r.xpAwarded });
+      } else {
+        StorageService.recordGamePlayed(earnedXp, stars);
+        setReceipt({ stars, xp: earnedXp });
+      }
     } else if (!isLevelGame && isGameOver && !claimedKeys.current.has('legacy')) {
       claimedKeys.current.add('legacy');
       sound.playLevelUp();
       fireCelebrationConfetti();
       StorageService.recordGamePlayed(earnedXp, earnedStars);
+      setReceipt({ stars: earnedStars, xp: earnedXp });
     }
-  }, [isLevelGame, phase, isGameOver, rewardKey, earnedXp, earnedStars]);
+  }, [isLevelGame, phase, isGameOver, rewardKey, earnedXp, earnedStars, starsEarned, prevBestStars, gameId, tier, score]);
 
   const toggleSound = () => {
     const next = !isMuted;
@@ -110,10 +128,12 @@ export const GameModalWrapper: React.FC<GameModalWrapperProps> = ({
 
   const handleRestart = () => {
     claimedKeys.current.clear();
+    setReceipt(null);
     onRestart();
   };
 
   const handleNextTier = () => {
+    setReceipt(null);
     onNextTier?.();
   };
 
@@ -251,11 +271,11 @@ export const GameModalWrapper: React.FC<GameModalWrapperProps> = ({
                   <div className="flex items-center justify-center gap-4 py-3 px-4 bg-amber-50 rounded-2xl border-2 border-amber-200 mb-5">
                     <div className="flex items-center gap-2 text-amber-700 font-black text-base">
                       <Star className="w-6 h-6 fill-amber-400 text-amber-500" />
-                      <span>+{earnedStars} Sao</span>
+                      <span>+{(receipt?.stars ?? earnedStars)} Sao</span>
                     </div>
                     <div className="flex items-center gap-2 text-purple-700 font-black text-base">
                       <Sparkles className="w-6 h-6 text-purple-500" />
-                      <span>+{earnedXp} XP</span>
+                      <span>+{(receipt?.xp ?? earnedXp)} XP</span>
                     </div>
                   </div>
 
@@ -311,11 +331,11 @@ export const GameModalWrapper: React.FC<GameModalWrapperProps> = ({
                   <div className="flex items-center justify-center gap-4 py-3 px-4 bg-amber-50 rounded-2xl border-2 border-amber-200 mb-6">
                     <div className="flex items-center gap-2 text-amber-700 font-black text-base">
                       <Star className="w-6 h-6 fill-amber-400 text-amber-500" />
-                      <span>+{earnedStars} Sao</span>
+                      <span>+{(receipt?.stars ?? earnedStars)} Sao</span>
                     </div>
                     <div className="flex items-center gap-2 text-purple-700 font-black text-base">
                       <Sparkles className="w-6 h-6 text-purple-500" />
-                      <span>+{earnedXp} XP</span>
+                      <span>+{(receipt?.xp ?? earnedXp)} XP</span>
                     </div>
                   </div>
 

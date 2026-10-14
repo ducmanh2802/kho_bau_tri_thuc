@@ -15,13 +15,16 @@ interface FallingBall {
 
 const BALL_COLORS = ['bg-rose-500', 'bg-blue-500', 'bg-emerald-500', 'bg-amber-500', 'bg-purple-500'];
 
-interface Condition {
+export interface Condition {
   text: string;
   check: (n: number) => boolean;
   speech: string;
 }
 
-const TIER_CONFIG: { condition: Condition; maxVal: number; spawnMs: number; speedMin: number; speedMax: number }[] = [
+// T02/A6 — "chia hết cho 5" removed (beyond Grade 1); T5 catches round tens,
+// T6 catches numbers immediately AFTER a round ten ("số liền sau").
+// T4 already covers "số lớn hơn 10".
+export const TIER_CONFIG: { condition: Condition; maxVal: number; spawnMs: number; speedMin: number; speedMax: number }[] = [
   {
     condition: { text: 'LỚN HƠN 5 (> 5)', check: (n) => n > 5, speech: 'Hứng các quả bóng có số lớn hơn năm' },
     maxVal: 10, spawnMs: 1100, speedMin: 0.35, speedMax: 0.6,
@@ -39,12 +42,12 @@ const TIER_CONFIG: { condition: Condition; maxVal: number; spawnMs: number; spee
     maxVal: 20, spawnMs: 850, speedMin: 0.4, speedMax: 0.72,
   },
   {
-    condition: { text: 'SỐ CHẴN 1–20', check: (n) => n % 2 === 0, speech: 'Hứng các quả bóng mang số chẵn từ một đến hai mươi' },
-    maxVal: 20, spawnMs: 750, speedMin: 0.42, speedMax: 0.78,
+    condition: { text: 'SỐ TRÒN CHỤC', check: (n) => n % 10 === 0, speech: 'Hứng các quả bóng mang số tròn chục' },
+    maxVal: 100, spawnMs: 750, speedMin: 0.42, speedMax: 0.78,
   },
   {
-    condition: { text: 'SỐ CHIA HẾT CHO 5', check: (n) => n % 5 === 0, speech: 'Hứng các quả bóng mang số chia hết cho năm' },
-    maxVal: 20, spawnMs: 650, speedMin: 0.46, speedMax: 0.86,
+    condition: { text: 'SỐ LIỀN SAU SỐ TRÒN CHỤC', check: (n) => n > 10 && n % 10 === 1, speech: 'Hứng các quả bóng mang số liền sau số tròn chục' },
+    maxVal: 100, spawnMs: 650, speedMin: 0.46, speedMax: 0.86,
   },
 ];
 
@@ -112,6 +115,7 @@ export const FallingNumbersMathGame: React.FC<{ onExit: () => void }> = ({ onExi
 
   return (
     <GameModalWrapper
+      gameId="falling_numbers"
       title="Hứng Số Rơi Rộn Ràng"
       subtitle="Bé nhanh tay chạm vào các quả bóng số đúng yêu cầu"
       mascotEmoji="🦊"
@@ -127,7 +131,8 @@ export const FallingNumbersMathGame: React.FC<{ onExit: () => void }> = ({ onExi
       nextTierMeta={stage.tier + 1 <= stage.tierCount ? getTierMeta(stage.tier + 1) : undefined}
       onNextTier={stage.startNextTier}
       earnedXp={stage.xpEarned}
-      earnedStars={1}
+      earnedStars={stage.starsEarned}
+      prevBestStars={stage.prevBestStars}
       onRestart={stage.restartGame}
       onExit={onExit}
       instructions={`Bé ơi! Hãy chạm vào các bóng có số: [ ${condition.text} ]`}

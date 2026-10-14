@@ -140,6 +140,7 @@ export const ListenPickPhonicsGame: React.FC<{ onExit: () => void }> = ({ onExit
 
   return (
     <GameModalWrapper
+      gameId="listen_pick"
       title="Đôi Tai Thính — Nghe & Chọn"
       subtitle="Lắng nghe âm thanh và chọn đúng hình ảnh tương ứng"
       mascotEmoji="🦉"
@@ -155,7 +156,8 @@ export const ListenPickPhonicsGame: React.FC<{ onExit: () => void }> = ({ onExit
       nextTierMeta={stage.tier + 1 <= stage.tierCount ? getTierMeta(stage.tier + 1) : undefined}
       onNextTier={stage.startNextTier}
       earnedXp={stage.xpEarned}
-      earnedStars={1}
+      earnedStars={stage.starsEarned}
+      prevBestStars={stage.prevBestStars}
       onRestart={stage.restartGame}
       onExit={onExit}
       instructions="Bé hãy bấm vào chiếc loa để nghe từ và chọn hình đúng!"
