@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Achievement, ChildProfile } from '../../types';
 import { StorageService } from '../../services/storage';
+import { localDateKey } from '../../services/dateUtils';
 import { sound } from '../../services/sound';
 import { fireCelebrationConfetti } from '../../services/confetti';
 import { ArrowLeft, Trophy, Star, Sparkles, Droplets, CheckCircle } from 'lucide-react';
@@ -17,12 +18,26 @@ export const AchievementsGardenScreen: React.FC<AchievementsGardenScreenProps> =
   const [achievements, setAchievements] = useState<Achievement[]>(StorageService.getAchievements());
   const [profile, setProfile] = useState<ChildProfile>(StorageService.getChildProfile());
   const [waterCount, setWaterCount] = useState(0);
+  // T01B/10 — confetti tưới cây tối đa 1 lần/ngày (giờ VN/máy qua localDateKey).
+  const [wateredToday, setWateredToday] = useState(
+    () => StorageService.getTreeWateredDate() === localDateKey()
+  );
 
   const unlockedCount = achievements.filter((a) => a.unlocked).length;
 
   const handleWaterTree = () => {
+    const today = localDateKey();
+    if (StorageService.getTreeWateredDate() === today) {
+      // Đã tưới hôm nay: vẫn vui (âm thanh + lời khen) nhưng KHÔNG confetti.
+      sound.playStar();
+      setWateredToday(true);
+      sound.speak('Hôm nay bé đã tưới cây rồi! Ngày mai mình tưới tiếp nhé!');
+      return;
+    }
     sound.playStar();
     fireCelebrationConfetti();
+    StorageService.setTreeWateredDate(today);
+    setWateredToday(true);
     setWaterCount((c) => c + 1);
     sound.speak('Cây tri thức lớn thêm một chút rồi! Bé chăm chỉ quá!');
   };
@@ -51,7 +66,7 @@ export const AchievementsGardenScreen: React.FC<AchievementsGardenScreenProps> =
             sound.playClick();
             onBack();
           }}
-          className="flex items-center gap-1.5 px-4 py-2 bg-white hover:bg-amber-50 border-2 border-amber-300 rounded-2xl font-bold text-xs md:text-sm text-amber-950 transition-all active:scale-95 shadow-xs cursor-pointer"
+          className="flex items-center gap-1.5 px-4 min-h-[44px] py-2 bg-white hover:bg-amber-50 border-2 border-amber-300 rounded-2xl font-bold text-xs md:text-sm text-amber-950 transition-all active:scale-95 shadow-xs cursor-pointer"
         >
           <ArrowLeft className="w-4 h-4" />
           <span>Về Trang Chủ</span>
@@ -77,10 +92,10 @@ export const AchievementsGardenScreen: React.FC<AchievementsGardenScreenProps> =
 
           <button
             onClick={handleWaterTree}
-            className="mt-4 px-5 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-black text-xs md:text-sm rounded-2xl shadow-md transition-transform active:scale-95 flex items-center gap-2 cursor-pointer font-display"
+            className="mt-4 px-5 min-h-[44px] py-2.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-black text-xs md:text-sm rounded-2xl shadow-md transition-transform active:scale-95 flex items-center gap-2 cursor-pointer font-display"
           >
             <Droplets className="w-4 h-4" />
-            <span>Tưới Nước Cho Cây ({waterCount} lần)</span>
+            <span>{wateredToday ? 'Đã tưới hôm nay 💧' : `Tưới Nước Cho Cây${waterCount > 0 ? ` (${waterCount} lần)` : ''}`}</span>
           </button>
         </div>
 

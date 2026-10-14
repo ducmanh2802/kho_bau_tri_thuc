@@ -55,6 +55,9 @@ const STORAGE_KEYS = {
   GAME_PROGRESS: 'kho_bau_game_progress',
   REVIEW_DAYS: 'kho_bau_review_days',
   GAME_NONCE: 'kho_bau_game_nonce',
+  // T01B/10 — ngày tưới cây gần nhất (YYYY-MM-DD giờ máy). Key mới hoàn toàn
+  // nên không cần migration; giá trị lạ được sanitizer loại bỏ, tiến độ cũ giữ nguyên.
+  TREE_WATER: 'kho_bau_tree_water',
 };
 
 /**
@@ -1050,6 +1053,29 @@ if (data) {
   public static saveAchievements(achs: Achievement[]) {
     try {
       localStorage.setItem(STORAGE_KEYS.ACHIEVEMENTS, JSON.stringify(achs));
+    } catch {
+      // Ignore
+    }
+  }
+
+  /**
+   * T01B/10 — "Tưới nước cho cây" chỉ bắn confetti 1 lần/ngày.
+   * Sanitizer: chỉ chấp nhận YYYY-MM-DD, còn lại coi như chưa tưới.
+   */
+  public static getTreeWateredDate(): string | null {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEYS.TREE_WATER);
+      if (typeof raw === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+    } catch {
+      // Ignore — ngoài trình duyệt hoặc quota đầy thì coi như chưa tưới.
+    }
+    return null;
+  }
+
+  public static setTreeWateredDate(dateKey: string): void {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateKey)) return;
+    try {
+      localStorage.setItem(STORAGE_KEYS.TREE_WATER, dateKey);
     } catch {
       // Ignore
     }

@@ -110,6 +110,17 @@ export default function App() {
     setProfile(StorageService.getChildProfile());
   };
 
+  // T01B/4 — đổi màn hình cuộn về đầu trang (kẻo bé kẹt ở cuối trang cũ).
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+      window.scrollTo({ top: 0, left: 0, behavior: reduce ? 'auto' : 'instant' as ScrollBehavior });
+    } catch {
+      window.scrollTo(0, 0);
+    }
+  }, [currentScreen]);
+
   const handleSelectSubject = (sub: SubjectType) => {
     setSelectedSubject(sub);
     setCurrentScreen('subject');
@@ -241,6 +252,10 @@ export default function App() {
             key={tab.screen}
             onClick={() => setCurrentScreen(tab.screen)}
             aria-current={currentScreen === tab.screen ? 'page' : undefined}
+            // T01B/11 — QA hook thống nhất + accessible name đầy đủ: nhãn hiển
+            // thị rút gọn (vừa 375px) nhưng script QA vẫn tìm bằng tên đầy đủ.
+            data-testid={`nav-${tab.screen}`}
+            aria-label={tab.label}
             title={tab.label}
             className={`flex-1 min-w-0 min-h-[48px] flex flex-col items-center justify-center gap-0.5 text-[10px] font-bold rounded-xl transition-all px-0.5 ${
               currentScreen === tab.screen

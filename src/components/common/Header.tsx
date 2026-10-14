@@ -17,21 +17,27 @@ const NavLink: React.FC<{
   item: NavEntry;
   current: ActiveScreen;
   onNavigate: (screen: ActiveScreen) => void;
-}> = ({ item, current, onNavigate }) => (
+  /** T01B/3 — ở 1024–1280 chỉ hiện icon (vừa khít, không tràn). */
+  iconOnly?: boolean;
+}> = ({ item, current, onNavigate, iconOnly = false }) => (
   <button
     onClick={() => {
       sound.playClick();
       onNavigate(item.screen);
     }}
     aria-current={current === item.screen ? 'page' : undefined}
-    className={`min-h-[44px] px-3 rounded-xl font-bold text-sm flex items-center gap-1.5 transition-all whitespace-nowrap cursor-pointer ${
+    // T01B/11 — QA hook thống nhất cho mọi mục điều hướng.
+    data-testid={`nav-${item.screen}`}
+    aria-label={item.label}
+    title={item.label}
+    className={`min-h-[44px] ${iconOnly ? 'min-w-[44px] px-2.5 justify-center' : 'px-3'} rounded-xl font-bold text-sm flex items-center gap-1.5 transition-all whitespace-nowrap cursor-pointer ${
       current === item.screen
         ? 'bg-amber-100 text-amber-950 font-black shadow-xs'
         : 'text-slate-600 hover:text-amber-950 hover:bg-amber-50/60'
     }`}
   >
     <span aria-hidden="true">{item.icon}</span>
-    <span>{item.label}</span>
+    {iconOnly ? <span className="sr-only">{item.label}</span> : <span>{item.label}</span>}
   </button>
 );
 
@@ -87,14 +93,15 @@ export const Header: React.FC<HeaderProps> = ({
         </button>
 
         {/*
-          Zone 2: navigation (T01/B11).
+          Zone 2: navigation (T01/B11 + T01B/3).
           >= 1024px (lg) only the top nav shows; < 1024px only the bottom nav
-          shows (see App.tsx). lg–xl shows the 4 primary destinations so the
-          pills always fit; xl+ shows the full set.
+          shows (see App.tsx). lg–xl shows the 4 primary destinations as
+          ICON-ONLY so the bar provably fits 1024px; xl+ shows the full set
+          with labels (fits 1280/1440).
         */}
         <nav aria-label="Điều hướng chính" className="hidden lg:flex xl:hidden items-center gap-1">
           {PRIMARY_NAV.map((item) => (
-            <NavLink key={item.screen} item={item} current={currentScreen} onNavigate={onNavigate} />
+            <NavLink key={item.screen} item={item} current={currentScreen} onNavigate={onNavigate} iconOnly />
           ))}
         </nav>
         <nav aria-label="Điều hướng chính (đầy đủ)" className="hidden xl:flex items-center gap-1">
@@ -125,10 +132,10 @@ export const Header: React.FC<HeaderProps> = ({
             <span className="sr-only">ngôi sao</span>
           </div>
 
-          {/* XP counter */}
+          {/* XP counter — T01B/3: chỉ hiện từ xl (1280+) để không tràn ở 1024 */}
           <div
             title={`Điểm kinh nghiệm: ${profile.xp} XP`}
-            className="hidden lg:flex items-center gap-1 px-2.5 min-h-[36px] bg-purple-50 border border-purple-200 rounded-full text-xs font-black text-purple-700"
+            className="hidden xl:flex items-center gap-1 px-2.5 min-h-[36px] bg-purple-50 border border-purple-200 rounded-full text-xs font-black text-purple-700"
           >
             <Sparkles className="w-3.5 h-3.5 text-purple-600" aria-hidden="true" />
             <span className="tabular-nums">{profile.xp} XP</span>

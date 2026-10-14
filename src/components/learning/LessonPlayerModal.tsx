@@ -10,6 +10,7 @@ import {
 import { fireCelebrationConfetti } from '../../services/confetti';
 import { StorageService } from '../../services/storage';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
+import { useModalHistory } from '../../hooks/useModalHistory';
 import { useSpeak } from '../../hooks/useSpeak';
 import {
   assertQuestionAudioTarget,
@@ -50,6 +51,8 @@ export const LessonPlayerModal: React.FC<LessonPlayerModalProps> = ({
   const [score, setScore] = useState(0);
   const [isFinished, setIsFinished] = useState(false);
   const dialogRef = useFocusTrap<HTMLDivElement>(true);
+  // T01B/1 — Esc + nút Back (history) đóng bài học.
+  const { requestClose } = useModalHistory(onClose);
   const { state: audioState, speak: speakQuestion } = useSpeak();
   // Last canonical text handed toward TTS (test hook; also rendered as
   // data-last-spoken so automation in an isolated JS world can still verify
@@ -236,8 +239,10 @@ export const LessonPlayerModal: React.FC<LessonPlayerModalProps> = ({
               <span>{score} đúng</span>
             </div>
             <button
-              onClick={onClose}
+              onClick={requestClose}
               aria-label="Đóng bài học"
+              title="Đóng bài học (Esc)"
+              data-testid="lesson-close"
               className="min-w-[44px] min-h-[44px] flex items-center justify-center bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-full transition-all active:scale-95"
             >
               <X className="w-5 h-5" aria-hidden="true" />
@@ -255,7 +260,8 @@ export const LessonPlayerModal: React.FC<LessonPlayerModalProps> = ({
 
         {/* Question Area */}
         {!isFinished ? (
-          <div className="flex-1 flex flex-col justify-between p-4 md:p-6 overflow-y-auto">
+          <div className="flex-1 flex flex-col min-h-0">
+          <div className="flex-1 overflow-y-auto p-4 md:p-6">
             {/* Prompt Card */}
             <div className="bg-amber-50/70 p-4 md:p-5 rounded-2xl border-2 border-amber-200 flex flex-col items-center text-center">
               {question.mediaEmoji && (
@@ -299,7 +305,7 @@ export const LessonPlayerModal: React.FC<LessonPlayerModalProps> = ({
                       sound.playClick();
                       setShowHint(!showHint);
                     }}
-                    className="text-xs text-amber-800 hover:text-amber-900 flex items-center gap-1 font-bold bg-amber-100/80 px-3 py-1 rounded-full"
+                    className="min-h-[44px] px-4 text-xs text-amber-800 hover:text-amber-900 flex items-center gap-1 font-bold bg-amber-100/80 py-1 rounded-full"
                   >
                     <HelpCircle className="w-3.5 h-3.5" />
                     <span>{showHint ? 'Ẩn gợi ý' : 'Bé cần gợi ý?'}</span>
@@ -391,7 +397,7 @@ export const LessonPlayerModal: React.FC<LessonPlayerModalProps> = ({
               )}
             </div>
 
-            {/* Bottom Feedback and Actions */}
+            {/* Bottom Feedback (trong vùng cuộn) và Actions (dính đáy) */}
             <div>
               {isAnswerChecked && (
                 <div
@@ -427,7 +433,14 @@ export const LessonPlayerModal: React.FC<LessonPlayerModalProps> = ({
                   </div>
                 </div>
               )}
+            </div>
+          </div>
 
+          {/*
+            T01B/2 — thanh hành động DÍNH ĐÁY modal: nút "Kiểm tra"/"Câu tiếp
+            theo" luôn thấy ở 375×667, không phải cuộn. Nằm ngoài vùng cuộn.
+          */}
+          <div className="shrink-0 border-t-2 border-amber-200 bg-white/95 backdrop-blur px-4 md:px-6 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
               {!isAnswerChecked ? (
                 <button
                   onClick={handleCheckAnswer}

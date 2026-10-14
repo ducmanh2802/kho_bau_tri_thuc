@@ -60,7 +60,12 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   return (
     <div className="w-full max-w-5xl mx-auto px-4 py-6 md:py-10 space-y-8 select-none">
       {/* Friendly Greeting & Mascot Hero Banner */}
-      <div className="relative animate-gradient kb-hero-pattern bg-gradient-to-r from-amber-400 via-orange-400 to-rose-400 rounded-3xl p-6 md:p-8 shadow-xl text-white overflow-hidden border-4 border-amber-300">
+      {/*
+        T01B/6 — chữ trắng ≥ 4,5:1: gradient đậm (amber-700/orange-700/rose-700,
+        tương phản trắng 5,0–6,3:1) thay cho 400 (chỉ 1,7–2,7:1). Pill chuyển
+        sang nền đen mờ để chữ trắng vẫn đạt chuẩn.
+      */}
+      <div className="relative animate-gradient kb-hero-pattern bg-gradient-to-r from-amber-700 via-orange-700 to-rose-700 rounded-3xl p-6 md:p-8 shadow-xl text-white overflow-hidden border-4 border-amber-200">
         {/* Background shapes */}
         <div className="absolute top-2 right-4 text-7xl opacity-20 pointer-events-none">✨</div>
         <div className="absolute -bottom-6 -left-6 text-9xl opacity-15 pointer-events-none">⭐</div>
@@ -94,19 +99,19 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                 </button>
               </div>
 
-              <p className="text-amber-100 text-xs md:text-sm font-bold mt-1 max-w-md">
+              <p className="text-amber-50 text-xs md:text-sm font-bold mt-1 max-w-md">
                 Hôm nay là một ngày tuyệt vời để khám phá thêm nhiều điều diệu kỳ!
               </p>
 
               {/* Stats pill */}
               <div className="flex flex-wrap items-center gap-2 mt-3 justify-center md:justify-start">
-                <span className="px-3 py-1 bg-white/20 rounded-full text-xs font-black backdrop-blur-xs flex items-center gap-1">
+                <span className="px-3 py-1 bg-black/25 rounded-full text-xs font-black backdrop-blur-xs flex items-center gap-1">
                   ⭐ <span className="tabular-nums">{profile.stars}</span> Sao
                 </span>
-                <span className="px-3 py-1 bg-white/20 rounded-full text-xs font-black backdrop-blur-xs flex items-center gap-1">
+                <span className="px-3 py-1 bg-black/25 rounded-full text-xs font-black backdrop-blur-xs flex items-center gap-1">
                   🔥 Chuỗi <span className="tabular-nums">{profile.streak}</span> ngày
                 </span>
-                <span className="px-3 py-1 bg-white/20 rounded-full text-xs font-black backdrop-blur-xs flex items-center gap-1">
+                <span className="px-3 py-1 bg-black/25 rounded-full text-xs font-black backdrop-blur-xs flex items-center gap-1">
                   🎟️ <span className="tabular-nums">{profile.tickets}</span> Vé game
                 </span>
               </div>
