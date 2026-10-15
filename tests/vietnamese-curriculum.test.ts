@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { VIETNAMESE_TOPICS } from '../src/data/vietnameseCurriculum';
+import { containsBannedWord } from '../src/data/contentSafety';
 
 describe('Vietnamese Curriculum Quality & Deterministic Invariants', () => {
   it('contains 12 comprehensive topics covering primary Grade 1 milestones', () => {
@@ -82,5 +83,67 @@ describe('Vietnamese Curriculum Quality & Deterministic Invariants', () => {
     const bWords = q4!.options!.filter((opt) => opt.startsWith('B'));
     expect(bWords.length).toBe(1);
     expect(bWords[0]).toBe('Búp bê 🪆');
+  });
+
+  // --- T10A: chữ cái, dấu thanh, chữ ghép, dấu câu + "nâng bài cũ" ----------
+
+  it('T10A — gives every lesson at least 10 questions', () => {
+    const thin: string[] = [];
+    for (const topic of VIETNAMESE_TOPICS) {
+      for (const lesson of topic.lessons) {
+        if (lesson.questions.length < 10) thin.push(`${lesson.id}=${lesson.questions.length}`);
+      }
+    }
+    expect(thin).toEqual([]);
+  });
+
+  it('T10A — exercises at least three question types in every lesson', () => {
+    const thin: string[] = [];
+    for (const topic of VIETNAMESE_TOPICS) {
+      for (const lesson of topic.lessons) {
+        const types = new Set(lesson.questions.map((q) => q.type));
+        if (types.size < 3) thin.push(`${lesson.id}=${[...types].join('+')}`);
+      }
+    }
+    expect(thin).toEqual([]);
+  });
+
+  it('T10A — never repeats a Vietnamese question id', () => {
+    const ids = VIETNAMESE_TOPICS.flatMap((t) =>
+      t.lessons.flatMap((l) => l.questions.map((q) => q.id))
+    );
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it('T10A — stores every question field in NFC so diacritics never decompose', () => {
+    const bad: string[] = [];
+    for (const topic of VIETNAMESE_TOPICS) {
+      for (const lesson of topic.lessons) {
+        for (const q of lesson.questions) {
+          const fields = [
+            q.prompt,
+            q.audioPrompt ?? '',
+            q.hint ?? '',
+            q.explanation ?? '',
+            ...(q.options ?? []),
+          ];
+          if (fields.some((f) => f.normalize('NFC') !== f)) bad.push(q.id);
+        }
+      }
+    }
+    expect(bad).toEqual([]);
+  });
+
+  it('T10A — keeps banned words out of every Vietnamese question', () => {
+    const bad: string[] = [];
+    for (const topic of VIETNAMESE_TOPICS) {
+      for (const lesson of topic.lessons) {
+        for (const q of lesson.questions) {
+          const fields = [q.prompt, q.hint ?? '', q.explanation ?? '', ...(q.options ?? [])];
+          if (fields.some((f) => containsBannedWord(f))) bad.push(q.id);
+        }
+      }
+    }
+    expect(bad).toEqual([]);
   });
 });
