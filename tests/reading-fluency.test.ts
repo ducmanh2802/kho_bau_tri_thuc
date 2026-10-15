@@ -27,10 +27,15 @@ import { StorageService } from '../src/services/storage';
 import { READING_POLICY } from '../src/config/policy';
 import {
   READING_QUESTIONS,
+  READING_PASSAGES,
   READING_SKILLS,
   READING_STAGE_ITEM_IDS,
+  T13_PASSAGE_IDS,
+  T13_THEMES,
   getReadingQuestionById,
+  getPassagesByTheme,
 } from '../src/data/readingContent';
+import { containsBannedWord } from '../src/data/contentSafety';
 import type { ReadingProfile, ReadingResponse, ReadingStage } from '../src/types/reading';
 
 const STAGES: ReadingStage[] = [...READING_POLICY.STAGES];
@@ -369,5 +374,172 @@ describe('Reading persistence & idempotency (§18, §19)', () => {
     StorageService.resetProgress();
     expect(StorageService.getReadingProfile().readingIndex).toBe(0);
     expect(StorageService.getReadingMetricsHistory()).toEqual([]);
+  });
+});
+
+describe('T13 — 24 truyện mới (6 chủ đề x 4, ≥ 6 câu/truyện)', () => {
+  const T13_IDS = new Set(T13_PASSAGE_IDS);
+  const newPassages = READING_PASSAGES.filter((p) => T13_IDS.has(p.id));
+  const newQuestions = READING_QUESTIONS.filter((q) => q.id.startsWith('rq-t13-'));
+
+  const countWords = (s: string): number => s.split(/\s+/).filter(Boolean).length;
+  const passageWordCount = (p: { paragraphs: string[] }): number =>
+    p.paragraphs.reduce((n, s) => n + countWords(s), 0);
+  const allNewStrings = (): { where: string; text: string }[] => {
+    const out: { where: string; text: string }[] = [];
+    for (const p of newPassages) {
+      out.push({ where: `${p.id}:title`, text: p.title });
+      p.paragraphs.forEach((s, i) => out.push({ where: `${p.id}:p${i}`, text: s }));
+      p.pictureBank.forEach((b, i) => out.push({ where: `${p.id}:pic${i}`, text: b.label }));
+    }
+    for (const q of newQuestions) {
+      out.push({ where: `${q.id}:prompt`, text: q.prompt });
+      if (q.stimulus) out.push({ where: `${q.id}:stimulus`, text: q.stimulus });
+      q.options.forEach((o, i) => out.push({ where: `${q.id}:opt${i}`, text: o }));
+      out.push({ where: `${q.id}:answer`, text: q.correctAnswer });
+      out.push({ where: `${q.id}:explanation`, text: q.explanation });
+      if (q.targetText) out.push({ where: `${q.id}:target`, text: q.targetText });
+    }
+    return out;
+  };
+
+  it('đạt tổng ≥ 36 truyện và ≥ 180 câu hỏi (12 cũ + 24 mới, 48 + 144 câu)', () => {
+    expect(newPassages.length).toBe(24);
+    expect(newQuestions.length).toBe(144);
+    expect(READING_PASSAGES.length).toBeGreaterThanOrEqual(36);
+    expect(READING_QUESTIONS.length).toBeGreaterThanOrEqual(180);
+  });
+
+  it('giữ nguyên 12 truyện cũ (mỗi truyện đúng 4 câu như trước)', () => {
+    const legacy = READING_PASSAGES.filter((p) => !T13_IDS.has(p.id));
+    expect(legacy.length).toBe(12);
+    for (const p of legacy) expect(p.questionIds.length).toBe(4);
+  });
+
+  it('phủ đủ 6 chủ đề x 4 truyện, phân bố cấp 8/9/7', () => {
+    expect(T13_THEMES.length).toBe(6);
+    for (const theme of T13_THEMES) {
+      expect(getPassagesByTheme(theme).length).toBe(4);
+    }
+    const byLevel = { 1: 0, 2: 0, 3: 0 } as Record<1 | 2 | 3, number>;
+    for (const p of newPassages) byLevel[p.level] += 1;
+    expect(byLevel[1]).toBe(8);
+    expect(byLevel[2]).toBe(9);
+    expect(byLevel[3]).toBe(7);
+  });
+
+  it('mỗi truyện mới có theme, vần trọng tâm và ≥ 6 câu hỏi hợp lệ', () => {
+    const validSkillIds = new Set(READING_SKILLS.map((s) => s.skillId));
+    for (const p of newPassages) {
+      expect(p.theme).toBeTruthy();
+      expect(p.targetVowels!.length).toBeGreaterThan(0);
+      expect(p.questionIds.length).toBeGreaterThanOrEqual(6);
+      for (const qid of p.questionIds) {
+        const q = getReadingQuestionById(qid);
+        expect(q).toBeDefined();
+        expect(q!.passageId).toBe(p.id);
+        expect(validSkillIds.has(q!.skillId)).toBe(true);
+        expect(q!.difficulty).toBe(p.level);
+        expect(q!.options.length).toBe(4);
+        expect(new Set(q!.options).size).toBe(4);
+        expect(q!.options).toContain(q!.correctAnswer);
+        if (q!.targetText) expect(q!.options).toContain(q!.targetText);
+        expect(q!.wordCount).toBeGreaterThan(0);
+        expect(q!.estimatedSeconds).toBeGreaterThanOrEqual(8);
+        expect(q!.estimatedSeconds).toBeLessThanOrEqual(90);
+        expect(q!.prompt.trim().length).toBeGreaterThan(0);
+        expect(q!.explanation.trim().length).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  it('mỗi truyện mới dùng ≥ 4 loại câu hỏi khác nhau (chỉ loại đọc đang có)', () => {
+    const allowed = new Set([
+      'word-recognition',
+      'syllable-clap',
+      'phrase-repeat',
+      'sentence-order',
+      'read-aloud',
+      'punctuation-pause',
+      'comprehension-who',
+      'comprehension-what',
+      'comprehension-where',
+      'comprehension-when',
+      'comprehension-why',
+      'comprehension-how',
+      'keyword-finding',
+      'question-meaning',
+    ]);
+    for (const p of newPassages) {
+      const kinds = new Set(
+        p.questionIds.map((qid) => getReadingQuestionById(qid)!.questionType)
+      );
+      for (const k of kinds) expect(allowed.has(k)).toBe(true);
+      expect(kinds.size).toBeGreaterThanOrEqual(4);
+    }
+  });
+
+  it('số chữ đúng theo cấp (L1: 20–35, câu ≤ 6 chữ; L2: 35–60; L3: 60–90, có hội thoại)', () => {
+    for (const p of newPassages) {
+      const words = passageWordCount(p);
+      expect(p.wordCount).toBe(words);
+      if (p.level === 1) {
+        expect(words).toBeGreaterThanOrEqual(20);
+        expect(words).toBeLessThanOrEqual(35);
+        const sentences = p.paragraphs
+          .join(' ')
+          .split(/[.!?…]+/)
+          .map((s) => s.trim())
+          .filter(Boolean);
+        expect(sentences.length).toBeGreaterThan(0);
+        for (const s of sentences) expect(countWords(s)).toBeLessThanOrEqual(6);
+      } else if (p.level === 2) {
+        expect(words).toBeGreaterThanOrEqual(35);
+        expect(words).toBeLessThanOrEqual(60);
+      } else {
+        expect(words).toBeGreaterThanOrEqual(60);
+        expect(words).toBeLessThanOrEqual(90);
+        expect(p.paragraphs.join(' ')).toContain('"');
+      }
+    }
+  });
+
+  it('nội dung mới không có từ cấm và chuẩn hoá NFC', () => {
+    for (const { where, text } of allNewStrings()) {
+      expect({ where, hit: containsBannedWord(text) }).toEqual({ where, hit: false });
+      expect({ where, nfc: text === text.normalize('NFC') }).toEqual({ where, nfc: true });
+    }
+  });
+
+  it('id mới không trùng, vị trí đáp án đúng xoay vòng (không lộ đáp án)', () => {
+    const ids = READING_QUESTIONS.map((q) => q.id);
+    expect(new Set(ids).size).toBe(ids.length);
+    const passageIds = READING_PASSAGES.map((p) => p.id);
+    expect(new Set(passageIds).size).toBe(passageIds.length);
+    const positions: Record<number, number> = {};
+    for (const q of newQuestions) {
+      const idx = q.options.indexOf(q.correctAnswer);
+      expect(idx).toBeGreaterThanOrEqual(0);
+      positions[idx] = (positions[idx] ?? 0) + 1;
+    }
+    for (const idx of [0, 1, 2, 3]) {
+      const share = (positions[idx] ?? 0) / newQuestions.length;
+      expect(share).toBeGreaterThan(0);
+      expect(share).toBeLessThanOrEqual(0.5);
+    }
+  });
+
+  it('ngân hàng mới phủ cả 14 loại câu đọc và mọi kỹ năng đều có câu', () => {
+    const typeCounts: Record<string, number> = {};
+    const skillCounts: Record<string, number> = {};
+    for (const q of newQuestions) {
+      typeCounts[q.questionType] = (typeCounts[q.questionType] ?? 0) + 1;
+      skillCounts[q.skillId] = (skillCounts[q.skillId] ?? 0) + 1;
+    }
+    expect(Object.keys(typeCounts).length).toBe(14);
+    for (const [, n] of Object.entries(typeCounts)) expect(n).toBeGreaterThanOrEqual(2);
+    for (const s of READING_SKILLS) {
+      expect(skillCounts[s.skillId] ?? 0).toBeGreaterThanOrEqual(2);
+    }
   });
 });

@@ -29,6 +29,18 @@ export type ReadingSkillCategory = 'ACCURACY' | 'FLUENCY' | 'COMPREHENSION' | 'P
  */
 export type ReadingStage = 'ACCURACY' | 'FLUENCY' | 'COMPREHENSION' | 'PROCESSING_SPEED' | 'COMPETITION_SPEED';
 
+/**
+ * T13 theme of a reading passage (6 themes x 4 passages).
+ * Legacy passages (pre-T13) leave this undefined.
+ */
+export type ReadingTheme =
+  | 'gia-dinh'
+  | 'truong-lop'
+  | 'con-vat'
+  | 'thien-nhien'
+  | 'que-huong'
+  | 'tinh-ban';
+
 /** Quick parent grading after the child reads aloud (😀 good, 😐 okay, 🙁 needs help). */
 export type ReadingParentRating = '😀' | '😐' | '🙁';
 
@@ -98,6 +110,16 @@ export interface ReadingPassage {
   /** Comprehension questions attached to this passage. */
   questionIds: string[];
   wordCount: number;
+  /**
+   * T13 — theme of this passage (6 themes x 4). Legacy passages leave this
+   * undefined. Used for theme-based browsing and unlock-by-theme.
+   */
+  theme?: ReadingTheme;
+  /**
+   * T13 — focus rimes/letters of this passage (e.g. ['an','at']).
+   * L1 passages only use rimes from the first T10 group.
+   */
+  targetVowels?: string[];
 }
 
 /** One measured response inside a reading session. */
