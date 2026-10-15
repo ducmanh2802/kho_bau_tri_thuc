@@ -411,8 +411,9 @@ function Ensure-Branch([string]$B) {
   $cur = Cur-Branch
   if ($cur -eq $B) { return $true }
   Commit-All ('chore: auto-runner snapshot on ' + $cur)
-  if (Branch-Exists $B) { & git checkout -q $B 2>$null | Out-Null }
-  else { & git checkout -q -b $B main 2>$null | Out-Null }
+  # a leftover task branch without any own commit is rebuilt from the newest main
+  if ((Branch-Exists $B) -and ((Ahead $B) -gt 0)) { & git checkout -q $B 2>$null | Out-Null }
+  else { & git checkout -q -B $B main 2>$null | Out-Null }
   return ((Cur-Branch) -eq $B)
 }
 
