@@ -95,7 +95,7 @@ const STORAGE_KEYS = {
  *    counters, misconception map, retention evidence). Missing fields on older
  *    payloads are backfilled by the sanitizer, so no learning history is reset.
  */
-export const STORAGE_SCHEMA_VERSION = 'P42-v2';
+export const STORAGE_SCHEMA_VERSION = 'P42-v3';
 
 /** Schema version for the game-progress store (separate key from the Learning OS). */
 export const GAME_PROGRESS_SCHEMA_VERSION = 1;
@@ -132,10 +132,12 @@ const MIGRATIONS: Record<string, (raw: Record<string, unknown>) => Record<string
   // T18A — kho động lực nằm ở key riêng nên Learning OS store không đổi;
   // migration chỉ ghi nhận phiên bản (mặc định do sanitizer dựng lại).
   'P42-v2': (raw) => ({ ...raw }),
+  // T19 — thêm bgMusicEnabled vào ParentSettings (key riêng, không cần migrate Learning OS)
+  'P42-v3': (raw) => ({ ...raw }),
 };
 
 /** Every schema version the app has ever written, oldest first. */
-const SCHEMA_HISTORY = ['P28-v1', 'P29-v2', 'P30-v1', 'P41-v1', 'P42-v1', 'P42-v2'] as const;
+const SCHEMA_HISTORY = ['P28-v1', 'P29-v2', 'P30-v1', 'P41-v1', 'P42-v1', 'P42-v2', 'P42-v3'] as const;
 
 const SESSION_PROFILE_KINDS: SessionProfileKind[] = ['QUICK', 'STANDARD', 'DEEP', 'EXTENDED'];
 
@@ -321,6 +323,8 @@ const DEFAULT_PARENT_SETTINGS: ParentSettings = {
   maxGachaPerDay: 5,
   rewardsEnabled: true,
   rewardHistory: [],
+  // T19 — nhạc nền mặc định TẮT (khác với musicEnabled hiệu ứng âm thanh)
+  bgMusicEnabled: false,
 };
 
 function getTodayString(): string {
@@ -1024,6 +1028,8 @@ public static getParentSettings(): ParentSettings {
               : 5,
             rewardsEnabled: parsed.rewardsEnabled === true,
             rewardHistory: Array.isArray(parsed.rewardHistory) ? parsed.rewardHistory.slice(-50) : [],
+            // T19 — nhạc nền mặc định TẮT
+            bgMusicEnabled: typeof parsed.bgMusicEnabled === 'boolean' ? parsed.bgMusicEnabled : false,
           };
         }
       }
