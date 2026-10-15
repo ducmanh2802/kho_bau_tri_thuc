@@ -318,6 +318,19 @@
   animation: wiggle 1.6s ease-in-out infinite;
 }
 
+/* T15 — dấu bật ra / toa lắc khi sai (CSS thuần, tôn trọng reduced-motion chung ở cuối file). */
+@keyframes shake-x {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-8px); }
+  40% { transform: translateX(8px); }
+  60% { transform: translateX(-5px); }
+  80% { transform: translateX(5px); }
+}
+
+.animate-shake {
+  animation: shake-x 0.4s ease-in-out;
+}
+
 .animate-bounce-soft {
   animation: bounce-soft 2.2s ease-in-out infinite;
 }

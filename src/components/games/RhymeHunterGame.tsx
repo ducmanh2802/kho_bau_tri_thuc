@@ -64,7 +64,6 @@ function buildRoundsFromGameItems(items: GameItem[], tier: number, seed: number)
 
 export const RhymeHunterGame: React.FC<{ onExit: () => void }> = ({ onExit }) => {
   const stage = useGameStage({ gameId: 'rhyme_hunter', roundsPerTier: ROUNDS_PER_TIER, advanceDelayMs: 1200 });
-  const { reportCorrect, reportWrong, showCorrectAnswer, correctAnswer } = useGameFeedback();
   const [gameItems, setGameItems] = useState<GameItem[]>([]);
   const [roundsState, setRoundsState] = useState<RhymeGameItem[]>([]);
 
@@ -87,38 +86,6 @@ export const RhymeHunterGame: React.FC<{ onExit: () => void }> = ({ onExit }) =>
   }, [gameItems, stage.tier, stage.nonce]);
 
   const currentRound = roundsState[stage.roundIdx];
-  if (!currentRound) return null;
-
-  const remainingInRound = currentRound.fruits.filter((f) => f.hasRhyme && !f.picked).length;
-
-  const handleFruitClick = (fruitId: string) => {
-    if (stage.locked) return;
-    const fruit = currentRound.fruits.find((f) => f.id === fruitId);
-    if (!fruit || fruit.picked) return;
-
-    if (fruit.hasRhyme) {
-      sound.playCorrect();
-      reportCorrect(fruit.word);
-
-      const updated = roundsState.map((r, ri) =>
-        ri === stage.roundIdx
-          ? { ...r, fruits: r.fruits.map((f) => (f.id === fruitId ? { ...f, picked: true } : f)) }
-          : r
-      );
-      setRoundsState(updated);
-
-      const stillRemaining = updated[stage.roundIdx].fruits.filter((f) => f.hasRhyme && !f.picked).length;
-      if (stillRemaining === 0) {
-        sound.playStar();
-        stage.submitCorrect();
-      }
-    } else {
-      sound.playWrong();
-      reportWrong(fruit.word, currentRound.targetDescription);
-      sound.speak(`Từ "${fruit.word}" chưa đúng rồi, bé hãy tìm quả có ${currentRound.targetDescription} nhé!`);
-      stage.submitWrong();
-    }
-  };
 
   return (
     <GameModalWrapper
@@ -142,10 +109,63 @@ export const RhymeHunterGame: React.FC<{ onExit: () => void }> = ({ onExit }) =>
       prevBestStars={stage.prevBestStars}
       onRestart={stage.restartGame}
       onExit={onExit}
-      instructions={`Bé hãy hái các quả mang từ chứa [ ${currentRound.targetDescription} ]!`}
-      audioInstruction={`Hãy hái các quả chứa ${currentRound.targetDescription}`}
+      instructions={currentRound ? `Bé hãy hái các quả mang từ chứa [ ${currentRound.targetDescription} ]!` : 'Bé hãy hái các quả chứa vần được yêu cầu!'}
+      audioInstruction={currentRound ? `Hãy hái các quả chứa ${currentRound.targetDescription}` : undefined}
       praiseSubject="VIETNAMESE"
     >
+      {currentRound && (
+        <RhymeHunterStage stage={stage} currentRound={currentRound} setRoundsState={setRoundsState} />
+      )}
+    </GameModalWrapper>
+  );
+};
+
+/**
+ * Vòng chơi thật — nằm TRONG GameModalWrapper nên mới dùng được
+ * useGameFeedback (T15: sửa crash "must be used within GameModalWrapper").
+ */
+const RhymeHunterStage: React.FC<{
+  stage: ReturnType<typeof useGameStage>;
+  currentRound: RhymeGameItem;
+  setRoundsState: React.Dispatch<React.SetStateAction<RhymeGameItem[]>>;
+}> = ({ stage, currentRound, setRoundsState }) => {
+  const { reportCorrect, reportWrong, showCorrectAnswer } = useGameFeedback();
+
+  const remainingInRound = currentRound.fruits.filter((f) => f.hasRhyme && !f.picked).length;
+
+  const handleFruitClick = (fruitId: string) => {
+    if (stage.locked) return;
+    const fruit = currentRound.fruits.find((f) => f.id === fruitId);
+    if (!fruit || fruit.picked) return;
+
+    if (fruit.hasRhyme) {
+      sound.playCorrect();
+      reportCorrect(fruit.word);
+
+      setRoundsState((prev) => {
+        const updated = prev.map((r) =>
+          r.targetRhyme === currentRound.targetRhyme &&
+          r.fruits.some((f) => f.id === fruitId)
+            ? { ...r, fruits: r.fruits.map((f) => (f.id === fruitId ? { ...f, picked: true } : f)) }
+            : r
+        );
+        return updated;
+      });
+
+      const stillRemaining = remainingInRound - 1;
+      if (stillRemaining === 0) {
+        sound.playStar();
+        stage.submitCorrect();
+      }
+    } else {
+      sound.playWrong();
+      reportWrong(fruit.word, currentRound.targetDescription);
+      sound.speak(`Từ "${fruit.word}" chưa đúng rồi, bé hãy tìm quả có ${currentRound.targetDescription} nhé!`);
+      stage.submitWrong();
+    }
+  };
+
+  return (
       <div className="w-full h-full relative rounded-3xl bg-gradient-to-b from-sky-200 via-emerald-100 to-emerald-200 overflow-hidden border-2 border-emerald-300 p-4 flex flex-col justify-between">
         {/* Mission HUD */}
         <div className="bg-white/95 px-6 py-2.5 rounded-2xl shadow-md border-2 border-emerald-300 self-center flex items-center gap-3 z-10">
@@ -187,6 +207,5 @@ export const RhymeHunterGame: React.FC<{ onExit: () => void }> = ({ onExit }) =>
           <span className="text-xs md:text-sm font-bold">Giỏ trái cây thần kỳ: Đã hái {stage.score} quả đúng!</span>
         </div>
       </div>
-    </GameModalWrapper>
   );
 };

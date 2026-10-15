@@ -20,7 +20,6 @@ interface FallingBubble {
 export const CatchFallingLettersGame: React.FC<{ onExit: () => void }> = ({ onExit }) => {
   const roundsPerTier = useMemo(() => defaultRoundsPerTier(), []);
   const stage = useGameStage({ gameId: 'catch_letters', roundsPerTier, advanceDelayMs: 1000 });
-  const { reportCorrect, reportWrong, showCorrectAnswer, correctAnswer } = useGameFeedback();
   const [targetChar, setTargetChar] = useState<string>('A');
   const [targetPool, setTargetPool] = useState<string[]>([]);
   const [bubbles, setBubbles] = useState<FallingBubble[]>([]);
@@ -93,24 +92,6 @@ export const CatchFallingLettersGame: React.FC<{ onExit: () => void }> = ({ onEx
     return () => clearInterval(animTimer);
   }, [stage.phase, stage.tier]);
 
-  const handleBubbleClick = (bubble: FallingBubble) => {
-    if (stage.locked || stage.phase !== 'playing') return;
-    if (bubble.char === targetChar) {
-      sound.playCorrect();
-      reportCorrect(bubble.char);
-      setBubbles((prev) => prev.filter((b) => b.id !== bubble.id));
-      if ((stage.roundNumber + 1) % 2 === 0) {
-        pickNewTarget();
-      }
-      stage.submitCorrect();
-    } else {
-      sound.playWrong();
-      reportWrong(bubble.char, targetChar);
-      sound.speak(`Đây là chữ ${bubble.char}, bé tìm chữ ${targetChar} nhé!`);
-      stage.submitWrong();
-    }
-  };
-
   return (
     <GameModalWrapper
       gameId="catch_letters"
@@ -137,6 +118,49 @@ export const CatchFallingLettersGame: React.FC<{ onExit: () => void }> = ({ onEx
       audioInstruction={`Hãy chạm vào các bong bóng mang chữ ${targetChar}`}
       praiseSubject="VIETNAMESE"
     >
+      <CatchFallingStage
+        stage={stage}
+        targetChar={targetChar}
+        bubbles={bubbles}
+        setBubbles={setBubbles}
+        pickNewTarget={pickNewTarget}
+      />
+    </GameModalWrapper>
+  );
+};
+
+/**
+ * Vùng chơi thật — nằm TRONG GameModalWrapper nên mới dùng được
+ * useGameFeedback (T15: sửa crash "must be used within GameModalWrapper").
+ */
+const CatchFallingStage: React.FC<{
+  stage: ReturnType<typeof useGameStage>;
+  targetChar: string;
+  bubbles: FallingBubble[];
+  setBubbles: React.Dispatch<React.SetStateAction<FallingBubble[]>>;
+  pickNewTarget: () => void;
+}> = ({ stage, targetChar, bubbles, setBubbles, pickNewTarget }) => {
+  const { reportCorrect, reportWrong, showCorrectAnswer, correctAnswer } = useGameFeedback();
+
+  const handleBubbleClick = (bubble: FallingBubble) => {
+    if (stage.locked || stage.phase !== 'playing') return;
+    if (bubble.char === targetChar) {
+      sound.playCorrect();
+      reportCorrect(bubble.char);
+      setBubbles((prev) => prev.filter((b) => b.id !== bubble.id));
+      if ((stage.roundNumber + 1) % 2 === 0) {
+        pickNewTarget();
+      }
+      stage.submitCorrect();
+    } else {
+      sound.playWrong();
+      reportWrong(bubble.char, targetChar);
+      sound.speak(`Đây là chữ ${bubble.char}, bé tìm chữ ${targetChar} nhé!`);
+      stage.submitWrong();
+    }
+  };
+
+  return (
       <div className="w-full h-full relative rounded-2xl bg-gradient-to-b from-sky-200 via-sky-100 to-amber-100 overflow-hidden border-2 border-sky-300 select-none">
         <div className="absolute top-4 left-6 text-4xl opacity-70 animate-float">☁️</div>
         <div className="absolute top-10 right-10 text-5xl opacity-60 animate-float" style={{ animationDelay: '1.5s' }}>☁️</div>
@@ -185,6 +209,5 @@ export const CatchFallingLettersGame: React.FC<{ onExit: () => void }> = ({ onEx
           </button>
         ))}
       </div>
-    </GameModalWrapper>
   );
 };
