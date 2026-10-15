@@ -184,7 +184,10 @@ export default function App() {
       />
 
       {/* Main Content Viewport */}
-      <main className="flex-1 pb-16 md:pb-6">
+      {/* Below lg the fixed bottom nav covers the end of the page: keep its
+          height + the safe-area inset free (pb-16 was shorter than the nav plus
+          inset, and md:pb-6 left 768–1023px with 24px under a ~60px nav). */}
+      <main className="flex-1 pb-[calc(var(--kb-bottom-nav-h)+env(safe-area-inset-bottom))] lg:pb-6">
         {currentScreen === 'home' && (
           <HomeScreen
             profile={profile}
@@ -348,7 +351,9 @@ export default function App() {
               <span className="text-xl leading-none" aria-hidden="true">
                 {tab.icon}
               </span>
-              <span className="text-[14px] truncate max-w-full leading-tight">{tab.shortLabel}</span>
+              {/* Wraps onto 2 lines on 360px phones ("Trang / Chủ") instead of
+                  being cut to "Trang C…"; 14px kept (T06). */}
+              <span className="text-[14px] max-w-full leading-tight text-center [overflow-wrap:anywhere]">{tab.shortLabel}</span>
             </button>
           );
         })}

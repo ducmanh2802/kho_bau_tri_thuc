@@ -77,7 +77,20 @@ export function registerServiceWorker(): Promise<ServiceWorkerRegistration | nul
  * T01B/7 — chỉ báo khi có SW MỚI THAY THẾ SW đang điều khiển trang: nếu
  * `navigator.serviceWorker.controller` là null thì trang chưa hề bị SW điều
  * khiển (lần mở đầu tiên / vừa cài đặt) → bỏ qua, không hiện banner.
+ *
+ * The controller must be read when the page STARTS: on a fresh install the new
+ * worker runs `clients.claim()` before it broadcasts SW_UPDATED, so by the time
+ * the message arrives the controller is already set and the "new version"
+ * banner used to appear on the very first visit (QA `update-banner-hidden-first-load`).
  */
+const PAGE_STARTED_CONTROLLED: boolean = (() => {
+  try {
+    return typeof navigator !== 'undefined' && !!navigator.serviceWorker?.controller;
+  } catch {
+    return false;
+  }
+})();
+
 export function onServiceWorkerUpdate(callback: (version: string) => void): () => void {
   if (typeof window === 'undefined' || typeof navigator === 'undefined') return () => {};
   if (!('serviceWorker' in navigator)) return () => {};
@@ -85,8 +98,9 @@ export function onServiceWorkerUpdate(callback: (version: string) => void): () =
   const handler = (event: MessageEvent) => {
     if (event.data && event.data.type === 'SW_UPDATED') {
       try {
-        // First visit / fresh install: no controller to replace → not an update.
-        if (!navigator.serviceWorker.controller) return;
+        // First visit / fresh install: this page view never ran an old bundle
+        // (no controller when it started) → not an update.
+        if (!PAGE_STARTED_CONTROLLED || !navigator.serviceWorker.controller) return;
         callback(typeof event.data.version === 'string' ? event.data.version : 'unknown');
       } catch {
         /* A throwing subscriber must not break the listener. */

@@ -2,7 +2,7 @@ import React from 'react';
 import { sound } from '../../services/sound';
 
 export type KidButtonVariant = 'primary' | 'secondary' | 'subject-viet' | 'subject-math' | 'subject-english' | 'subject-life' | 'subject-games';
-export type KidButtonSize = 'md' | 'lg' | 'xl';
+export type KidButtonSize = 'md' | 'lg' | 'xl' | 'icon' | 'tile';
 
 export interface KidButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: KidButtonVariant;
@@ -24,10 +24,20 @@ const variantClasses: Record<KidButtonVariant, string> = {
   'subject-games': 'bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white shadow-lg shadow-pink-500/40 border-4 border-pink-300',
 };
 
+// Each size owns its padding AND its alignment. Tailwind v4 emits `px-*` after
+// `p-*`, so a padding passed through `className` (e.g. `p-4`) can NOT beat the
+// size's `px-8`: a 2-column subject card on a 375px phone kept 32px of side
+// padding and only ~90px for its content. Buttons whose layout is not a single
+// centred label therefore use a size with explicit padding instead:
+//   icon — square 44px+ icon button (header, speaker)
+//   tile — card/tile: stretches its content to the full width (no centring
+//          overflow on both sides), compact padding on phones
 const sizeClasses: Record<KidButtonSize, string> = {
-  md: 'min-h-[52px] px-6 py-3 text-base',
-  lg: 'min-h-[60px] px-8 py-4 text-lg',
-  xl: 'min-h-[68px] px-10 py-5 text-xl',
+  md: 'items-center justify-center min-h-[52px] px-4 sm:px-6 py-3 text-base',
+  lg: 'items-center justify-center min-h-[60px] px-5 sm:px-8 py-3 sm:py-4 text-lg',
+  xl: 'items-center justify-center min-h-[68px] px-6 sm:px-10 py-4 sm:py-5 text-lg sm:text-xl',
+  icon: 'items-center justify-center min-h-[44px] min-w-[44px] p-2.5 text-base',
+  tile: 'flex-col items-stretch min-w-0 p-3 sm:p-4 text-base',
 };
 
 export const KidButton: React.FC<KidButtonProps> = ({
@@ -59,7 +69,7 @@ export const KidButton: React.FC<KidButtonProps> = ({
   };
 
   const baseClasses = `
-    kb-btn font-black rounded-2xl flex items-center justify-center gap-2
+    kb-btn font-black rounded-2xl flex gap-2
     cursor-pointer
     focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-amber-400
     disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100
@@ -101,6 +111,8 @@ export const KidButton: React.FC<KidButtonProps> = ({
           {leftIcon && <span aria-hidden="true">{leftIcon}</span>}
           {isTextLabel ? (
             <span className="truncate">{children}</span>
+          ) : size === 'tile' ? (
+            <span className="min-w-0 w-full flex-1 flex flex-col">{children}</span>
           ) : (
             <span className="min-w-0">{children}</span>
           )}

@@ -28,9 +28,13 @@ export const UpdateBanner: React.FC = () => {
       role="status"
       aria-live="polite"
       data-testid="update-banner"
-      className="fixed bottom-[max(1rem,env(safe-area-inset-bottom))] left-1/2 -translate-x-1/2 z-40 flex items-center gap-3 pl-4 pr-2 py-2 bg-emerald-600 text-white rounded-2xl shadow-xl max-w-[calc(100vw-2rem)]"
+      // `left-1/2 -translate-x-1/2` limited the shrink-to-fit width of this fixed
+      // box to 50% of the viewport, so on a phone the text broke one word per
+      // line; inset-x-4 + mx-auto + w-fit centres it with the full width
+      // available. Below lg it sits above the fixed bottom nav, not on it.
+      className="fixed inset-x-4 mx-auto w-fit max-w-md bottom-[calc(var(--kb-bottom-nav-h)+env(safe-area-inset-bottom)+0.5rem)] lg:bottom-[max(1rem,env(safe-area-inset-bottom))] z-40 flex items-center gap-3 pl-4 pr-2 py-2 bg-emerald-600 text-white rounded-2xl shadow-xl"
     >
-      <span className="text-sm font-bold">🎁 Có bản mới của Kho Báu!</span>
+      <span className="min-w-0 text-sm font-bold">🎁 Có bản mới của Kho Báu!</span>
       <button
         type="button"
         onClick={() => window.location.reload()}
