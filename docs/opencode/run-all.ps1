@@ -24,6 +24,11 @@
     -StatusFile <file>          where to write the status page
   Merging never checks out main: the task branch first takes in the newest main (OpenCode resolves
   conflicts, everything is verified again), then main is moved with a compare-and-swap update-ref.
+
+  Model fallback (v3.1): state\model.txt may list several models, one per line (first = preferred).
+  When OpenCode shows no progress for -StallMin minutes (free-model rate limit, 504 loops), hits the
+  time limit, or ends without changing anything, that model rests for -CooldownMin minutes and the
+  runner retries with the next model in the list.
 #>
 param(
   [string]$Model = '',
@@ -40,6 +45,8 @@ param(
   [string]$StatusFile = '',
   [string]$OcPath = '',
   [int]$MergeWaitMin = 180,
+  [int]$StallMin = 15,
+  [int]$CooldownMin = 60,
   [switch]$Once,
   [switch]$NoAutostart,
   [switch]$NoWait
@@ -118,7 +125,10 @@ $script:LastOwnActivity = [datetime]::MinValue
 function Log([string]$Msg) {
   $line = '[' + (Get-Date -Format 'yyyy-MM-dd HH:mm:ss') + ']' + $LaneTag + ' ' + $Msg
   Write-Host $line
-  try { Add-Content -Path $MainLog -Value $line -Encoding Ascii } catch {}
+  # another program reading the log (an editor, a tail) briefly blocks writes on Windows: retry
+  for ($i = 0; $i -lt 10; $i++) {
+    try { Add-Content -Path $MainLog -Value $line -Encoding Ascii -ErrorAction Stop; break } catch { Start-Sleep -Milliseconds 300 }
+  }
 }
 
 function Is-PeerTask([string]$Id) {
@@ -324,6 +334,52 @@ function Detect-Model {
   return ''
 }
 
+# state\model.txt: one model per line, first = preferred, the rest = fallbacks ('#' = comment).
+function Model-List {
+  $list = @()
+  if ($Model) { $list += $Model }
+  $f = Join-Path $StateDir 'model.txt'
+  if (Test-Path $f) { $list += @(Get-Content -Path $f -ErrorAction SilentlyContinue | ForEach-Object { $_.Trim() } | Where-Object { $_ -and ($_ -notmatch '^#') }) }
+  return @($list | Select-Object -Unique)
+}
+
+$script:Cooldown = @{}
+function Pick-Model {
+  $list = @(Model-List)
+  if ($list.Count -eq 0) { return (Detect-Model) }
+  $now = Get-Date
+  foreach ($m in $list) {
+    $t = $script:Cooldown[$m]
+    if ((-not $t) -or (($now - $t).TotalMinutes -ge $CooldownMin)) { return $m }
+  }
+  # every model is resting: take the one that failed longest ago
+  return ($list | Sort-Object { $script:Cooldown[$_] } | Select-Object -First 1)
+}
+
+function Mark-ModelBad([string]$Why) {
+  if (-not $script:ModelId) { return }
+  $old = $script:ModelId
+  $script:Cooldown[$old] = Get-Date
+  $script:ModelId = Pick-Model
+  Log ('Model ' + $old + ': ' + $Why + ' -> doi sang ' + $script:ModelId)
+  Write-Status
+}
+
+# fingerprint of the work in progress: HEAD + uncommitted diff + untracked files
+function Work-State {
+  $h = Git-Out @('rev-parse', 'HEAD')
+  $d = (& git diff HEAD 2>$null | Out-String)
+  $u = (& git ls-files --others --exclude-standard 2>$null | Out-String)
+  return ($h + '|' + $d.Length + '|' + $d.GetHashCode() + '|' + $u.GetHashCode())
+}
+
+# after an OpenCode run: rest the model if it stalled, hit the time limit or did nothing
+function Judge-Run([int]$Code, [string]$Before) {
+  if ($Code -eq 125) { Mark-ModelBad ('khong tien trien ' + $StallMin + ' phut (rate limit / loi 5xx?)'); return }
+  if ($Code -eq 124) { Mark-ModelBad 'qua thoi gian'; return }
+  if ((Work-State) -eq $Before) { Mark-ModelBad ('ket thuc (exit ' + $Code + ') ma khong thay doi gi') }
+}
+
 function Git-Out([string[]]$GitArgs) {
   $o = & git @GitArgs 2>$null
   return (($o | Out-String).Trim())
@@ -421,6 +477,8 @@ function Run-OpenCode([string]$Prompt, [string]$Title, [string]$LogBase, [int]$T
   $null = $p.Handle
   $deadline = (Get-Date).AddMinutes($TimeoutMin)
   $first = $true
+  $lastSize = -1
+  $lastGrow = Get-Date
   while (-not $p.WaitForExit(60000)) {
     Stay-Awake
     if ($first) { Track-OwnPids $since; $first = $false }
@@ -429,6 +487,16 @@ function Run-OpenCode([string]$Prompt, [string]$Title, [string]$LogBase, [int]$T
       Log ('Qua ' + $TimeoutMin + ' phut - dung OpenCode.')
       & taskkill.exe /PID $p.Id /T /F 2>$null | Out-Null
       return 124
+    }
+    # OpenCode prints every tool call; silence for a long time means it is waiting on a rate limit
+    # or retrying the same failing request (504/503) - give up and let the caller switch models
+    $size = 0
+    foreach ($lf in @($out, $err)) { try { $size += (Get-Item $lf -ErrorAction Stop).Length } catch {} }
+    if ($size -ne $lastSize) { $lastSize = $size; $lastGrow = Get-Date }
+    elseif (((Get-Date) - $lastGrow).TotalMinutes -ge $StallMin) {
+      Log ('Khong tien trien ' + $StallMin + ' phut - dung OpenCode (' + $Title + ').')
+      & taskkill.exe /PID $p.Id /T /F 2>$null | Out-Null
+      return 125
     }
   }
   $p.WaitForExit()
@@ -591,8 +659,10 @@ function Verify-And-Fix([string]$Id, [string]$File, [string]$B, [int]$Base) {
   while ($fails.Count -gt 0 -and $fix -lt $MaxFixAttempts) {
     $fix++
     Set-Result $Id ('dang tu sua loi lan ' + $fix + ': ' + ($fails -join ', '))
-    [void](Run-OpenCode (Prompt-Fix $Id $File $B ($fails -join ', ')) ('Auto ' + $Id + ' sua loi ' + ($Base + $fix)) (Join-Path $LogDir ($Id + '_fix' + ($Base + $fix))) $FixTimeoutMin)
+    $before = Work-State
+    $code = @(Run-OpenCode (Prompt-Fix $Id $File $B ($fails -join ', ')) ('Auto ' + $Id + ' sua loi ' + ($Base + $fix)) (Join-Path $LogDir ($Id + '_fix' + ($Base + $fix))) $FixTimeoutMin)[-1]
     if ((Cur-Branch) -ne $B) { [void](Ensure-Branch $B) }
+    Judge-Run $code $before
     Commit-All ('fix(' + $Id + '): auto-runner fix round ' + ($Base + $fix))
     $fails = Verify-Task $Id ($Base + $fix)
   }
@@ -643,9 +713,14 @@ function Merge-Task([string]$B, [string]$Id, [string]$File) {
         }
         Log ($Id + ': xung dot voi main o: ' + (($unmerged -split "`r?`n") -join ', ') + ' - giao OpenCode xu ly')
         Set-Result $Id ('dang xu ly xung dot khi merge (lan ' + $round + ')')
-        [void](Run-OpenCode (Prompt-Resolve $Id $File $B) ('Auto ' + $Id + ' xu ly xung dot ' + $round) (Join-Path $LogDir ($Id + '_resolve' + $round)) $FixTimeoutMin)
-        $unmerged = Git-Out @('diff', '--name-only', '--diff-filter=U')
-        $markers = Git-Out @('grep', '-n', '-I', '-E', '^(<<<<<<<|>>>>>>>) ', '--', '.')
+        for ($r = 1; $r -le 2; $r++) {
+          $before = Work-State
+          $code = @(Run-OpenCode (Prompt-Resolve $Id $File $B) ('Auto ' + $Id + ' xu ly xung dot ' + $round + '-' + $r) (Join-Path $LogDir ($Id + '_resolve' + $round + '_' + $r)) $FixTimeoutMin)[-1]
+          $unmerged = Git-Out @('diff', '--name-only', '--diff-filter=U')
+          $markers = Git-Out @('grep', '-n', '-I', '-E', '^(<<<<<<<|>>>>>>>) ', '--', '.')
+          if (-not $unmerged -and -not $markers) { break }
+          Judge-Run $code $before
+        }
         if ($unmerged -or $markers -or ((Cur-Branch) -ne $B)) {
           Log ($Id + ': OpenCode chua xu ly het xung dot')
           Run-Cmd 'git merge --abort' $lf 2 | Out-Null
@@ -695,14 +770,18 @@ function Process-Task($T) {
 
   # 1) implement (resume-aware: a task counts as implemented once its report exists)
   $attempt = 0
-  while ((-not (Test-Path $report)) -and $attempt -lt 3) {
+  $models = @(Model-List).Count
+  $maxAttempts = [Math]::Min(6, [Math]::Max(3, $models + 1))
+  while ((-not (Test-Path $report)) -and $attempt -lt $maxAttempts) {
     $attempt++
     $cont = ((Ahead $b) -gt 0)
-    Set-Result $id ('OpenCode dang lam (lan ' + $attempt + ')')
-    [void](Run-OpenCode (Prompt-Implement $id $file $b $cont) ('Auto ' + $id + ' lan ' + $attempt) (Join-Path $LogDir ($id + '_run' + $attempt)) $TaskTimeoutMin)
+    Set-Result $id ('OpenCode dang lam (lan ' + $attempt + ', ' + $script:ModelId + ')')
+    $before = Work-State
+    $code = @(Run-OpenCode (Prompt-Implement $id $file $b $cont) ('Auto ' + $id + ' lan ' + $attempt) (Join-Path $LogDir ($id + '_run' + $attempt)) $TaskTimeoutMin)[-1]
     if ((Cur-Branch) -ne $b) { Log ('Canh bao: dang o nhanh ' + (Cur-Branch) + ', chuyen ve ' + $b); [void](Ensure-Branch $b) }
+    if (-not (Test-Path $report)) { Judge-Run $code $before }
     Commit-All ('chore(' + $id + '): luu thay doi con lai (auto-runner)')
-    if ((-not (Test-Path $report)) -and ((Ahead $b) -eq 0) -and $attempt -ge 2) { break }
+    if ((-not (Test-Path $report)) -and ((Ahead $b) -eq 0) -and $attempt -ge 2 -and $models -le 1) { break }
   }
   Commit-All ('chore(' + $id + '): luu thay doi con lai (auto-runner)')
   if ((-not (Test-Path $report)) -and ((Ahead $b) -eq 0)) {
@@ -751,7 +830,7 @@ if (Test-Path $MainLog) { $script:LastOwnActivity = (Get-Item $MainLog).LastWrit
 
 $failedHard = $false
 try {
-  Log '===== Kho Bau Auto Runner v3 khoi dong ====='
+  Log '===== Kho Bau Auto Runner v3.1 khoi dong ====='
   if ($Lane -or $Only -or $Skip -or $After) { Log ('Luong: ' + $Lane + ' | chi lam: ' + ($OnlyIds -join ',') + ' | bo qua: ' + ($SkipIds -join ',') + ' | cho: ' + $After + ' | thu muc: ' + $Root) }
   Install-Autostart
   Load-Queue
@@ -807,7 +886,7 @@ try {
       }
       Wait-UserSession
       if (Test-Path $StopFile) { continue }
-      $script:ModelId = Detect-Model
+      $script:ModelId = Pick-Model
       $script:Phase = 'DANG CHAY'
       Stay-Awake
       $ok = Process-Task $t
