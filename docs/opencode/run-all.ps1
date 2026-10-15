@@ -15,6 +15,15 @@
   Status: docs\opencode\TRANG_THAI.md      Logs: docs\opencode\logs\
   Model : docs\opencode\state\model.txt if present, else the model of your latest OpenCode
           session in this project, else the OpenCode default model.
+
+  Parallel lanes (v3): a second runner can work in its own git worktree at the same time.
+    -Lane B -Only "T10A,T10B"   this runner only takes these tasks
+    -Skip "T10A,T10B"           this runner leaves these tasks to the other lane
+    -After "T16=T11A;T20A=T10A,T11A"  wait until those tasks are merged into main before starting
+    -PeerState <dir>            state dir of the other lane (status table + its OpenCode PIDs)
+    -StatusFile <file>          where to write the status page
+  Merging never checks out main: the task branch first takes in the newest main (OpenCode resolves
+  conflicts, everything is verified again), then main is moved with a compare-and-swap update-ref.
 #>
 param(
   [string]$Model = '',
@@ -23,6 +32,14 @@ param(
   [int]$MaxFixAttempts = 2,
   [int]$IdlePollSec = 120,
   [int]$QuietMin = 20,
+  [string]$Lane = '',
+  [string]$Only = '',
+  [string]$Skip = '',
+  [string]$After = '',
+  [string]$PeerState = '',
+  [string]$StatusFile = '',
+  [string]$OcPath = '',
+  [int]$MergeWaitMin = 180,
   [switch]$Once,
   [switch]$NoAutostart,
   [switch]$NoWait
@@ -31,6 +48,27 @@ param(
 $ErrorActionPreference = 'Continue'
 $ProgressPreference = 'SilentlyContinue'
 
+# Lane settings can live in state\lane.txt (key=value per line) so a restart or the Windows
+# autostart keeps the same lane; command-line parameters win over the file.
+$LaneCfg = Join-Path $PSScriptRoot 'state\lane.txt'
+if (Test-Path $LaneCfg) {
+  foreach ($l in @(Get-Content -Path $LaneCfg -ErrorAction SilentlyContinue)) {
+    if ($l -notmatch '^\s*([A-Za-z]+)\s*=\s*(.*)$') { continue }
+    $k = $Matches[1]; $v = $Matches[2].Trim()
+    if ($PSBoundParameters.ContainsKey($k)) { continue }
+    switch ($k) {
+      'Lane'       { $Lane = $v }
+      'Only'       { $Only = $v }
+      'Skip'       { $Skip = $v }
+      'After'      { $After = $v }
+      'PeerState'  { $PeerState = $v }
+      'StatusFile' { $StatusFile = $v }
+      'Model'      { $Model = $v }
+      'NoWait'     { if ($v -match '^(1|true|yes)$') { $NoWait = [switch]$true } }
+    }
+  }
+}
+
 $OcDir    = $PSScriptRoot
 $Root     = Split-Path -Parent (Split-Path -Parent $OcDir)
 $QueueDir = Join-Path $OcDir 'queue'
@@ -38,7 +76,21 @@ $StateDir = Join-Path $OcDir 'state'
 $LogDir   = Join-Path $OcDir 'logs'
 $RepDir   = Join-Path $OcDir 'reports'
 $StatusMd = Join-Path $OcDir 'TRANG_THAI.md'
+if ($StatusFile) { $StatusMd = $StatusFile }
 $StopFile = Join-Path $StateDir 'STOP'
+$PidFile  = Join-Path $StateDir 'ownpids.txt'
+$LaneTag  = ''
+if ($Lane) { $LaneTag = ' [luong ' + $Lane + ']' }
+
+function Split-Ids([string]$S) {
+  return @($S -split '[,; ]+' | Where-Object { $_ } | ForEach-Object { $_.Trim().ToUpper() })
+}
+$OnlyIds = @(Split-Ids $Only)
+$SkipIds = @(Split-Ids $Skip)
+$AfterMap = @{}
+foreach ($pair in ($After -split ';')) {
+  if ($pair -match '^\s*([A-Za-z0-9]+)\s*=\s*(.+)$') { $AfterMap[$Matches[1].Trim().ToUpper()] = @(Split-Ids $Matches[2]) }
+}
 $LockFile = Join-Path $StateDir 'runner.lock'
 $BeatFile = Join-Path $StateDir 'heartbeat.txt'
 $EmptyIn  = Join-Path $StateDir 'empty-stdin.txt'
@@ -64,32 +116,51 @@ $script:LastOwnActivity = [datetime]::MinValue
 # ---------------------------------------------------------------- logging / status
 
 function Log([string]$Msg) {
-  $line = '[' + (Get-Date -Format 'yyyy-MM-dd HH:mm:ss') + '] ' + $Msg
+  $line = '[' + (Get-Date -Format 'yyyy-MM-dd HH:mm:ss') + ']' + $LaneTag + ' ' + $Msg
   Write-Host $line
   try { Add-Content -Path $MainLog -Value $line -Encoding Ascii } catch {}
 }
 
+function Is-PeerTask([string]$Id) {
+  if ($SkipIds -contains $Id.ToUpper()) { return $true }
+  if ($OnlyIds.Count -gt 0 -and ($OnlyIds -notcontains $Id.ToUpper())) { return $true }
+  return $false
+}
+
 function Task-Result([string]$Id) {
-  $f = Join-Path $StateDir ($Id + '.result')
-  if (Test-Path $f) {
-    $r = (Get-Content -Path $f -Encoding UTF8 -ErrorAction SilentlyContinue | Select-Object -First 1)
-    if ($r) { return $r }
+  $dirs = @($StateDir)
+  $peer = (Is-PeerTask $Id)
+  if ($peer -and $PeerState) { $dirs = @($PeerState, $StateDir) }
+  foreach ($d in $dirs) {
+    $f = Join-Path $d ($Id + '.result')
+    if (Test-Path $f) {
+      $r = (Get-Content -Path $f -Encoding UTF8 -ErrorAction SilentlyContinue | Select-Object -First 1)
+      if ($r) { if ($peer) { return ('(luong khac) ' + $r) } else { return $r } }
+    }
   }
+  if ($peer) { return '(luong khac) cho' }
   return 'cho'
+}
+
+function Task-Done([string]$Id) {
+  if (Test-Path (Join-Path $StateDir ($Id + '.done'))) { return $true }
+  if ($PeerState -and (Test-Path (Join-Path $PeerState ($Id + '.done')))) { return $true }
+  return $false
 }
 
 function Write-Status {
   [string[]]$out = @()
-  $out += '# Kho Bau Auto Runner - trang thai'
+  $out += ('# Kho Bau Auto Runner' + $LaneTag + ' - trang thai')
   $out += ''
   $out += ('- Cap nhat luc: ' + (Get-Date -Format 'yyyy-MM-dd HH:mm:ss'))
   $out += ('- Tinh trang: **' + $script:Phase + '**')
   if ($script:ModelId) { $m = $script:ModelId } else { $m = '(model mac dinh cua OpenCode)' }
   $out += ('- Model OpenCode: ' + $m)
   $out += ('- Dang lam: ' + $script:Current + ' ' + $script:Note)
+  $out += ('- Thu muc lam viec: ' + $Root)
   $done = 0
-  foreach ($t in $script:Tasks) { if (Test-Path (Join-Path $StateDir ($t.Id + '.done'))) { $done++ } }
-  $out += ('- Tien do: ' + $done + '/' + $script:Tasks.Count + ' task xong')
+  foreach ($t in $script:Tasks) { if (Task-Done $t.Id) { $done++ } }
+  $out += ('- Tien do (ca 2 luong): ' + $done + '/' + $script:Tasks.Count + ' task xong')
   $out += ''
   $out += '| # | Task | File | Ket qua |'
   $out += '|---|---|---|---|'
@@ -148,7 +219,7 @@ function Disable-QuickEdit {
 }
 
 function Install-Autostart {
-  if ($NoAutostart) { return }
+  if ($NoAutostart -or $Lane) { return }
   try {
     $startup = [Environment]::GetFolderPath('Startup')
     if (-not $startup) { return }
@@ -192,6 +263,7 @@ function Acquire-Lock {
 # ---------------------------------------------------------------- OpenCode + git helpers
 
 function Find-OpenCode {
+  if ($OcPath) { return $OcPath }
   $c = Get-Command 'opencode.exe' -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
   if ($c) { return $c.Source }
   $c = Get-Command 'opencode.cmd' -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
@@ -293,9 +365,18 @@ function Track-OwnPids([datetime]$Since) {
     Get-Process -ErrorAction SilentlyContinue | Where-Object { $_.ProcessName -like 'opencode*' } | ForEach-Object {
       $st = $null
       try { $st = $_.StartTime } catch {}
-      if ($st -and ($st -ge $Since) -and ($script:OwnPids -notcontains $_.Id)) { $script:OwnPids += $_.Id }
+      if ($st -and ($st -ge $Since) -and ($script:OwnPids -notcontains $_.Id) -and ((Peer-Pids) -notcontains $_.Id)) { $script:OwnPids += $_.Id }
     }
   } catch {}
+  try { Set-Content -Path $PidFile -Value ($script:OwnPids | Select-Object -Last 50) -Encoding Ascii } catch {}
+}
+
+# OpenCode processes started by the other lane are not "a person working in the repo".
+function Peer-Pids {
+  if (-not $PeerState) { return @() }
+  $f = Join-Path $PeerState 'ownpids.txt'
+  if (-not (Test-Path $f)) { return @() }
+  return @(Get-Content -Path $f -ErrorAction SilentlyContinue | Where-Object { $_ -match '^\d+$' } | ForEach-Object { [int]$_ })
 }
 
 function Run-Cmd([string]$CmdLine, [string]$LogFile, [int]$TimeoutMin) {
@@ -382,7 +463,8 @@ function Newest-Change {
 function Wait-UserSession {
   if ($NoWait) { return }
   while ($true) {
-    $ext = @(Get-Process -ErrorAction SilentlyContinue | Where-Object { $_.ProcessName -like 'opencode*' -and ($script:OwnPids -notcontains $_.Id) })
+    $peer = Peer-Pids
+    $ext = @(Get-Process -ErrorAction SilentlyContinue | Where-Object { $_.ProcessName -like 'opencode*' -and ($script:OwnPids -notcontains $_.Id) -and ($peer -notcontains $_.Id) })
     if ($ext.Count -eq 0) { return }
     $newest = Newest-Change
     if ($newest -le $script:LastOwnActivity.AddMinutes(2)) { return }
@@ -406,9 +488,24 @@ function Load-Queue {
   $script:Tasks = $list
 }
 
+# A dependency counts as met once it has a .done marker in either lane (written only after a
+# successful merge into main, or by hand to skip a task).
+function Deps-Missing([string]$Id) {
+  $miss = @()
+  $deps = $AfterMap[$Id.ToUpper()]
+  if (-not $deps) { return @() }
+  foreach ($d in $deps) { if (-not (Task-Done $d)) { $miss += $d } }
+  return $miss
+}
+
 function Next-Task {
   foreach ($t in $script:Tasks) {
+    if (Is-PeerTask $t.Id) { continue }
     if (Test-Path (Join-Path $StateDir ($t.Id + '.done'))) { continue }
+    $miss = @(Deps-Missing $t.Id)
+    if ($miss.Count -gt 0) {
+      return [pscustomobject]@{ Id = $t.Id; File = $t.File; Path = $t.Path; Blocked = $false; WaitFor = ($miss -join ', ') }
+    }
     $bf = Join-Path $StateDir ($t.Id + '.blocked')
     $rf = Join-Path $StateDir ($t.Id + '.retry')
     if (Test-Path $bf) {
@@ -477,20 +574,113 @@ function Verify-Task([string]$Id, [int]$Round) {
   return ,$failed
 }
 
-function Merge-Task([string]$B, [string]$Id) {
+function Prompt-Resolve([string]$Id, [string]$File, [string]$B) {
+  $p = 'You are running UNATTENDED inside the Kho Bau auto-runner on Windows: nobody will answer questions. '
+  $p += 'Task ' + $Id + ' (docs/opencode/queue/' + $File + ') is finished on the current branch ' + $B + '. Another runner lane merged other tasks into main meanwhile, so the runner has just merged the newest main into this branch, and that merge has conflicts (see git status and git diff). '
+  $p += 'Resolve every conflict by editing the files so that BOTH sides keep working: keep the work of the other tasks that came from main and the work of task ' + $Id + '. Never drop lessons, questions, content, features or tests from either side; for lists and registries keep the entries of both sides; for .ai/CURRENT.md keep the lines of both sides. '
+  $p += 'Remove every conflict marker, run npm run typecheck, npm test and npm run build until all three pass, then finish the merge with git add -A and git commit --no-edit. '
+  $p += 'Stay on branch ' + $B + ': do not abort the merge and do not create, switch, rebase, stash or push branches. '
+  $p += 'Add a short section named Merge to docs/opencode/reports/' + $Id + '_REPORT.md describing how the conflicts were resolved.'
+  return $p
+}
+
+# verify, then let OpenCode fix failures up to $MaxFixAttempts times; returns the list of still failing steps
+function Verify-And-Fix([string]$Id, [string]$File, [string]$B, [int]$Base) {
+  $fails = Verify-Task $Id $Base
+  $fix = 0
+  while ($fails.Count -gt 0 -and $fix -lt $MaxFixAttempts) {
+    $fix++
+    Set-Result $Id ('dang tu sua loi lan ' + $fix + ': ' + ($fails -join ', '))
+    [void](Run-OpenCode (Prompt-Fix $Id $File $B ($fails -join ', ')) ('Auto ' + $Id + ' sua loi ' + ($Base + $fix)) (Join-Path $LogDir ($Id + '_fix' + ($Base + $fix))) $FixTimeoutMin)
+    if ((Cur-Branch) -ne $B) { [void](Ensure-Branch $B) }
+    Commit-All ('fix(' + $Id + '): auto-runner fix round ' + ($Base + $fix))
+    $fails = Verify-Task $Id ($Base + $fix)
+  }
+  return ,$fails
+}
+
+# Worktrees that have main checked out: moving main under them would leave their files stale
+# (and a later "git add -A" there would commit a silent revert), so merges wait for them.
+function Main-CheckedOutAt {
+  $paths = @()
+  $cur = ''
+  foreach ($line in @(& git worktree list --porcelain 2>$null)) {
+    if ($line -like 'worktree *') { $cur = $line.Substring(9) }
+    elseif ($line -eq 'branch refs/heads/main') { $paths += $cur }
+  }
+  return $paths
+}
+
+# Merge without ever checking out main (another lane may be merging at the same time):
+#  1) merge the newest main into the task branch here (OpenCode resolves conflicts) and verify again
+#  2) build the merge commit with commit-tree and move main with a compare-and-swap update-ref;
+#     if main moved in between, go back to 1.
+function Merge-Task([string]$B, [string]$Id, [string]$File) {
   Commit-All ('chore(' + $Id + '): luu truoc khi merge (auto-runner)')
-  & git checkout -q main 2>$null | Out-Null
-  if ((Cur-Branch) -ne 'main') { return $false }
   & git merge-base --is-ancestor $B main 2>$null | Out-Null
   if ($LASTEXITCODE -eq 0) { return $true }
   $lf = Join-Path $LogDir ($Id + '_merge.log')
-  $code = Run-Cmd ('git merge --no-ff --no-edit ' + $B) $lf 5
-  if ($code -ne 0) {
-    Run-Cmd 'git merge --abort' $lf 2 | Out-Null
-    & git checkout -q $B 2>$null | Out-Null
-    return $false
+  $deadline = (Get-Date).AddMinutes($MergeWaitMin)
+  $round = 0
+  while ($true) {
+    if ((Get-Date) -gt $deadline) { Log ($Id + ': qua ' + $MergeWaitMin + ' phut ma chua merge duoc'); return $false }
+    if ((Cur-Branch) -ne $B) { [void](Ensure-Branch $B) }
+    $old = Git-Out @('rev-parse', 'refs/heads/main')
+    if (-not ($old -match '^[0-9a-f]{40}$')) { Log 'Khong doc duoc main'; return $false }
+    & git merge-base --is-ancestor $old HEAD 2>$null | Out-Null
+    if ($LASTEXITCODE -ne 0) {
+      $round++
+      if ($round -gt 4) { Log ($Id + ': main doi lien tuc, dung merge'); return $false }
+      Heartbeat 'lay main moi nhat vao nhanh'
+      Log ($Id + ': lay main moi nhat (' + $old.Substring(0, 7) + ') vao ' + $B)
+      $code = Run-Cmd ('git merge --no-ff --no-edit ' + $old) $lf 5
+      if ($code -ne 0) {
+        $unmerged = Git-Out @('diff', '--name-only', '--diff-filter=U')
+        if (-not $unmerged) {
+          Run-Cmd 'git merge --abort' $lf 2 | Out-Null
+          Log ($Id + ': git merge loi (khong phai xung dot) - xem logs/' + $Id + '_merge.log')
+          return $false
+        }
+        Log ($Id + ': xung dot voi main o: ' + (($unmerged -split "`r?`n") -join ', ') + ' - giao OpenCode xu ly')
+        Set-Result $Id ('dang xu ly xung dot khi merge (lan ' + $round + ')')
+        [void](Run-OpenCode (Prompt-Resolve $Id $File $B) ('Auto ' + $Id + ' xu ly xung dot ' + $round) (Join-Path $LogDir ($Id + '_resolve' + $round)) $FixTimeoutMin)
+        $unmerged = Git-Out @('diff', '--name-only', '--diff-filter=U')
+        $markers = Git-Out @('grep', '-n', '-I', '-E', '^(<<<<<<<|>>>>>>>) ', '--', '.')
+        if ($unmerged -or $markers -or ((Cur-Branch) -ne $B)) {
+          Log ($Id + ': OpenCode chua xu ly het xung dot')
+          Run-Cmd 'git merge --abort' $lf 2 | Out-Null
+          if ((Cur-Branch) -ne $B) { & git checkout -q $B 2>$null | Out-Null }
+          return $false
+        }
+        Commit-All ('merge(' + $Id + '): lay main moi nhat vao ' + $B + ' (auto-runner)')
+        & git rev-parse -q --verify MERGE_HEAD 2>$null | Out-Null
+        if ($LASTEXITCODE -eq 0) { & git commit -q --no-edit 2>$null | Out-Null }
+      }
+      $fails = Verify-And-Fix $Id $File $B (10 * $round)
+      if ($fails.Count -gt 0) {
+        Log ($Id + ': sau khi lay main moi nhat van hong ' + ($fails -join ', '))
+        return $false
+      }
+      continue
+    }
+    $busy = @(Main-CheckedOutAt)
+    if ($busy.Count -gt 0) {
+      $script:Note = ''
+      Heartbeat ('cho merge: main dang duoc mo o ' + ($busy -join ', ') + ' - hay chuyen thu muc do sang nhanh khac')
+      Start-Sleep -Seconds 60
+      continue
+    }
+    $head = Git-Out @('rev-parse', 'HEAD')
+    $tree = Git-Out @('rev-parse', 'HEAD^{tree}')
+    $new = Git-Out @('commit-tree', $tree, '-p', $old, '-p', $head, '-m', ("Merge branch '" + $B + "'"))
+    if (-not ($new -match '^[0-9a-f]{40}$')) { Log ($Id + ': commit-tree loi'); return $false }
+    & git update-ref -m ('auto-runner: merge ' + $B) refs/heads/main $new $old 2>$null | Out-Null
+    if ($LASTEXITCODE -eq 0) {
+      Log ($Id + ': da merge vao main ' + $new.Substring(0, 7))
+      return $true
+    }
+    Log ($Id + ': main vua doi trong luc merge - thu lai')
   }
-  return $true
 }
 
 function Process-Task($T) {
@@ -521,24 +711,16 @@ function Process-Task($T) {
   }
 
   # 2) verify + automatic fix rounds
-  $fails = Verify-Task $id 0
-  $fix = 0
-  while ($fails.Count -gt 0 -and $fix -lt $MaxFixAttempts) {
-    $fix++
-    Set-Result $id ('dang tu sua loi lan ' + $fix + ': ' + ($fails -join ', '))
-    [void](Run-OpenCode (Prompt-Fix $id $file $b ($fails -join ', ')) ('Auto ' + $id + ' sua loi ' + $fix) (Join-Path $LogDir ($id + '_fix' + $fix)) $FixTimeoutMin)
-    if ((Cur-Branch) -ne $b) { [void](Ensure-Branch $b) }
-    Commit-All ('fix(' + $id + '): auto-runner fix round ' + $fix)
-    $fails = Verify-Task $id $fix
-  }
+  $fails = Verify-And-Fix $id $file $b 0
   if ($fails.Count -gt 0) {
     Set-Result $id ('LOI: van hong ' + ($fails -join ', ') + ' sau ' + $MaxFixAttempts + ' lan tu sua - xem logs/' + $id + '_FAIL.txt')
     return $false
   }
 
-  # 3) merge into local main
-  if (-not (Merge-Task $b $id)) {
-    Set-Result $id ('LOI: merge vao main that bai - xem logs/' + $id + '_merge.log')
+  # 3) merge into local main (takes in the other lane's work first and verifies again)
+  Set-Result $id 'dang merge vao main'
+  if (-not (Merge-Task $b $id $file)) {
+    Set-Result $id ('LOI: merge vao main that bai - xem logs/runner.log va logs/' + $id + '_merge.log')
     return $false
   }
   $mins = [int]((Get-Date) - $script:TaskStart).TotalMinutes
@@ -564,9 +746,13 @@ Get-ChildItem Env: | Where-Object { $_.Name -like 'GIT_*' } | ForEach-Object { R
 $env:P42_RUNNER = '1'
 $env:OPENCODE_DISABLE_AUTOUPDATE = '1'
 
+# Changes this runner made just before a restart are its own, not a person's.
+if (Test-Path $MainLog) { $script:LastOwnActivity = (Get-Item $MainLog).LastWriteTime }
+
 $failedHard = $false
 try {
-  Log '===== Kho Bau Auto Runner v2 khoi dong ====='
+  Log '===== Kho Bau Auto Runner v3 khoi dong ====='
+  if ($Lane -or $Only -or $Skip -or $After) { Log ('Luong: ' + $Lane + ' | chi lam: ' + ($OnlyIds -join ',') + ' | bo qua: ' + ($SkipIds -join ',') + ' | cho: ' + $After + ' | thu muc: ' + $Root) }
   Install-Autostart
   Load-Queue
   Write-Status
@@ -592,6 +778,16 @@ try {
       if (-not $t) {
         $script:Phase = 'XONG HET HANG DOI - DANG CHO VIEC MOI'
         $script:Current = '-'
+        $script:Note = ''
+        Allow-Sleep
+        Write-Status
+        if ($Once) { break }
+        Start-Sleep -Seconds $IdlePollSec
+        continue
+      }
+      if ($t.WaitFor) {
+        $script:Phase = ('CHO LUONG KHAC: ' + $t.Id + ' can ' + $t.WaitFor + ' xong truoc')
+        $script:Current = $t.Id
         $script:Note = ''
         Allow-Sleep
         Write-Status

@@ -15,6 +15,14 @@ Audit 1: [`P42_AUDIT.md`](P42_AUDIT.md) · Audit 2 (sau T01–T02): [`P42_AUDIT_
 - **Đổi model:** ghi `provider/model` vào `state/model.txt`.
 - Task bị lỗi → hàng đợi dừng ở đó; sửa file task hoặc tạo `state/<ID>.retry` để chạy lại.
 
+### Hai luồng song song (runner v3)
+
+- **Luồng chính** chạy trong thư mục này; **luồng B** chạy trong thư mục riêng `D:\trithuc\kho_bau_luong_b` (git worktree của cùng repo), mỗi luồng một model free khác nhau để không chung giới hạn.
+- Phân việc nằm trong `state/lane.txt` của từng thư mục (`Only=` / `Skip=` / `After=<task>=<task cần xong trước>`). Luồng B: nội dung Tiếng Việt, Toán, Tiếng Anh, truyện và game mới; luồng chính: giao diện, môn mới, động lực, QA.
+- Merge **không bao giờ checkout `main`**: nhánh task lấy `main` mới nhất vào trước (xung đột thì OpenCode tự xử lý), kiểm tra lại typecheck/test/build, rồi mới đẩy `main` lên. Đừng mở `main` trong thư mục nào khi runner đang chạy — merge sẽ chờ.
+- `.ai/CURRENT.md` merge kiểu union (giữ dòng của cả hai luồng).
+- **Theo dõi luồng B:** `TRANG_THAI_LUONG_B.md` · log: `kho_bau_luong_b\docs\opencode\logs\` · **Bật luồng B:** `CHAY_LUONG_B.bat` · `DUNG_LAI.bat` / `TAT_TU_DONG.bat` dừng cả hai luồng.
+
 ## Tiến độ
 
 | Đợt | Task | Trạng thái |
