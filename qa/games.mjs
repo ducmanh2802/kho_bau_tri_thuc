@@ -26,6 +26,8 @@ const GAME_TITLES = [
   'Safari Tiếng Anh — Animals',
   'Pop The Color Balloons!',
   'Phonics Pop — Bắn Âm',
+  'Simon Says — Gấu Ra Lệnh',
+  'Word Train — Tàu Chữ Tiếng Anh',
   'Lật Thẻ Trí Nhớ Vàng',
   'Bé Tập Vẽ & Tô Màu Diệu Kỳ',
 ];
