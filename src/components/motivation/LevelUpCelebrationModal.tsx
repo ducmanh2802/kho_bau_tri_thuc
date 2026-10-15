@@ -13,6 +13,26 @@ interface LevelUpCelebrationModalProps {
   levelTitle: string;
 }
 
+/**
+ * T20A — one source of truth for "the celebration is really on screen".
+ *
+ * Both the reward effect and the early return must use the exact same
+ * predicate, otherwise the fanfare can fire while nothing is shown (or the
+ * modal can appear silently).
+ */
+export function shouldCelebrateLevelUp(isOpen: boolean, result: LevelClaimResult): boolean {
+  return isOpen && result.claimed.length > 0;
+}
+
+/**
+ * T20A — the reward fanfare, extracted so it can be unit-tested: this repo
+ * ships no DOM renderer, so the effect itself cannot be mounted in tests.
+ */
+export function playLevelUpCelebration(): void {
+  sound.playLevelUp();
+  fireCelebrationConfetti();
+}
+
 export const LevelUpCelebrationModal: React.FC<LevelUpCelebrationModalProps> = ({
   isOpen,
   onClose,
@@ -21,9 +41,8 @@ export const LevelUpCelebrationModal: React.FC<LevelUpCelebrationModalProps> = (
   levelTitle,
 }) => {
   useEffect(() => {
-    if (isOpen && result.claimed.length > 0) {
-      sound.playLevelUp();
-      fireCelebrationConfetti();
+    if (shouldCelebrateLevelUp(isOpen, result)) {
+      playLevelUpCelebration();
     }
   }, [isOpen, result]);
 
@@ -36,7 +55,7 @@ export const LevelUpCelebrationModal: React.FC<LevelUpCelebrationModalProps> = (
     onClose();
   }, [onClose]);
 
-  if (!isOpen || result.claimed.length === 0) return null;
+  if (!shouldCelebrateLevelUp(isOpen, result)) return null;
 
   const newLevels = result.claimed;
   const highestLevel = Math.max(...newLevels);

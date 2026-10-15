@@ -194,7 +194,9 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             onClick={handleBearClick}
             aria-label="Phản ứng từ Linh thú Gấu"
-            className="absolute top-2 right-2 w-10 h-10 rounded-full bg-amber-100 border border-amber-200 flex items-center justify-center text-amber-600 text-xs font-bold transition-transform hover:bg-amber-200 active:scale-90"
+            // T20A / B-07 — 00_RULES §7 requires every tappable target to be at
+            // least 44px; this mascot paw was 40×40 on every screen size.
+            className="absolute top-2 right-2 w-11 h-11 rounded-full bg-amber-100 border border-amber-200 flex items-center justify-center text-amber-600 text-xs font-bold transition-transform hover:bg-amber-200 active:scale-90"
           >
             🐾
           </button>

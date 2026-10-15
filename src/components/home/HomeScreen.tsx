@@ -286,7 +286,10 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                   sound.playClick();
                   onNavigate('home'); // Parent modal will be opened from header
                 }}
-                className="text-xs md:text-sm font-bold text-amber-100 hover:text-white underline underline-offset-2"
+                // T20A / B-07 — 00_RULES §7: every tappable target ≥ 44px.
+                // This text link was 16px tall (min-w/44 + py-1 keeps the
+                // inline look while giving the finger a real target).
+                className="min-h-[44px] px-1 py-2 inline-flex items-center text-xs md:text-sm font-bold text-amber-100 hover:text-white underline underline-offset-2"
                 aria-label="Xem lý do gợi ý này ở Bảng Phụ Huynh"
               >
                 Vì sao gợi ý này?
@@ -321,8 +324,12 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
               disabled={subject.locked}
               aria-disabled={subject.locked}
             >
-              <div className="flex items-start justify-between">
-                <div>
+              <div className="flex items-start justify-between gap-2">
+                {/* T20A / B-08 — without `min-w-0` this block cannot shrink
+                    below its longest word, so the 2-column subject cards were
+                    ~24px wider than a 360px phone and the whole page scrolled
+                    sideways. */}
+                <div className="min-w-0">
                   <span className="text-[10px] uppercase font-black tracking-widest text-white/80">
                     Môn Học Lớp 1
                   </span>

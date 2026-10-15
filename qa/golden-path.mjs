@@ -4,7 +4,7 @@
  * -> COMPETITION -> TIMED TEST -> RESULT -> REVIEW -> PARENT MODE -> RELOAD -> PERSISTENCE
  */
 
-import { openFirstLesson } from './lib.mjs';
+import { openFirstLesson, describeBlocker, dismissLevelUpCelebration, openCompetitionHub } from './lib.mjs';
 const state = { steps: [], errors: [] };
 
 function log(name, detail) {
@@ -149,12 +149,21 @@ async function body(page, ui) {
   if (!osAfterLesson || osAfterLesson.skillCount === 0)
     fail('Learning OS evidence was not persisted after the lesson');
 
-  // T20A / B-03: the lesson result screen is skipped (the modal closes itself
-  // on completion), so the "Về bản đồ" button never appears. Record the defect
-  // and carry on with the rest of the journey instead of aborting here.
+  // T20A / B-03 (fixed in T20A): the lesson's own completion screen (rewards +
+  // "Về bản đồ") must stay on screen so the child sees what they earned.
+  // A claimed level stacks the celebration on top of it — dismiss it first.
+  const celebrated = await dismissLevelUpCelebration(page);
+  if (celebrated) log('levelUpCelebrationDismissed', { ok: true });
   const backToMap = page.getByRole('button', { name: 'Về bản đồ' });
   if (await backToMap.count()) {
-    await backToMap.click(CLICK);
+    try {
+      await backToMap.click(CLICK);
+    } catch (e) {
+      const blocker = await describeBlocker(page, '[role="dialog"] button');
+      log('backToMapBlocked', { blocker });
+      fail(`"Về bản đồ" click failed: ${e.message.split('\n')[0]}`);
+      throw e;
+    }
   } else {
     fail('lesson result screen skipped (B-03) — no "Về bản đồ" button after the last question');
     const lessonClose = page.locator('[data-testid="lesson-close"]');
@@ -163,7 +172,17 @@ async function body(page, ui) {
   await page.waitForTimeout(300);
 
   // ---------- 3. READING FLUENCY ----------
-  await page.locator('[data-testid="nav-reading_fluency"]:visible').first().click(CLICK);
+  const readingNav = '[data-testid="nav-reading_fluency"]:visible';
+  try {
+    await page.locator(readingNav).first().click(CLICK);
+  } catch (e) {
+    // T20A — a click that times out is itself a finding: record WHAT covers the
+    // navigation so the bug report can name the overlay.
+    const blocker = await describeBlocker(page, '[data-testid="nav-reading_fluency"]');
+    log('navigationBlocked', { selector: 'nav-reading_fluency', blocker });
+    fail(`nav-reading_fluency click failed: ${e.message.split('\n')[0]}`);
+    throw e;
+  }
   await page.waitForSelector('text=Thang Luyện Đọc Của Bé', { timeout: 20000 });
 
   const ladderText = await page.evaluate(() => document.body.innerText);
@@ -228,15 +247,11 @@ async function body(page, ui) {
   await snap(page, 'afterReading', state.steps);
 
   // ---------- 4. COMPETITION ----------
-  // T06: Competition no longer in main nav; access from Home via World Map or direct navigation
-  await page.goto(APP_ORIGIN + '/');
-  await page.waitForSelector('[data-testid="nav-home"]:visible', { timeout: 20000 });
-  // Navigate to World Map first (in main nav), then to Competition
-  await page.locator('[data-testid="nav-world_map"]:visible').first().click(CLICK);
-  await page.waitForSelector('[data-testid="world-map-viewport"]', { timeout: 20000 });
-  // From World Map, find and click Competition entry
-  await page.getByRole('button', { name: /Đấu Trường|Thi Thử/ }).first().click(CLICK);
-  await page.waitForSelector('text=Kho Báu Đấu Trường Tri Thức', { timeout: 20000 });
+  // T20A / B-04: no child-facing route leads to the arena — the world map only
+  // has the 4 subjects + games + review, and the main nav has no "Đấu Trường"
+  // item. The only entry left is the Parent Dashboard, so the probe reaches the
+  // hub the same way a grown-up does (see openCompetitionHub in qa/lib.mjs).
+  await openCompetitionHub(page);
   log('competitionHub', { ok: true });
 
   await page.getByRole('button', { name: /Vào Thi Thử/ }).first().click(CLICK);
@@ -291,7 +306,14 @@ async function body(page, ui) {
   });
   if (!resultText.includes('bảng phân tích điểm')) fail('decomposed scoring panel missing');
 
-  await page.getByRole('button', { name: 'Hoàn Tất' }).click(CLICK);
+  try {
+    await dismissLevelUpCelebration(page);
+      await page.getByRole('button', { name: 'Hoàn Tất' }).click(CLICK);
+  } catch (e) {
+    log('hoanTatBlocked', await describeBlocker(page, 'button'));
+    fail(`"Hoàn Tất" click failed: ${e.message.split('\n')[0]}`);
+    throw e;
+  }
   await page.waitForTimeout(400);
 
   // ---------- 4b. WRONG-ANSWER PASS: prove error analysis + remediation render ----------
@@ -334,7 +356,8 @@ async function body(page, ui) {
       if (!wrongText.includes('việc nên làm tiếp'))
         fail('error analysis did not render remediation for wrong answers');
 
-      await page.getByRole('button', { name: 'Hoàn Tất' }).click(CLICK);
+      await dismissLevelUpCelebration(page);
+    await page.getByRole('button', { name: 'Hoàn Tất' }).click(CLICK);
       await page.waitForTimeout(400);
     } else {
       log('errorAnalysisRendered', { skipped: 'no second exam button' });

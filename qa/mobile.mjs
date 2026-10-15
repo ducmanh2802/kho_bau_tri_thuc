@@ -16,10 +16,33 @@ const VIEWPORTS = [
   { name: '412x915', width: 412, height: 915 },
 ];
 
+/**
+ * T20A — how much the page overflows horizontally, and WHO causes it (the
+ * shallowest box whose own content is wider than it is), so a bug report can
+ * name the component instead of only "some overflow".
+ */
 async function overflowPx(page) {
   return page.evaluate(() => {
     const de = document.documentElement;
-    return Math.max(0, de.scrollWidth - de.clientWidth);
+    const overflow = Math.max(0, de.scrollWidth - de.clientWidth);
+    const sources = [];
+    if (overflow > 2) {
+      for (const el of Array.from(document.querySelectorAll('body *'))) {
+        const cs = getComputedStyle(el);
+        if (cs.overflowX !== 'visible') continue;
+        if (el.scrollWidth > el.clientWidth + 2 && el.clientWidth > 0) {
+          sources.push({
+            tag: el.tagName.toLowerCase(),
+            cls: (el.className || '').toString().slice(0, 90),
+            text: (el.getAttribute('aria-label') || el.textContent || '').trim().slice(0, 40),
+            clientWidth: el.clientWidth,
+            scrollWidth: el.scrollWidth,
+          });
+        }
+        if (sources.length >= 10) break;
+      }
+    }
+    return { overflow, sources };
   });
 }
 
@@ -53,7 +76,7 @@ export default async function run(page, ui) {
     await page.waitForTimeout(600);
 
     const home = {
-      overflow: await overflowPx(page),
+      overflow: (await overflowPx(page)).overflow,
       nav: await touchTargets(page, 'nav[aria-label="Điều hướng nhanh"] button'),
     };
     if (home.overflow > 2) out.errors.push(`${vp.name} home: horizontal overflow ${home.overflow}px`);
@@ -65,11 +88,16 @@ export default async function run(page, ui) {
     await openFirstLesson(page);
     await page.waitForSelector('[role=dialog]', { timeout: 20000 });
     await page.waitForTimeout(500);
-    const lessonOverflow = await overflowPx(page);
+    const lessonBox = await overflowPx(page);
+    const lessonOverflow = lessonBox.overflow;
     const answers = await touchTargets(page, '[role=dialog] [data-testid=answer-option]');
     const audioBtn = page.locator('[data-testid=question-audio]').first();
     const audioBox = (await audioBtn.count()) ? await audioBtn.boundingBox() : null;
-    if (lessonOverflow > 2) out.errors.push(`${vp.name} lesson: horizontal overflow ${lessonOverflow}px`);
+    if (lessonOverflow > 2) {
+      out.errors.push(
+        `${vp.name} lesson: horizontal overflow ${lessonOverflow}px — sources: ${JSON.stringify(lessonBox.sources)}`
+      );
+    }
     if (answers.bad.length) out.errors.push(`${vp.name} lesson answers: small targets ${answers.bad.join('; ')}`);
     if (audioBox && (audioBox.width < 44 || audioBox.height < 44)) {
       out.errors.push(`${vp.name} audio button below 44px: ${Math.round(audioBox.width)}x${Math.round(audioBox.height)}`);
@@ -110,7 +138,8 @@ export default async function run(page, ui) {
   await page.setViewportSize({ width: 844, height: 390 });
   await page.waitForTimeout(800);
   const landscapeDialog = (await page.locator('[role=dialog]').count()) > 0;
-  const landscapeOverflow = await overflowPx(page);
+  const landscapeBox = await overflowPx(page);
+  const landscapeOverflow = landscapeBox.overflow;
   const landOpt = page.locator('[role=dialog] [data-testid=answer-option]').first();
   let landscapeAnswered = false;
   if (await landOpt.count()) {

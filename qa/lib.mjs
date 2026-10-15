@@ -35,6 +35,59 @@ export async function openFirstLesson(page, click = { timeout: 12000 }) {
 }
 
 /**
+ * T20A — why did a click fail? Report whatever sits on top of the point.
+ * A timed-out `click()` in Playwright usually means another element
+ * intercepts pointer events (a modal/backdrop) or the target is covered.
+ */
+export async function describeBlocker(page, selector) {
+  return page.evaluate((sel) => {
+    const el = document.querySelector(sel);
+    if (!el) return { target: null };
+    const r = el.getBoundingClientRect();
+    const cx = r.left + r.width / 2;
+    const cy = r.top + r.height / 2;
+    const top = document.elementFromPoint(cx, cy);
+    const stack = document.elementsFromPoint(cx, cy).slice(0, 4).map((e) => ({
+      tag: e.tagName.toLowerCase(),
+      cls: (e.className || '').toString().slice(0, 80),
+      text: (e.getAttribute('aria-label') || e.textContent || '').trim().slice(0, 40),
+    }));
+    return {
+      target: {
+        rect: { x: Math.round(r.x), y: Math.round(r.y), w: Math.round(r.width), h: Math.round(r.height) },
+        visible: !!(r.width && r.height),
+      },
+      topMost: top
+        ? {
+            tag: top.tagName.toLowerCase(),
+            cls: (top.className || '').toString().slice(0, 80),
+            text: (top.getAttribute('aria-label') || top.textContent || '').trim().slice(0, 40),
+          }
+        : null,
+      stack,
+      openDialogs: Array.from(document.querySelectorAll('[role="dialog"]'))
+        .filter((d) => d.getBoundingClientRect().width > 0)
+        .map((d) => (d.getAttribute('aria-label') || d.textContent || '').trim().slice(0, 60)),
+    };
+  }, selector);
+}
+
+/**
+ * T20A — finishing a lesson can stack the "Chúc mừng lên level" celebration on
+ * top of the lesson result screen (both are dialogs). The celebration is
+ * dismissible, so a probe must clear it before it can reach the screen below.
+ */
+export async function dismissLevelUpCelebration(page, click = { timeout: 8000 }) {
+  const dialog = page.locator('[role="dialog"][aria-label="Chúc mừng lên level"]:visible');
+  if (!(await dialog.count())) return false;
+  const done = dialog.getByRole('button', { name: /Tuyệt Vời/ }).first();
+  if (await done.count()) await done.click(click).catch(() => {});
+  else await dialog.click({ position: { x: 5, y: 5 } }).catch(() => {});
+  await page.waitForTimeout(200);
+  return true;
+}
+
+/**
  * T20A / bug B-04 — open the competition hub ("Đấu Trường").
  *
  * The hub has no entry in the main nav and none on the world map any more: the
