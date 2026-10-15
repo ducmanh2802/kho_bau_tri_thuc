@@ -222,7 +222,10 @@ export type ActiveScreen =
   | 'competition'
   | 'achievements'
   | 'avatar_shop'
-  | 'kidbox_companion';
+  | 'kidbox_companion'
+  | 'sticker_album'
+  | 'gacha_machine'
+  | 'streak_calendar';
 
 export * from './competition';
 export * from './reading';
