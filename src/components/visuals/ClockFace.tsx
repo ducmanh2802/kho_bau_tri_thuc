@@ -5,7 +5,7 @@ export interface ClockFaceProps {
   gio: number;
   /** Phút (0–59) */
   phut: number;
-  /** Inclusive 12-hour format */
+  /** Định dạng 12 giờ */
   amPm: 'sáng' | 'chiều';
 }
 
@@ -20,9 +20,9 @@ export const ClockFace: React.FC<ClockFaceProps> = ({ gio, phut, amPm }) => {
       viewBox="0 0 200 200"
       xmlns="http://www.w3.org/2000/svg"
     >
-      {/* Vietnamese clock is 12-hour with am/pm */}
-      <circle cx="100" cy="100" r="90" fill="#fff3e0" stroke="#e65100" stroke-width="5"/>
-      {/* Hour ticks (12 positions) */}
+      {/* Mặt đồng hồ 12 giờ với sáng/chiều */}
+      <circle cx="100" cy="100" r="90" fill="#fff3e0" stroke="#e65100" strokeWidth="5" />
+      {/* Vạch giờ (12 vị trí) */}
       {Array.from({ length: 12 }, (_, i) => {
         const angle = (i * 30) * Math.PI / 180;
         const x1 = 100 + 60 * Math.cos(angle);
@@ -32,14 +32,10 @@ export const ClockFace: React.FC<ClockFaceProps> = ({ gio, phut, amPm }) => {
         const isMajor = i % 3 === 0;
         return isMajor ? (
           <g key={i}>
-            <line x1={x1} y1={y1} x2={x2} y2={y2} stroke="#e65100" stroke-width="3"/>
-            <text
-              x={x1}
-              y={y1 - 10}
-              text-anchor="middle"
-              font-size="11"
-              fill="#e65100"
-            >{i + 1}</text>
+            <line x1={x1} y1={y1} x2={x2} y2={y2} stroke="#e65100" strokeWidth="3" />
+            <text x={x1} y={y1 - 10} textAnchor="middle" fontSize="11" fill="#e65100">
+              {i + 1}
+            </text>
           </g>
         ) : (
           <line
@@ -49,13 +45,13 @@ export const ClockFace: React.FC<ClockFaceProps> = ({ gio, phut, amPm }) => {
             x2={x2}
             y2={y2}
             stroke="#e5e7eb"
-            stroke-width="1"
+            strokeWidth="1"
           />
         );
       })}
-      {/* Minute ticks (60 positions, subtle) */}
+      {/* Vạch phút (30 vị trí, nhỏ) */}
       {Array.from({ length: 30 }, (_, i) => {
-        const angle = (i * 6 + 30) * Math.PI / 180; // start at 30° (6 tick), every 6°
+        const angle = (i * 6 + 30) * Math.PI / 180;
         const r = 65;
         const x1 = 100 + r * Math.cos(angle);
         const y1 = 100 - r * Math.sin(angle);
@@ -69,40 +65,36 @@ export const ClockFace: React.FC<ClockFaceProps> = ({ gio, phut, amPm }) => {
             x2={x2}
             y2={y2}
             stroke="#e5e7eb"
-            stroke-width="1"
+            strokeWidth="1"
           />
         );
       })}
-      {/* Hour hand */}
+      {/* Kim giờ */}
       <line
         x1={100}
         y1={100}
         x2={100 + 50 * Math.cos(hourAngle * Math.PI / 180)}
         y2={100 - 50 * Math.sin(hourAngle * Math.PI / 180)}
         stroke="#e65100"
-        stroke-width="6"
-        stroke-linecap="round"
+        strokeWidth="6"
+        strokeLinecap="round"
       />
-      {/* Minute hand */}
+      {/* Kim phút */}
       <line
         x1={100}
         y1={100}
         x2={100 + 70 * Math.cos(minuteAngle * Math.PI / 180)}
         y2={100 - 70 * Math.sin(minuteAngle * Math.PI / 180)}
         stroke="#e65100"
-        stroke-width="4"
-        stroke-linecap="round"
+        strokeWidth="4"
+        strokeLinecap="round"
       />
-      {/* Center dot */}
-      <circle cx="100" cy="100" r="4" fill="#e65100"/>
-      {/* AM/PM label */}
-      <text
-        x="100"
-        y="185"
-        text-anchor="middle"
-        font-size="11"
-        fill="#667085"
-      >{amPm}</text>
+      {/* Chấm tâm */}
+      <circle cx="100" cy="100" r="4" fill="#e65100" />
+      {/* Nhãn sáng/chiều */}
+      <text x="100" y="185" textAnchor="middle" fontSize="11" fill="#667085">
+        {amPm}
+      </text>
     </svg>
   );
 };

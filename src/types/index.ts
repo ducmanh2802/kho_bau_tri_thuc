@@ -35,9 +35,15 @@ export interface Question {
    matchingPairs?: { left: string; right: string }[];
    orderingItems?: string[];
    categoryBuckets?: string[];
-   hint?: string;
-   explanation?: string;
-   visual?: {
+    hint?: string;
+    explanation?: string;
+    /**
+     * T11A/T11C — machine-checkable arithmetic fact for every calculation
+     * question: the correct answer must equal `a op b`, stay within 0–100,
+     * and be a no-carry operation (Grade 1, GDPT 2018).
+     */
+    calc?: { a: number; op: '+' | '-'; b: number };
+    visual?: {
      kind: 'TenFrame' | 'NumberLine' | 'PlaceValueBlocks' | 'Ruler' | 'ClockFace';
      props?: Record<string, unknown>;
    };

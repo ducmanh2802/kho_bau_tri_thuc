@@ -168,8 +168,7 @@ export const MATH_TOPICS_RAW: Topic[] = [
             explanation: 'Chính xác! 8 quả táo.',
           },
         ],
-      },
-    ],
+      },    ],
   },
   {
     id: 'math-so-sanh',
@@ -302,6 +301,7 @@ export const MATH_TOPICS_RAW: Topic[] = [
             correctAnswer: '5',
             hint: 'Đếm tiếp từ 3: 4, 5!',
             explanation: 'Rất giỏi! 3 + 2 = 5.',
+            calc: { a: 3, op: '+', b: 2 },
           },
           {
             id: 'math-q4-2',
@@ -317,6 +317,7 @@ export const MATH_TOPICS_RAW: Topic[] = [
             correctAnswer: '8',
             hint: '4 ngón tay cộng thêm 4 ngón tay.',
             explanation: 'Chính xác! 4 + 4 = 8.',
+            calc: { a: 4, op: '+', b: 4 },
           },
           {
             id: 'math-q4-3',
@@ -332,6 +333,7 @@ export const MATH_TOPICS_RAW: Topic[] = [
             correctAnswer: '3',
             hint: 'Có 7 ngôi sao, cần thêm mấy sao nữa để đủ 10?',
             explanation: 'Tuyệt cú mèo! 7 + 3 = 10.',
+            calc: { a: 7, op: '+', b: 3 },
           },
           {
             id: 'math-q4-4',
@@ -347,6 +349,7 @@ export const MATH_TOPICS_RAW: Topic[] = [
             correctAnswer: '6 + 3',
             hint: 'Tính từng phép cộng nhé: 5+3=8, 6+3=9...',
             explanation: 'Đúng rồi! 6 + 3 = 9.',
+            calc: { a: 6, op: '+', b: 3 },
           },
           {
             id: 'math-q4-5',
@@ -362,10 +365,10 @@ export const MATH_TOPICS_RAW: Topic[] = [
             correctAnswer: '5 + 5',
             hint: 'Hai số trong cặp phải bằng nhau và tổng bằng 10.',
             explanation: 'Chính xác! 5 + 5 = 10 và hai số bằng nhau.',
+            calc: { a: 5, op: '+', b: 5 },
           },
         ],
-      },
-    ],
+      },    ],
   },
   {
     id: 'math-tru-10',
@@ -400,6 +403,7 @@ export const MATH_TOPICS_RAW: Topic[] = [
             correctAnswer: '4',
             hint: 'Đếm lùi từ 6: 5, 4!',
             explanation: 'Đúng rồi! 6 - 2 = 4.',
+            calc: { a: 6, op: '-', b: 2 },
           },
           {
             id: 'math-q5-2',
@@ -415,6 +419,7 @@ export const MATH_TOPICS_RAW: Topic[] = [
             correctAnswer: '4',
             hint: '9 cái kẹo ăn mất 5 cái còn lại 4.',
             explanation: 'Rất giỏi! 9 - 5 = 4.',
+            calc: { a: 9, op: '-', b: 5 },
           },
           {
             id: 'math-q5-3',
@@ -430,6 +435,7 @@ export const MATH_TOPICS_RAW: Topic[] = [
             correctAnswer: '6',
             hint: 'Mười bớt bốn.',
             explanation: 'Chính xác! 10 - 4 = 6.',
+            calc: { a: 10, op: '-', b: 4 },
           },
           {
             id: 'math-q5-4',
@@ -445,6 +451,7 @@ export const MATH_TOPICS_RAW: Topic[] = [
             correctAnswer: '9 - 4',
             hint: 'Tính từng phép trừ để tìm kết quả bằng 5.',
             explanation: 'Đúng! 9 - 4 = 5.',
+            calc: { a: 9, op: '-', b: 4 },
           },
           {
             id: 'math-q5-5',
@@ -460,10 +467,10 @@ export const MATH_TOPICS_RAW: Topic[] = [
             correctAnswer: '10',
             hint: 'Cộng ngược: 7 + 3 = mấy?',
             explanation: 'Chính xác! 10 - 3 = 7.',
+            calc: { a: 10, op: '-', b: 3 },
           },
         ],
-      },
-    ],
+      },    ],
   },
   {
     id: 'math-hinh-hoc',
@@ -671,6 +678,7 @@ export const MATH_TOPICS_RAW: Topic[] = [
             correctAnswer: '16',
             hint: 'Lấy 2 + 4 = 6 rồi ghép với một chục.',
             explanation: 'Rất giỏi! 12 + 4 = 16.',
+            calc: { a: 12, op: '+', b: 4 },
           },
           {
             id: 'math-q9-2',
@@ -686,6 +694,7 @@ export const MATH_TOPICS_RAW: Topic[] = [
             correctAnswer: '13',
             hint: 'Lấy 8 - 5 = 3 rồi ghép với một chục.',
             explanation: 'Chính xác! 18 - 5 = 13.',
+            calc: { a: 18, op: '-', b: 5 },
           },
         ],
       },
@@ -724,6 +733,7 @@ export const MATH_TOPICS_RAW: Topic[] = [
             correctAnswer: '8 quả táo',
             hint: 'Mẹ cho thêm ta làm phép tính 5 + 3.',
             explanation: 'Tuyệt cú mèo! 5 + 3 = 8 quả táo.',
+            calc: { a: 5, op: '+', b: 3 },
           },
           {
             id: 'math-q10-2',
@@ -739,6 +749,7 @@ export const MATH_TOPICS_RAW: Topic[] = [
             correctAnswer: '5 chú chim',
             hint: 'Bay đi bớt đi, ta làm phép tính 7 - 2.',
             explanation: 'Chính xác! 7 - 2 = 5 chú chim.',
+            calc: { a: 7, op: '-', b: 2 },
           },
           {
             id: 'math-q10-3',
@@ -747,13 +758,14 @@ export const MATH_TOPICS_RAW: Topic[] = [
             skillId: 'math_word_problems',
             difficulty: 3,
             type: 'multiple-choice',
-            prompt: 'Lớp 1A có 14 bạn trai và 9 bạn gái. Cả lớp có bao nhiêu bạn?',
-            audioPrompt: 'Lớp 1A có 14 bạn trai và 9 bạn gái. Cả lớp có bao nhiêu bạn?',
+            prompt: 'Lớp 1A có 14 bạn trai và 5 bạn gái. Cả lớp có bao nhiêu bạn?',
+            audioPrompt: 'Lớp 1A có 14 bạn trai và 5 bạn gái. Cả lớp có bao nhiêu bạn?',
             mediaEmoji: '👫',
-            options: ['23 bạn', '22 bạn', '24 bạn', '21 bạn'],
-            correctAnswer: '23 bạn',
-            hint: 'Gộp lại dùng phép cộng 14 + 9.',
-            explanation: 'Giỏi! 14 + 9 = 23 bạn.',
+            options: ['19 bạn', '18 bạn', '20 bạn', '21 bạn'],
+            correctAnswer: '19 bạn',
+            hint: 'Gộp lại dùng phép cộng 14 + 5.',
+            explanation: 'Giỏi! 14 + 5 = 19 bạn.',
+            calc: { a: 14, op: '+', b: 5 },
           },
           {
             id: 'math-q10-4',
@@ -762,17 +774,17 @@ export const MATH_TOPICS_RAW: Topic[] = [
             skillId: 'math_word_problems',
             difficulty: 3,
             type: 'multiple-choice',
-            prompt: 'Mẹ đi chợ với 50 nghìn, mua rau hết 18 nghìn. Mẹ còn bao nhiêu?',
-            audioPrompt: 'Mẹ đi chợ với 50 nghìn, mua rau hết 18 nghìn. Mẹ còn bao nhiêu?',
+            prompt: 'Mẹ đi chợ với 50 nghìn, mua rau hết 20 nghìn. Mẹ còn bao nhiêu?',
+            audioPrompt: 'Mẹ đi chợ với 50 nghìn, mua rau hết 20 nghìn. Mẹ còn bao nhiêu?',
             mediaEmoji: '🥬',
-            options: ['32 nghìn', '68 nghìn', '42 nghìn', '22 nghìn'],
-            correctAnswer: '32 nghìn',
-            hint: 'Dùng tiền bớt đi: 50 - 18.',
-            explanation: 'Xuất sắc! 50 - 18 = 32 nghìn.',
+            options: ['30 nghìn', '68 nghìn', '42 nghìn', '22 nghìn'],
+            correctAnswer: '30 nghìn',
+            hint: 'Dùng tiền bớt đi: 50 - 20.',
+            explanation: 'Xuất sắc! 50 - 20 = 30 nghìn.',
+            calc: { a: 50, op: '-', b: 20 },
           },
         ],
-      },
-    ],
+      },    ],
   },
   {
     id: 'math-do-luong-gio-tien',
@@ -1225,8 +1237,7 @@ export const MATH_TOPICS_RAW: Topic[] = [
         ],
       },
     ],
-  },
-];
+  },];
 
 /** Balanced copy — correct answers distributed across option positions (P41 §5). */
 export const MATH_TOPICS: Topic[] = balanceTopics(MATH_TOPICS_RAW);

@@ -46,6 +46,7 @@ import {
   OrderingQuestion,
   MathExpressionQuestion,
 } from './questions';
+import { QuestionVisual } from '../visuals/QuestionVisual';
 
 interface LessonPlayerModalProps {
   lesson: Lesson;
@@ -427,6 +428,13 @@ export const LessonPlayerModal: React.FC<LessonPlayerModalProps> = ({
                 {question.mediaEmoji && (
                   <div className="text-5xl md:text-6xl mb-3 animate-pulse-subtle">
                     {question.mediaEmoji}
+                  </div>
+                )}
+
+                {/* T11C — hình trực quan (TenFrame/NumberLine/PlaceValueBlocks/...) */}
+                {question.visual && (
+                  <div className="mb-3 flex justify-center" data-testid="question-visual">
+                    <QuestionVisual visual={question.visual} />
                   </div>
                 )}
 
