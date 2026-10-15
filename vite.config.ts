@@ -52,6 +52,9 @@ export default defineConfig(() => {
           // T12B — the English lesson bank (Kid's Box-style units 1–12 in
           // `src/data/english/` + `englishCurriculum.ts`) gets the same
           // treatment so the entry chunk stays inside the 600 kB budget.
+          // T11C — the Toán lesson bank (0–100 content in `src/data/math/`
+          // + `src/data/mathCurriculum`) lives in its own `math-bank` chunk
+          // so the entry chunk stays within budget after wiring the new units.
           // (Rolldown only accepts the function form of manualChunks.)
           manualChunks: (id: string) => {
             if (id.includes('node_modules/react-dom') || id.includes('node_modules/react/')) {

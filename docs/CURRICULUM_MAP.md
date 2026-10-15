@@ -15,7 +15,7 @@
 - **Chủ điểm 11: Chữ Ghép & Quy Tắc Âm Đầu**: Nhận diện chữ ghép (ch, gh, ng, ngh, nh, th, tr, qu...), luật chính tả c/k, g/gh, ng/ngh.
 - **Chủ điểm 12: Dấu Câu & Viết Hoa**: Dấu chấm, dấu hỏi, dấu chấm than; viết hoa đầu câu và tên riêng.
 
-### 2. Phân Phối Chương Trình Toán Học (10 Chủ Điểm)
+### 2. Phân Phối Chương Trình Toán Học (12 Chủ Điểm — T11C: số đến 100, cộng trừ không nhớ, lời văn trong 100)
 - **Chủ điểm 1: Đếm Số & Chữ Số 0 - 10**: Nhận diện lượng đồ vật và viết chữ số.
 - **Chủ điểm 2: So Sánh Số & Dấu >, <, =**: Phân biệt nhiều hơn, ít hơn, bằng nhau.
 - **Chủ điểm 3: Phép Cộng Trong Phạm Vi 10**: Khái niệm gộp lại, thêm vào.
@@ -26,6 +26,9 @@
 - **Chủ điểm 8: Cộng & Trừ Phạm Vi 20 (Không Nhớ)**: Cộng trừ hàng đơn vị giữ nguyên hàng chục.
 - **Chủ điểm 9: Thời Gian & Lịch Trình**: Các buổi trong ngày (sáng, trưa, chiều, tối) và các ngày trong tuần.
 - **Chủ điểm 10: Bài Toán Có Lời Văn Lớp 1**: Nhận diện từ khóa "có tất cả" (phép +) và "còn lại" (phép -).
+- **Chủ điểm 11 (T11C): Các Số Từ 21 Đến 100**: Chục và đơn vị, số tròn chục, tia số, so sánh và sắp thứ tự đến 100 (2 bài × 10 câu, hình PlaceValueBlocks/NumberLine).
+- **Chủ điểm 12 (T11C): Cộng Trừ Không Nhớ Trong 100**: Tròn chục ± tròn chục, số 2 chữ số ± số 1 chữ số, số 2 chữ số ± số 2 chữ số, đặt tính cột (3 bài × 10 câu, đáp án tính bằng máy qua `calc`).
+- **T11C bổ sung vào bài cũ (giữ id)**: đếm 1–5/6–10, cộng/trừ trong 10, số 11–20, tính trong 20, lời văn (mỗi bài đủ 10 câu, ≥ 3 loại câu) + 4 bài mới tách–gộp số, toán tranh cộng/trừ, lời văn trong 100.
 
 ### 3. Phân Phối Chương Trình Tiếng Anh (10 Chủ Điểm)
 - Phonics ABC, Numbers 1–10, Colors, Animals, Family, School Things, My Body, Food & Fruits, Toys & Play, Greetings.

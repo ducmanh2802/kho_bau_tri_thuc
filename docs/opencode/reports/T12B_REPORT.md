@@ -45,3 +45,7 @@ Each topic has exactly 2 lessons with ≥ 10 questions, British English `audioPr
 ## Remaining
 
 - None. Task report and `.ai/CURRENT.md` updated; ready to merge by auto-runner.
+
+## Merge
+
+After merging latest main into p42/T12B, the only file with conflict markers was vite.config.ts (manual chunk comment for the English/math banks). Resolved by keeping both T12B and T11C comments and both chunk rules; all other changes from main (T11C math units, T16/T17B games and tests) were retained alongside T12B English content, and .ai/CURRENT.md keeps lines from both sides. Verification after merge: npm run typecheck, npm test (832 passes) and npm run build all pass.

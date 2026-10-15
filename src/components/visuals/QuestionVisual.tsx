@@ -6,6 +6,18 @@ import { PlaceValueBlocks, type PlaceValueBlocksProps } from './PlaceValueBlocks
 import { Ruler, type RulerProps } from './Ruler';
 import { ClockFace, type ClockFaceProps } from './ClockFace';
 
+/**
+ * T11C — Lesson-player visual renderer.
+ *
+ * A question may reference a `visual?: { kind, props }`; this component maps the
+ * kind to the matching SVG visual in `src/components/visuals/` and renders it
+ * inside the prompt card. Unknown kinds render nothing so a bad data entry can
+ * never crash a lesson.
+ *
+ * T11B — same dispatcher with defensive numeric parsing + test hooks
+ * (`data-testid="question-visual"`, `data-visual-kind`, `data-question-id`)
+ * so hand-written props can never produce a meaningless figure.
+ */
 type VisualProps = { kind: VisualKind; props?: Record<string, unknown> };
 
 function num(value: unknown, fallback: number): number {
@@ -13,12 +25,12 @@ function num(value: unknown, fallback: number): number {
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
-/** Renders the SVG referenced by `question.visual` (T05 renderer hook, T11B). */
-export const QuestionVisual: React.FC<{ visual: VisualProps; questionId?: string }> = ({
+/** Renders the SVG referenced by `question.visual` (T05 renderer hook, T11B/T11C). */
+export const QuestionVisual: React.FC<{ visual: VisualProps | NonNullable<Question['visual']>; questionId?: string }> = ({
   visual,
   questionId,
 }) => {
-  const props = visual.props ?? {};
+  const props = (visual.props ?? {}) as Record<string, unknown>;
 
   const renderInner = (): React.ReactNode => {
     switch (visual.kind) {
@@ -33,11 +45,15 @@ export const QuestionVisual: React.FC<{ visual: VisualProps; questionId?: string
       case 'Ruler': {
         const rulerProps: RulerProps = {
           length: num(props.length, 20),
-          objectLength: num(props.objectLength, 0),
+          objectLength: props.objectLength === undefined ? undefined : num(props.objectLength, 0),
         };
         return <Ruler {...rulerProps} />;
       }
       case 'TenFrame': {
+        // T11C legacy: `count` (0–20, multi-frame). T11B: `chuc`/`donVi`.
+        if (props.count !== undefined) {
+          return <TenFrame count={num(props.count, 0)} />;
+        }
         const frameProps: TenFrameProps = {
           chuc: num(props.chuc, 0),
           donVi: num(props.donVi, 0),
@@ -49,7 +65,7 @@ export const QuestionVisual: React.FC<{ visual: VisualProps; questionId?: string
         const lineProps: NumberLineProps = {
           start: num(props.start, 0),
           end: num(props.end, 20),
-          step: num(props.step, 1),
+          step: props.step === undefined ? undefined : num(props.step, 1),
           current: props.current === undefined ? undefined : num(props.current, 0),
           missing: props.missing === undefined ? undefined : num(props.missing, 0),
         };
