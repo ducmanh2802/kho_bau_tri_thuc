@@ -491,7 +491,55 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         </div>
       </div>
 
-      {/* 5. NEXT BEST ACTION CARD (from DecisionEngine) - compact version for Home */}
+      {/* 5. HỆ THỐNG ĐỘNG LỨC: Album · Máy Gắp · Lịch Chuỗi */}
+      <div>
+        <SectionTitle icon="🎁" size="md">
+          Hệ Thống Động Lực
+        </SectionTitle>
+        <div className="grid grid-cols-3 gap-3 mt-3">
+          <KidButton
+            variant="primary"
+            size="md"
+            fullWidth
+            className="min-h-[100px] text-center justify-center p-3 bg-gradient-to-br from-amber-500 to-orange-500 border-3 border-amber-300 hover:scale-[1.02] active:scale-95 text-white"
+            onClick={() => onNavigate('sticker_album')}
+          >
+            <div className="flex flex-col items-center gap-1.5">
+              <span className="text-3xl md:text-4xl">📚</span>
+              <h4 className="font-black text-sm md:text-base font-display">Album Sticker</h4>
+              <p className="text-[11px] font-semibold opacity-90">Sưu tầm 60 sticker</p>
+            </div>
+          </KidButton>
+          <KidButton
+            variant="primary"
+            size="md"
+            fullWidth
+            className="min-h-[100px] text-center justify-center p-3 bg-gradient-to-br from-rose-500 to-pink-500 border-3 border-rose-300 hover:scale-[1.02] active:scale-95 text-white"
+            onClick={() => onNavigate('gacha_machine')}
+          >
+            <div className="flex flex-col items-center gap-1.5">
+              <span className="text-3xl md:text-4xl">🎰</span>
+              <h4 className="font-black text-sm md:text-base font-display">Máy Gắp</h4>
+              <p className="text-[11px] font-semibold opacity-90">Dùng vé quay sticker</p>
+            </div>
+          </KidButton>
+          <KidButton
+            variant="primary"
+            size="md"
+            fullWidth
+            className="min-h-[100px] text-center justify-center p-3 bg-gradient-to-br from-emerald-500 to-teal-500 border-3 border-emerald-300 hover:scale-[1.02] active:scale-95 text-white"
+            onClick={() => onNavigate('streak_calendar')}
+          >
+            <div className="flex flex-col items-center gap-1.5">
+              <span className="text-3xl md:text-4xl">📅</span>
+              <h4 className="font-black text-sm md:text-base font-display">Lịch Chuỗi</h4>
+              <p className="text-[11px] font-semibold opacity-90">Dấu chân Gấu Bút Chì</p>
+            </div>
+          </KidButton>
+        </div>
+      </div>
+
+      {/* 6. NEXT BEST ACTION CARD (from DecisionEngine) - compact version for Home */}
       <NextBestActionCard onNavigate={onNavigate} />
 
       {/* 6. DAILY QUESTS LIST (compact, below the fold on mobile) */}
