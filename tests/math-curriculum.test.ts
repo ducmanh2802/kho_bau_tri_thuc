@@ -13,7 +13,7 @@ describe('Curriculum Deterministic Correctness & Invariants', () => {
       expect(q.id).toBeDefined();
       expect(q.prompt.trim().length).toBeGreaterThan(0);
       expect(q.correctAnswer).toBeDefined();
-      expect(q.subject).toMatch(/^(tieng-viet|toan|english)$/);
+      expect(q.subject).toMatch(/^(tieng-viet|toan|english|cuoc-song)$/);
 
       if (q.type === 'multiple-choice' || q.type === 'image-choice' || q.type === 'audio-choice' || q.type === 'fill-blank') {
         expect(Array.isArray(q.options)).toBe(true);
@@ -27,11 +27,14 @@ describe('Curriculum Deterministic Correctness & Invariants', () => {
 
       if (q.type === 'ordering') {
         expect(Array.isArray(q.options)).toBe(true);
-        expect(Array.isArray(q.correctAnswer)).toBe(true);
+        expect(typeof q.correctAnswer).toBe('string');
         // All ordered words must be present in options
-        for (const word of q.correctAnswer as string[]) {
+        const orderedWords = (q.correctAnswer as string).split('|').filter(Boolean);
+        for (const word of orderedWords) {
           expect(q.options).toContain(word);
         }
+        expect(q.orderingItems).toBeDefined();
+        expect(Array.isArray(q.orderingItems)).toBe(true);
       }
     }
   });

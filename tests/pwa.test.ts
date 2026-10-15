@@ -63,11 +63,17 @@ describe('Service worker contract (§25 offline safety)', () => {
     expect(cacheMatchPos).toBeGreaterThan(fetchPos);
   });
 
-  it('does not precache hashed bundles (impossible from a static file)', () => {
-    // Precache must contain the shell only.
+  it('precaches the build-generated manifest (T02C: placeholder replaced at build)', () => {
+    // public/sw.js ships a placeholder; the vite plugin replaces it with the
+    // real URL list (every JS/CSS chunk, fonts, icons) in dist/sw.js.
+    expect(swSource).toContain('__PRECACHE_MANIFEST__');
+    expect(swSource).toContain('PRECACHE_MANIFEST');
     const install = swSource.slice(swSource.indexOf("addEventListener('install'"));
-    expect(install).toContain('SHELL_URL');
-    expect(install).not.toMatch(/assets\/index-[A-Za-z0-9_-]+\.js/);
+    expect(install).toContain('PRECACHE_MANIFEST');
+    // A single versioned cache holds everything (T02C: kho-bau-v3).
+    expect(swSource).toContain("const CACHE_VERSION = 'kho-bau-v3'");
+    // The placeholder must be runtime-safe even when never replaced (dev).
+    expect(swSource).toContain("typeof __PRECACHE_MANIFEST__ !== 'undefined'");
   });
 
   it('never caches non-GET requests', () => {

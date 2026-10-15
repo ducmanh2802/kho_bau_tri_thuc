@@ -22,6 +22,7 @@ if (typeof globalThis.localStorage === 'undefined') {
 }
 
 import { StorageService, AVATAR_SHOP_ITEMS } from '../src/services/storage';
+import { seedDemoProfile } from '../src/services/demoSeed';
 import { AdaptiveService } from '../src/services/adaptive';
 
 describe('Parent Mode, Demo Data & Store Mechanics', () => {
@@ -30,7 +31,7 @@ describe('Parent Mode, Demo Data & Store Mechanics', () => {
   });
 
   it('correctly seeds realistic demo data and generates insightful parent diagnostics', () => {
-    StorageService.seedDemoProfile();
+    seedDemoProfile();
     const profile = StorageService.getChildProfile();
     expect(profile.xp).toBe(220);
     expect(profile.stars).toBe(18);
@@ -50,7 +51,7 @@ describe('Parent Mode, Demo Data & Store Mechanics', () => {
   });
 
   it('resets progress back to pristine zero baseline from demo state', () => {
-    StorageService.seedDemoProfile();
+    seedDemoProfile();
     expect(StorageService.getChildProfile().xp).toBe(220);
 
     StorageService.resetProgress();

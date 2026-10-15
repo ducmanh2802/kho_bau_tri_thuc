@@ -29,6 +29,21 @@ export type ReadingSkillCategory = 'ACCURACY' | 'FLUENCY' | 'COMPREHENSION' | 'P
  */
 export type ReadingStage = 'ACCURACY' | 'FLUENCY' | 'COMPREHENSION' | 'PROCESSING_SPEED' | 'COMPETITION_SPEED';
 
+/**
+ * T13 theme of a reading passage (6 themes x 4 passages).
+ * Legacy passages (pre-T13) leave this undefined.
+ */
+export type ReadingTheme =
+  | 'gia-dinh'
+  | 'truong-lop'
+  | 'con-vat'
+  | 'thien-nhien'
+  | 'que-huong'
+  | 'tinh-ban';
+
+/** Quick parent grading after the child reads aloud (😀 good, 😐 okay, 🙁 needs help). */
+export type ReadingParentRating = '😀' | '😐' | '🙁';
+
 export type ReadingQuestionType =
   | 'word-recognition'
   | 'syllable-clap'
@@ -95,6 +110,16 @@ export interface ReadingPassage {
   /** Comprehension questions attached to this passage. */
   questionIds: string[];
   wordCount: number;
+  /**
+   * T13 — theme of this passage (6 themes x 4). Legacy passages leave this
+   * undefined. Used for theme-based browsing and unlock-by-theme.
+   */
+  theme?: ReadingTheme;
+  /**
+   * T13 — focus rimes/letters of this passage (e.g. ['an','at']).
+   * L1 passages only use rimes from the first T10 group.
+   */
+  targetVowels?: string[];
 }
 
 /** One measured response inside a reading session. */
@@ -110,6 +135,8 @@ export interface ReadingResponse {
   /** True when the learner paused longer than the hesitation threshold. */
   hesitation: boolean;
   answeredAt: number;
+  /** Optional parent quick grade when the child reads aloud (😀/😐/🙁). */
+  parentRating?: ReadingParentRating;
 }
 
 export interface ReadingErrorCategory {
@@ -145,6 +172,8 @@ export interface ReadingMetrics {
   errors: ReadingErrorCategory[];
   /** Stable id so replaying a session never double-counts. */
   timestamp: number;
+  /** Optional parent quick-grade tally (😀/😐/🙁) for self-read items. */
+  parentRatingCounts?: Record<ReadingParentRating, number>;
 }
 
 export interface ReadingSkillState {
@@ -182,6 +211,11 @@ export interface ReadingProfile {
   headline: string;
   encouragement: string;
   lastSessionAt?: number;
+  /** Parent quick grades keyed by passage id ("😀"/"😐"/"🙁"). */
+  parentRatings?: Record<string, ReadingParentRating>;
+  /** Alias retained for compatibility with earlier naming. */
+  parentGrades?: Record<string, ReadingParentRating>;
+  selfReadRatings?: ReadingParentRating[];
 }
 
 export interface ReadingSessionResult {

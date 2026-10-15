@@ -1,6 +1,7 @@
 import { VIETNAMESE_TOPICS } from './vietnameseCurriculum';
 import { MATH_TOPICS } from './mathCurriculum';
 import { ENGLISH_TOPICS } from './englishCurriculum';
+import { LIFE_TOPICS } from './lifeCurriculum';
 import { getKidBoxSkillCatalogue } from './kidBoxTaxonomy';
 import { Lesson, Question, SubjectType, Topic } from '../types';
 
@@ -8,6 +9,7 @@ export const ALL_TOPICS: Record<SubjectType, Topic[]> = {
   'tieng-viet': VIETNAMESE_TOPICS,
   'toan': MATH_TOPICS,
   'english': ENGLISH_TOPICS,
+  'cuoc-song': LIFE_TOPICS,
 };
 
 export function getTopicsBySubject(subject: SubjectType): Topic[] {
@@ -45,7 +47,7 @@ export function getAllSkills(): { skillId: string; skillName: string; subject: S
         if (!map.has(skill)) {
           // Human-friendly skill label
           const cleanName = skill
-            .replace(/^(vn_|math_|eng_)/, '')
+            .replace(/^(vn_|math_|eng_|life_)/, '')
             .split('_')
             .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
             .join(' ');

@@ -1,6 +1,7 @@
 import {
   ReadingErrorCategory,
   ReadingMetrics,
+  ReadingParentRating,
   ReadingPassage,
   ReadingProfile,
   ReadingQuestion,
@@ -25,6 +26,7 @@ import {
 import { StorageService } from './storage';
 import type { LearningEvidence } from '../types/learningOS';
 import { SEED_POLICY } from '../config/policy';
+import { createEmptyReadingProfile, gateForReadingStage } from './readingDefaults';
 
 const SEED_SALT = SEED_POLICY.READING_SEED_SALT;
 
@@ -253,6 +255,14 @@ export class ReadingEngine {
       ([category, count]) => ({ category, count })
     );
 
+    const parentRatingCounts = { '😀': 0, '😐': 0, '🙁': 0 } as Record<string, number>;
+    for (const r of responses) {
+      if (r.parentRating && Object.prototype.hasOwnProperty.call(parentRatingCounts, r.parentRating)) {
+        parentRatingCounts[r.parentRating] += 1;
+      }
+    }
+    const hasParentRatings = Object.values(parentRatingCounts).some((n) => n > 0);
+
     return {
       sessionId,
       stage,
@@ -273,6 +283,9 @@ export class ReadingEngine {
       questionTypePerformance,
       errors,
       timestamp: endedAt,
+      parentRatingCounts: hasParentRatings
+        ? (parentRatingCounts as ReadingMetrics['parentRatingCounts'])
+        : undefined,
     };
   }
 
@@ -281,30 +294,9 @@ export class ReadingEngine {
   // ==========================================================
 
   public static emptyProfile(): ReadingProfile {
-    const stageStates = {} as Record<ReadingStage, ReadingStageState>;
-    STAGE_ORDER.forEach((stage, index) => {
-      stageStates[stage] = {
-        stage,
-        accuracy: 0,
-        accuracyGate: ReadingEngine.gateForStage(stage),
-        // Only the first stage starts unlocked; the rest open as gates are met.
-        isUnlocked: index === 0,
-        isCompleted: false,
-        attempts: 0,
-      };
-    });
-
-    return {
-      currentStage: 'ACCURACY',
-      stageStates,
-      skillStates: {},
-      readingIndex: 0,
-      accuracyIndex: 0,
-      fluencyIndex: 0,
-      comprehensionIndex: 0,
-      headline: 'Mình bắt đầu luyện đọc chắc nhé!',
-      encouragement: 'Bé cứ đọc từ từ, mình luôn ở đây đồng hành cùng bé!',
-    };
+    // T02C — single source of truth lives in `readingDefaults` so the
+    // first-load chunk can build the same shape without this engine.
+    return createEmptyReadingProfile();
   }
 
   /**
@@ -312,20 +304,7 @@ export class ReadingEngine {
    * gate, so a fast-but-inaccurate reader can never skip the comprehension work.
    */
   public static gateForStage(stage: ReadingStage): number {
-    switch (stage) {
-      case 'ACCURACY':
-        return READING_POLICY.ACCURACY_GATE;
-      case 'FLUENCY':
-        return READING_POLICY.ACCURACY_GATE;
-      case 'COMPREHENSION':
-        return READING_POLICY.COMPREHENSION_GATE;
-      case 'PROCESSING_SPEED':
-        return READING_POLICY.COMPREHENSION_ACCURACY_GATE;
-      case 'COMPETITION_SPEED':
-        return READING_POLICY.COMPREHENSION_ACCURACY_GATE;
-      default:
-        return READING_POLICY.ACCURACY_GATE;
-    }
+    return gateForReadingStage(stage);
   }
 
   /**
@@ -532,6 +511,45 @@ export class ReadingEngine {
         reason: `Cần đạt ${state.accuracyGate}% để mở bước tiếp theo. Bé đang ở ${state.accuracy}%.`,
       };
     });
+  }
+
+  /** Records a parent quick grade (😀/😐/🙁) for a passage in the profile. */
+  public static recordParentRating(
+    profile: ReadingProfile,
+    passageId: string,
+    rating: ReadingParentRating
+  ): ReadingProfile {
+    if (!profile) return profile;
+    if (!passageId || !['😀', '😐', '🙁'].includes(rating)) return profile;
+    // T14C: idempotent per passage — re-grading updates the entry instead of
+    // appending a duplicate to selfReadRatings (mirrors the persisted
+    // StorageService.saveReadingParentRating semantics).
+    const parentRatings = { ...(profile.parentRatings ?? {}), [passageId]: rating };
+    const parentGrades = { ...(profile.parentGrades ?? {}), [passageId]: rating };
+    return {
+      ...profile,
+      parentRatings,
+      parentGrades,
+      selfReadRatings: [...Object.values(parentRatings)],
+    };
+  }
+
+  /** Alias kept for compatibility with alternate naming. */
+  public static applyParentRating(
+    profile: ReadingProfile,
+    passageId: string,
+    rating: ReadingParentRating
+  ): ReadingProfile {
+    return ReadingEngine.recordParentRating(profile, passageId, rating);
+  }
+
+  /** Alias kept for alternate naming. */
+  public static gradeSelfRead(
+    profile: ReadingProfile,
+    passageId: string,
+    rating: ReadingParentRating
+  ): ReadingProfile {
+    return ReadingEngine.recordParentRating(profile, passageId, rating);
   }
 
   private static headlineFor(profile: ReadingProfile): string {

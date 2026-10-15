@@ -3,123 +3,31 @@ import { GameModalWrapper } from './GameModalWrapper';
 import { sound } from '../../services/sound';
 import { Volume2, CheckCircle2 } from 'lucide-react';
 import { useGameStage } from '../../hooks/useGameStage';
-import { defaultRoundsPerTier, getTierMeta, seededRng, shuffleSeeded } from '../../data/gameLevels';
+import { getTierMeta } from '../../data/gameLevels';
+import {
+  INITIAL_OPTIONS,
+  POOL_BY_TIER,
+  SYLLABLE_ROUNDS_PER_TIER,
+  TONE_OPTIONS,
+  VOWEL_OPTIONS,
+  buildSyllableRounds,
+} from '../../data/games/syllable_builder';
+import type { SyllablePuzzle, SyllableSeed } from '../../data/games/syllable_builder';
 
-interface SyllablePuzzle {
-  word: string;
-  emoji: string;
-  initial: string;
-  vowel: string;
-  tone: string;
-  toneSymbol: string;
-  readAloud: string;
-}
-
-interface SyllableSeed {
-  w: string;
-  i: string;
-  v: string;
-  t: string;
-  sym: string;
-  emoji: string;
-}
-
-const TONE_NAMES: Record<string, string> = {
-  ngang: 'ngang', sắc: 'sắc', huyền: 'huyền', hỏi: 'hỏi', ngã: 'ngã', nặng: 'nặng',
-};
-
-function seed(v: SyllableSeed): SyllablePuzzle {
-  return {
-    word: v.w,
-    emoji: v.emoji,
-    initial: v.i,
-    vowel: v.v,
-    tone: v.t,
-    toneSymbol: v.sym,
-    readAloud: `${v.i} - ${v.v} - ${v.i}${v.v} - ${TONE_NAMES[v.t]} - ${v.w}`,
-  };
-}
-
-const POOL_BY_TIER: SyllableSeed[][] = [
-  [
-    { w: 'cá', i: 'c', v: 'a', t: 'sắc', sym: '´', emoji: '🐟' },
-    { w: 'gà', i: 'g', v: 'a', t: 'huyền', sym: '`', emoji: '🐓' },
-    { w: 'bé', i: 'b', v: 'e', t: 'sắc', sym: '´', emoji: '👶' },
-    { w: 'bà', i: 'b', v: 'a', t: 'huyền', sym: '`', emoji: '👵' },
-    { w: 'mẹ', i: 'm', v: 'e', t: 'nặng', sym: '.', emoji: '👩' },
-    { w: 'thỏ', i: 'th', v: 'o', t: 'hỏi', sym: '?', emoji: '🐰' },
-  ],
-  [
-    { w: 'cò', i: 'c', v: 'o', t: 'huyền', sym: '`', emoji: '🦩' },
-    { w: 'bò', i: 'b', v: 'o', t: 'huyền', sym: '`', emoji: '🐮' },
-    { w: 'bí', i: 'b', v: 'i', t: 'sắc', sym: '´', emoji: '🎃' },
-    { w: 'dê', i: 'd', v: 'ê', t: 'ngang', sym: '-', emoji: '🐐' },
-    { w: 'mì', i: 'm', v: 'i', t: 'huyền', sym: '`', emoji: '🍜' },
-    { w: 'cọ', i: 'c', v: 'o', t: 'nặng', sym: '.', emoji: '🧹' },
-  ],
-  [
-    { w: 'thả', i: 'th', v: 'a', t: 'hỏi', sym: '?', emoji: '🪂' },
-    { w: 'dạ', i: 'd', v: 'a', t: 'nặng', sym: '.', emoji: '👋' },
-    { w: 'thù', i: 'th', v: 'u', t: 'huyền', sym: '`', emoji: '😾' },
-    { w: 'mả', i: 'm', v: 'a', t: 'hỏi', sym: '?', emoji: '🗿' },
-    { w: 'gò', i: 'g', v: 'o', t: 'huyền', sym: '`', emoji: '⛰️' },
-    { w: 'bú', i: 'b', v: 'u', t: 'sắc', sym: '´', emoji: '🍼' },
-  ],
-  [
-    { w: 'thê', i: 'th', v: 'ê', t: 'ngang', sym: '-', emoji: '👰' },
-    { w: 'mề', i: 'm', v: 'ê', t: 'huyền', sym: '`', emoji: '🐔' },
-    { w: 'thu', i: 'th', v: 'u', t: 'ngang', sym: '-', emoji: '🍂' },
-    { w: 'gù', i: 'g', v: 'u', t: 'huyền', sym: '`', emoji: '🕊️' },
-    { w: 'thị', i: 'th', v: 'i', t: 'nặng', sym: '.', emoji: '🛒' },
-    { w: 'củ', i: 'c', v: 'u', t: 'hỏi', sym: '?', emoji: '🥔' },
-  ],
-  [
-    { w: 'dạ', i: 'd', v: 'a', t: 'nặng', sym: '.', emoji: '🙋' },
-    { w: 'mộ', i: 'm', v: 'o', t: 'nặng', sym: '.', emoji: '🪦' },
-    { w: 'cù', i: 'c', v: 'u', t: 'huyền', sym: '`', emoji: '🪃' },
-    { w: 'gì', i: 'g', v: 'i', t: 'huyền', sym: '`', emoji: '❓' },
-    { w: 'bì', i: 'b', v: 'i', t: 'huyền', sym: '`', emoji: '🎒' },
-    { w: 'thạ', i: 'th', v: 'a', t: 'nặng', sym: '.', emoji: '🪨' },
-  ],
-  [
-    { w: 'thì', i: 'th', v: 'i', t: 'huyền', sym: '`', emoji: '⏳' },
-    { w: 'mò', i: 'm', v: 'o', t: 'huyền', sym: '`', emoji: '🔎' },
-    { w: 'gả', i: 'g', v: 'a', t: 'hỏi', sym: '?', emoji: '💍' },
-    { w: 'bẻ', i: 'b', v: 'e', t: 'hỏi', sym: '?', emoji: '🥖' },
-    { w: 'thủ', i: 'th', v: 'u', t: 'hỏi', sym: '?', emoji: '🚢' },
-    { w: 'mạ', i: 'm', v: 'a', t: 'nặng', sym: '.', emoji: '🌾' },
-  ],
-];
-
-function buildSyllableRounds(tier: number): SyllablePuzzle[] {
-  const roundsPerTier = defaultRoundsPerTier();
-  const count = roundsPerTier[tier - 1];
-  const pool = POOL_BY_TIER[Math.min(tier - 1, POOL_BY_TIER.length - 1)];
-  const shuffled = shuffleSeeded(pool, seededRng(8900 + tier * 53));
-  return Array.from({ length: count }, (_, i) => seed(shuffled[i % shuffled.length]));
-}
+export { INITIAL_OPTIONS, POOL_BY_TIER, SYLLABLE_ROUNDS_PER_TIER, VOWEL_OPTIONS, buildSyllableRounds };
+export type { SyllablePuzzle, SyllableSeed };
 
 export const SyllableBuilderGame: React.FC<{ onExit: () => void }> = ({ onExit }) => {
-  const roundsPerTier = useMemo(() => defaultRoundsPerTier(), []);
+  const roundsPerTier = useMemo(() => SYLLABLE_ROUNDS_PER_TIER.slice(), []);
   const stage = useGameStage({ gameId: 'syllable_builder', roundsPerTier, advanceDelayMs: 1500 });
   const [selectedInitial, setSelectedInitial] = useState<string>('');
   const [selectedVowel, setSelectedVowel] = useState<string>('');
   const [selectedTone, setSelectedTone] = useState<string>('');
   const [feedback, setFeedback] = useState<string | null>(null);
 
-  const rounds = useMemo(() => buildSyllableRounds(stage.tier), [stage.tier]);
+  const rounds = useMemo(() => buildSyllableRounds(stage.tier, stage.nonce), [stage.tier, stage.nonce]);
   const current = rounds[stage.roundIdx];
 
-  const INITIAL_OPTIONS = ['c', 'b', 'g', 'm', 'th', 'd'];
-  const VOWEL_OPTIONS = ['a', 'e', 'o', 'u', 'i', 'ê'];
-  const TONE_OPTIONS = [
-    { label: 'Không dấu', val: 'ngang', sym: '-' },
-    { label: 'Dấu Sắc (/)', val: 'sắc', sym: '´' },
-    { label: 'Dấu Huyền (\\)', val: 'huyền', sym: '`' },
-    { label: 'Dấu Hỏi (?)', val: 'hỏi', sym: '?' },
-    { label: 'Dấu Ngã (~)', val: 'ngã', sym: '~' },
-    { label: 'Dấu Nặng (.)', val: 'nặng', sym: '.' },
-  ];
 
   const handleCheck = () => {
     if (stage.locked) return;
@@ -152,6 +60,7 @@ export const SyllableBuilderGame: React.FC<{ onExit: () => void }> = ({ onExit }
 
   return (
     <GameModalWrapper
+      gameId="syllable_builder"
       title="Xưởng Ghép Tiếng Lớp 1"
       subtitle="Ghép các mảnh âm đầu, vần và dấu thanh để tạo thành từ đúng"
       mascotEmoji="🦊"
@@ -167,7 +76,8 @@ export const SyllableBuilderGame: React.FC<{ onExit: () => void }> = ({ onExit }
       nextTierMeta={stage.tier + 1 <= stage.tierCount ? getTierMeta(stage.tier + 1) : undefined}
       onNextTier={stage.startNextTier}
       earnedXp={stage.xpEarned}
-      earnedStars={1}
+      earnedStars={stage.starsEarned}
+      prevBestStars={stage.prevBestStars}
       onRestart={stage.restartGame}
       onExit={onExit}
       instructions={`Bé hãy ghép thành từ: "${current.word}"`}

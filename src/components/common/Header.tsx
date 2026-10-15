@@ -1,7 +1,10 @@
-import React from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { ActiveScreen, ChildProfile } from '../../types';
+import { StorageService } from '../../services/storage';
 import { sound } from '../../services/sound';
 import { Star, Sparkles, Flame, Volume2, VolumeX, Shield, ShoppingBag } from 'lucide-react';
+import { KidButton, Pill } from '../ui';
+import { NAVIGATION, getSubjectColor } from '../../config/navigation';
 
 interface HeaderProps {
   currentScreen: ActiveScreen;
@@ -11,29 +14,102 @@ interface HeaderProps {
   onOpenShop: () => void;
 }
 
-type NavEntry = { screen: ActiveScreen; label: string; icon: string };
+const getTimeOfDay = (): 'sáng' | 'chiều' | 'tối' => {
+  const hour = new Date().getHours();
+  if (hour >= 5 && hour < 11) return 'sáng';
+  if (hour >= 11 && hour < 18) return 'chiều';
+  return 'tối';
+};
+
+const getEncouragementPhrase = (timeOfDay: 'sáng' | 'chiều' | 'tối', hasStreak: boolean): string => {
+  const phrases: Record<'sáng' | 'chiều' | 'tối', string> = {
+    sáng: 'Chào buổi sáng bé oir!',
+    chiều: 'Bé làm tốt lắm!',
+    tối: 'Ngủ gật đi bé, gấu sẽ chờ bé mai!',
+  };
+  if (hasStreak) {
+    return 'Bền bỉ lắm bé!';
+  }
+  return phrases[timeOfDay];
+};
 
 const NavLink: React.FC<{
-  item: NavEntry;
+  item: (typeof NAVIGATION)[number];
   current: ActiveScreen;
   onNavigate: (screen: ActiveScreen) => void;
-}> = ({ item, current, onNavigate }) => (
-  <button
-    onClick={() => {
-      sound.playClick();
-      onNavigate(item.screen);
-    }}
-    aria-current={current === item.screen ? 'page' : undefined}
-    className={`min-h-[44px] px-3 rounded-xl font-bold text-sm flex items-center gap-1.5 transition-all whitespace-nowrap cursor-pointer ${
-      current === item.screen
-        ? 'bg-amber-100 text-amber-950 font-black shadow-xs'
-        : 'text-slate-600 hover:text-amber-950 hover:bg-amber-50/60'
-    }`}
-  >
-    <span aria-hidden="true">{item.icon}</span>
-    <span>{item.label}</span>
-  </button>
-);
+  /** T01B/3 — ở 1024–1280 chỉ hiện icon (vừa khít, không tràn). */
+  iconOnly?: boolean;
+}> = ({ item, current, onNavigate, iconOnly = false }) => {
+  const activeColor = getSubjectColor(item.screen);
+  return (
+    <button
+      onClick={() => {
+        sound.playClick();
+        onNavigate(item.screen);
+      }}
+      aria-current={current === item.screen ? 'page' : undefined}
+      // T01B/11 — QA hook thống nhất cho mọi mục điều hướng.
+      data-testid={`nav-${item.screen}`}
+      aria-label={item.label}
+      title={item.label}
+      className={`min-h-[44px] ${iconOnly ? 'min-w-[44px] px-2.5 justify-center' : 'px-3'} rounded-xl font-bold text-sm flex items-center gap-1.5 transition-all whitespace-nowrap cursor-pointer ${
+        current === item.screen
+          ? `bg-${activeColor}-100 text-${activeColor}-950 font-black shadow-xs`
+          : 'text-slate-600 hover:text-amber-950 hover:bg-amber-50/60'
+      }`}
+    >
+      <span aria-hidden="true">{item.icon}</span>
+      {iconOnly ? <span className="sr-only">{item.label}</span> : <span>{item.label}</span>}
+    </button>
+  );
+};
+
+const bearReactionPhrases = [
+  'Gấu rất thích khi bé chơi với gấu!',
+  'Bé đang làm tốt lắm, gấu đang 지켜 thu!',
+  'Hết! Gấu cười lên!',
+  'Bouncing!',
+  'Hết lâu rưỡi!',
+];
+
+const bearRandomReaction = (
+  setShowBearReaction: React.Dispatch<React.SetStateAction<boolean>>
+): void => {
+  const randomIndex = Math.floor(Math.random() * bearReactionPhrases.length);
+  const phrase = bearReactionPhrases[randomIndex];
+
+  // Play corresponding sound
+  if (typeof window !== 'undefined' && !sound.getMuted()) {
+    try {
+      if (randomIndex === 0) {
+        // Laugh
+        const utterance = new SpeechSynthesisUtterance('haha');
+        utterance.rate = 0.8;
+ utterance.pitch = 1.3;
+        window.speechSynthesis.speak(utterance);
+      } else if (randomIndex === 1) {
+        // Encouragement
+        const utterance = new SpeechSynthesisUtterance('chanh');
+        utterance.rate = 0.7;
+ utterance.pitch = 1.1;
+        window.speechSynthesis.speak(utterance);
+      } else if (randomIndex === 2) {
+        // Sneeze
+        const utterance = new SpeechSynthesisUtterance('huh');
+ utterance.rate = 0.5;
+ utterance.pitch = 0.8;
+        window.speechSynthesis.speak(utterance);
+      } else {
+        // Just play click
+        sound.playClick();
+      }
+    } catch {}
+  }
+
+  // Show temporary visual feedback
+  setShowBearReaction(true);
+  setTimeout(() => setShowBearReaction(false), 2000);
+};
 
 export const Header: React.FC<HeaderProps> = ({
   currentScreen,
@@ -43,6 +119,42 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenShop,
 }) => {
   const [isMuted, setIsMuted] = React.useState(sound.getMuted());
+  const [lastPhraseTime, setLastPhraseTime] = useState<number>(0);
+  const [showBearReaction, setShowBearReaction] = useState(false);
+
+  // Check days since last play using analytics todayDate
+  useEffect(() => {
+    const analytics = StorageService.getAnalytics();
+    const today = new Date().toISOString().split('T')[0];
+    const lastPlayedDate = analytics.todayDate;
+    const daysSinceLastPlay = lastPlayedDate !== today && lastPlayedDate ? 1 : 0;
+    // Just track if we played today, no complex day counting needed
+  }, []);
+
+  // Play contextual greeting when component mounts or time changes
+  useEffect(() => {
+    const timeOfDay = getTimeOfDay();
+    const hasStreak = profile.streak > 0;
+    const phrase = getEncouragementPhrase(timeOfDay, hasStreak);
+    const now = Date.now();
+
+    // Only play if enough time has passed (avoid spamming)
+    if (now - lastPhraseTime > 24 * 60 * 60 * 1000) {
+      // Don't play if muted
+      if (!isMuted) {
+        sound.speak(phrase, 'vi-VN');
+      }
+      setLastPhraseTime(now);
+    }
+  }, [isMuted]);
+
+  // Handle bear touch reaction
+  const handleBearClick = () => {
+    sound.playClick();
+    bearRandomReaction(setShowBearReaction);
+    setShowBearReaction(true);
+    setTimeout(() => setShowBearReaction(false), 2000);
+  };
 
   const handleToggleSound = () => {
     const next = !isMuted;
@@ -51,50 +163,52 @@ export const Header: React.FC<HeaderProps> = ({
     if (!next) sound.playClick();
   };
 
-  const navItems: NavEntry[] = [
-    { screen: 'home', label: 'Trang Chủ', icon: '🏠' },
-    { screen: 'world_map', label: 'Bản Đồ', icon: '🗺️' },
-    { screen: 'reading_fluency', label: 'Luyện Đọc', icon: '📖' },
-    { screen: 'competition', label: 'Đấu Trường', icon: '🏆' },
-    { screen: 'games', label: 'Trò Chơi', icon: '🎮' },
-    { screen: 'daily_review', label: 'Ôn Tập', icon: '💡' },
-    { screen: 'achievements', label: 'Vườn Sao', icon: '🌳' },
-  ];
-
-  /** Subset that provably fits beside the action pills at the xl breakpoint. */
-  const PRIMARY_NAV: NavEntry[] = navItems.filter((n) =>
-    ['home', 'reading_fluency', 'competition', 'daily_review'].includes(n.screen)
-  );
+  // Use single navigation config (T06) — exactly 5 items
+  const navItems = NAVIGATION;
 
   return (
-    <header className="sticky top-0 z-40 w-full bg-white/95 backdrop-blur-md border-b-2 border-amber-200/80 shadow-xs">
+    <header
+      className="sticky top-0 z-40 w-full bg-[var(--color-kb-card)]/95 backdrop-blur-md border-b-2 border-amber-200/80 shadow-xs"
+    >
       <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 h-16 flex items-center justify-between gap-2 sm:gap-4">
         {/* Zone 1: Single text element wordmark */}
-        <button
+        <KidButton
+          variant="secondary"
+          size="md"
+          className="gap-2 text-left shrink-0 min-w-0 min-w-[44px] min-h-[44px] justify-center sm:justify-start"
           onClick={() => {
             sound.playClick();
             onNavigate('home');
           }}
-          className="flex items-center gap-2 text-left cursor-pointer group shrink-0 min-w-0 min-w-[44px] min-h-[44px] justify-center sm:justify-start"
+          aria-label="Về trang chủ"
         >
-          <span className="text-2xl group-hover:scale-110 transition-transform" aria-hidden="true">
-            🐻
-          </span>
+          <span className="text-2xl" aria-hidden="true">🐻</span>
           <span className="hidden sm:inline text-lg xl:text-xl font-black text-amber-950 tracking-tight font-display truncate">
             Kho Báu Tri Thức
           </span>
           <span className="sm:hidden sr-only">Kho Báu Tri Thức — Về trang chủ</span>
-        </button>
+        </KidButton>
 
-        {/*
-          Zone 2: navigation.
-          Seven links plus the action pills cannot share one row below 2xl, so
-          xl shows the four primary destinations and the sticky bottom bar
-          carries the full set until 2xl.
+        {/* Bear mascot touch reaction (hidden on small screens) */}
+        {typeof window !== 'undefined' && window.innerWidth >= 375 && (
+          <button
+            onClick={handleBearClick}
+            aria-label="Phản ứng từ Linh thú Gấu"
+            className="absolute top-2 right-2 w-10 h-10 rounded-full bg-amber-100 border border-amber-200 flex items-center justify-center text-amber-600 text-xs font-bold transition-transform hover:bg-amber-200 active:scale-90"
+          >
+            🐾
+          </button>
+        )}
+
+        {/* Zone 2: navigation (T01/B11 + T01B/3 + T06).
+          >= 1024px (lg) only the top nav shows; < 1024px only the bottom nav
+          shows (see App.tsx). lg–2xl shows ALL 5 destinations as ICON-ONLY
+          (hover/title + aria-label giữ tên đầy đủ) so the bar provably fits
+          1024/1280/1440; 2xl+ shows the full set with labels.
         */}
-        <nav aria-label="Điều hướng chính" className="hidden xl:flex 2xl:hidden items-center gap-1">
-          {PRIMARY_NAV.map((item) => (
-            <NavLink key={item.screen} item={item} current={currentScreen} onNavigate={onNavigate} />
+        <nav aria-label="Điều hướng chính" className="hidden lg:flex 2xl:hidden items-center gap-1">
+          {navItems.map((item) => (
+            <NavLink key={item.screen} item={item} current={currentScreen} onNavigate={onNavigate} iconOnly />
           ))}
         </nav>
         <nav aria-label="Điều hướng chính (đầy đủ)" className="hidden 2xl:flex items-center gap-1">
@@ -106,74 +220,80 @@ export const Header: React.FC<HeaderProps> = ({
         {/* Zone 3: primary actions & kid profile stats */}
         <div className="flex items-center gap-1.5 sm:gap-2 md:gap-3 shrink-0">
           {/* Streak indicator */}
-          <div
-            title={`Chuỗi học ${profile.streak} ngày liên tiếp`}
-            className="hidden md:flex items-center gap-1 px-2.5 min-h-[36px] bg-orange-50 border border-orange-200 rounded-full text-xs font-black text-orange-700"
+          <Pill
+            variant="streak"
+            size="sm"
+            icon={<Flame className="w-4 h-4 fill-orange-500 text-orange-500" aria-hidden="true" />}
+            className="hidden md:flex"
           >
-            <Flame className="w-4 h-4 fill-orange-500 text-orange-500" aria-hidden="true" />
             <span className="tabular-nums">{profile.streak}</span>
             <span className="sr-only">ngày liên tiếp</span>
-          </div>
+          </Pill>
 
           {/* Stars indicator */}
-          <div
-            title={`Tổng số sao: ${profile.stars}`}
-            className="hidden sm:flex items-center gap-1 px-2.5 min-h-[36px] bg-amber-50 border border-amber-200 rounded-full text-xs font-black text-amber-700"
+          <Pill
+            variant="star"
+            size="sm"
+            icon={<Star className="w-4 h-4 fill-amber-400 text-amber-500" aria-hidden="true" />}
+            className="hidden sm:flex"
           >
-            <Star className="w-4 h-4 fill-amber-400 text-amber-500" aria-hidden="true" />
             <span className="tabular-nums">{profile.stars}</span>
             <span className="sr-only">ngôi sao</span>
-          </div>
+          </Pill>
 
-          {/* XP counter */}
-          <div
-            title={`Điểm kinh nghiệm: ${profile.xp} XP`}
-            className="hidden lg:flex items-center gap-1 px-2.5 min-h-[36px] bg-purple-50 border border-purple-200 rounded-full text-xs font-black text-purple-700"
+          {/* XP counter — T01B/3: chỉ hiện từ xl (1280+) để không tràn ở 1024 */}
+          <Pill
+            variant="level"
+            size="sm"
+            icon={<Sparkles className="w-3.5 h-3.5 text-purple-600" aria-hidden="true" />}
+            className="hidden xl:flex"
           >
-            <Sparkles className="w-3.5 h-3.5 text-purple-600" aria-hidden="true" />
             <span className="tabular-nums">{profile.xp} XP</span>
-          </div>
+          </Pill>
 
           {/* Avatar Shop Button */}
-          <button
+          <KidButton
+            variant="secondary"
+            size="md"
+            className="min-w-[44px] min-h-[44px] px-3"
             onClick={() => {
               sound.playClick();
               onOpenShop();
             }}
             aria-label="Tủ đồ thời trang và Linh thú"
-            className="min-w-[44px] min-h-[44px] flex items-center justify-center bg-amber-100 hover:bg-amber-200 text-amber-900 rounded-xl transition-transform active:scale-95 cursor-pointer"
-          >
-            <ShoppingBag className="w-4 h-4" aria-hidden="true" />
-          </button>
+            leftIcon={<ShoppingBag className="w-4 h-4" aria-hidden="true" />}
+          />
 
           {/* Sound Mute Toggle — hidden on extremely narrow widths (200% zoom):
               it duplicates the Parent Dashboard sound control and every game
               has its own mute toggle, so nothing becomes unreachable. */}
-          <button
+          <KidButton
+            variant="secondary"
+            size="md"
+            className="min-w-[44px] min-h-[44px] max-[300px]:hidden px-3"
             onClick={handleToggleSound}
             aria-label={isMuted ? 'Bật âm thanh' : 'Tắt âm thanh'}
             aria-pressed={isMuted}
-            className="min-w-[44px] min-h-[44px] max-[300px]:hidden items-center justify-center bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition-transform active:scale-95 cursor-pointer flex"
-          >
-            {isMuted ? (
+            leftIcon={isMuted ? (
               <VolumeX className="w-4 h-4 text-rose-500" aria-hidden="true" />
             ) : (
               <Volume2 className="w-4 h-4" aria-hidden="true" />
             )}
-          </button>
+          />
 
           {/* Parent Mode Gate button */}
-          <button
+          <KidButton
+            variant="primary"
+            size="md"
+            className="min-h-[44px] min-w-[44px] px-3"
             onClick={() => {
               sound.playClick();
-              onOpenParent();
+              onOpenParent;
             }}
             aria-label="Khu vực dành cho Ba Mẹ"
-            className="min-h-[44px] min-w-[44px] px-3 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-black flex items-center justify-center gap-1.5 transition-transform active:scale-95 cursor-pointer"
-          >
-            <Shield className="w-3.5 h-3.5 text-amber-400" aria-hidden="true" />
-            <span className="hidden lg:inline">Ba Mẹ</span>
-          </button>
+            leftIcon={<Shield className="w-3.5 h-3.5 text-amber-400" aria-hidden="true" />}
+            rightIcon={<span className="hidden lg:inline">Ba Mẹ</span>}
+          />
         </div>
       </div>
     </header>

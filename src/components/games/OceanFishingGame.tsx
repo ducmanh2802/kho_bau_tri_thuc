@@ -2,51 +2,19 @@ import React, { useMemo, useState } from 'react';
 import { GameModalWrapper } from './GameModalWrapper';
 import { sound } from '../../services/sound';
 import { useGameStage } from '../../hooks/useGameStage';
-import { defaultRoundsPerTier, getTierMeta, numericOptions, seededRng, shuffleSeeded } from '../../data/gameLevels';
+import { defaultRoundsPerTier, getTierMeta } from '../../data/gameLevels';
+import { buildFishRounds } from '../../data/games/ocean_fishing';
+import type { FishItem, FishQuestion } from '../../data/games/ocean_fishing';
 
-interface FishItem {
-  val: number;
-  emoji: string;
-  color: string;
-}
-
-interface FishQuestion {
-  expr: string;
-  ans: number;
-  fishPool: FishItem[];
-}
-
-const FISH_EMOJI = ['🐠', '🐟', '🐡'] as const;
-const FISH_COLORS = ['text-amber-500', 'text-blue-500', 'text-rose-500', 'text-emerald-500', 'text-purple-500', 'text-teal-500'] as const;
-
-function buildFishRounds(tier: number): FishQuestion[] {
-  const roundsPerTier = defaultRoundsPerTier();
-  const count = roundsPerTier[tier - 1];
-  const maxA = tier <= 1 ? 5 : tier <= 3 ? 10 : 20;
-  const maxB = tier <= 3 ? maxA : tier <= 4 ? 9 : 12;
-  const rounds: FishQuestion[] = [];
-  for (let i = 0; i < count; i++) {
-    const rngI = seededRng(2300 + tier * 53 + i * 157);
-    const a = Math.max(2, Math.floor(rngI() * maxA) + 1);
-    const b = tier <= 3 ? Math.max(1, Math.min(Math.floor(rngI() * a), maxB - a + a)) : Math.floor(rngI() * maxB) + 1;
-    const ans = Math.max(0, a - b);
-    const vals = numericOptions(ans, 4, rngI, 0, maxA);
-    const fishPool = vals.map((val, idx) => ({
-      val,
-      emoji: FISH_EMOJI[idx % FISH_EMOJI.length],
-      color: FISH_COLORS[Math.floor(rngI() * FISH_COLORS.length)],
-    }));
-    rounds.push({ expr: `${a} - ${b}`, ans, fishPool: shuffleSeeded(fishPool, seededRng(2300 + tier * 53 + i * 911)) });
-  }
-  return rounds;
-}
+export { buildFishRounds };
+export type { FishItem, FishQuestion };
 
 export const OceanFishingGame: React.FC<{ onExit: () => void }> = ({ onExit }) => {
   const roundsPerTier = useMemo(() => defaultRoundsPerTier(), []);
   const stage = useGameStage({ gameId: 'ocean_fishing', roundsPerTier, advanceDelayMs: 1400 });
   const [hookedFish, setHookedFish] = useState<number | null>(null);
 
-  const rounds = useMemo(() => buildFishRounds(stage.tier), [stage.tier]);
+  const rounds = useMemo(() => buildFishRounds(stage.tier, stage.nonce), [stage.tier, stage.nonce]);
   const current = rounds[stage.roundIdx];
 
   const handleCatchFish = (val: number) => {
@@ -66,6 +34,7 @@ export const OceanFishingGame: React.FC<{ onExit: () => void }> = ({ onExit }) =
 
   return (
     <GameModalWrapper
+      gameId="ocean_fishing"
       title="Câu Cá Đại Dương Xanh"
       subtitle="Thả cần câu bắt chú cá mang kết quả đúng của phép trừ"
       mascotEmoji="🎣"
@@ -81,7 +50,8 @@ export const OceanFishingGame: React.FC<{ onExit: () => void }> = ({ onExit }) =
       nextTierMeta={stage.tier + 1 <= stage.tierCount ? getTierMeta(stage.tier + 1) : undefined}
       onNextTier={stage.startNextTier}
       earnedXp={stage.xpEarned}
-      earnedStars={1}
+      earnedStars={stage.starsEarned}
+      prevBestStars={stage.prevBestStars}
       onRestart={stage.restartGame}
       onExit={onExit}
       instructions={`Tính phép trừ: ${current.expr} = ?`}

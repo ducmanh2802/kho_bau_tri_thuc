@@ -3,43 +3,18 @@ import { GameModalWrapper } from './GameModalWrapper';
 import { sound } from '../../services/sound';
 import { Zap } from 'lucide-react';
 import { useGameStage } from '../../hooks/useGameStage';
-import { defaultRoundsPerTier, getTierMeta, numericOptions, seededRng } from '../../data/gameLevels';
+import { defaultRoundsPerTier, getTierMeta } from '../../data/gameLevels';
+import { buildRaceQuestions } from '../../data/games/speed_racing';
+import type { MathQuestion } from '../../data/games/speed_racing';
 
-interface MathQuestion {
-  expr: string;
-  ans: number;
-  options: number[];
-}
-
-function buildRaceQuestions(tier: number): MathQuestion[] {
-  const roundsPerTier = defaultRoundsPerTier();
-  const count = roundsPerTier[tier - 1];
-  const max = tier <= 1 ? 5 : tier <= 3 ? 10 : tier === 4 ? 15 : 20;
-  const questions: MathQuestion[] = [];
-  for (let i = 0; i < count; i++) {
-    const rng = seededRng(3400 + tier * 71 + i * 229);
-    const useSub = rng() < (tier >= 2 ? 0.45 : 0.2);
-    if (useSub) {
-      const a = Math.max(2, Math.floor(rng() * max) + 1);
-      const b = Math.max(1, Math.floor(rng() * a));
-      const ans = a - b;
-      questions.push({ expr: `${a} - ${b}`, ans, options: numericOptions(ans, 4, rng, 0, max) });
-    } else {
-      const a = Math.floor(rng() * max) + 1;
-      const b = max - a > 0 ? Math.floor(rng() * (max - a)) + 1 : 1;
-      const ans = a + b;
-      questions.push({ expr: `${a} + ${b}`, ans, options: numericOptions(ans, 4, rng, 0, max) });
-    }
-  }
-  return questions;
-}
+export { buildRaceQuestions };
 
 export const MathSpeedRacingGame: React.FC<{ onExit: () => void }> = ({ onExit }) => {
   const roundsPerTier = useMemo(() => defaultRoundsPerTier(), []);
   const stage = useGameStage({ gameId: 'speed_racing', roundsPerTier, advanceDelayMs: 1200 });
   const [turboActive, setTurboActive] = useState(false);
 
-  const questions = useMemo(() => buildRaceQuestions(stage.tier), [stage.tier]);
+  const questions = useMemo(() => buildRaceQuestions(stage.tier, stage.nonce), [stage.tier, stage.nonce]);
   const current = questions[stage.roundIdx];
   const carProgress = 10 + (Math.min(stage.roundNumber, stage.roundTotal) / stage.roundTotal) * 80;
 
@@ -60,6 +35,7 @@ export const MathSpeedRacingGame: React.FC<{ onExit: () => void }> = ({ onExit }
 
   return (
     <GameModalWrapper
+      gameId="speed_racing"
       title="Đường Đua Toán Học Thần Tốc"
       subtitle="Giải nhanh các phép tính để xe đua phóng vút về đích"
       mascotEmoji="🏎️"
@@ -75,7 +51,8 @@ export const MathSpeedRacingGame: React.FC<{ onExit: () => void }> = ({ onExit }
       nextTierMeta={stage.tier + 1 <= stage.tierCount ? getTierMeta(stage.tier + 1) : undefined}
       onNextTier={stage.startNextTier}
       earnedXp={stage.xpEarned}
-      earnedStars={1}
+      earnedStars={stage.starsEarned}
+      prevBestStars={stage.prevBestStars}
       onRestart={stage.restartGame}
       onExit={onExit}
       instructions="Bé hãy chọn kết quả đúng của phép tính để nạp năng lượng Nitro cho xe đua!"

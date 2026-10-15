@@ -6,6 +6,7 @@ import { HomeScreen } from './components/home/HomeScreen';
 import { WorldMapScreen } from './components/world/WorldMapScreen';
 import { SubjectScreen } from './components/subject/SubjectScreen';
 import { DailyReviewScreen } from './components/review/DailyReviewScreen';
+import { NAVIGATION } from './config/navigation';
 
 /**
  * CODE SPLITTING (P31)
@@ -47,6 +48,20 @@ const UpdateBanner = lazy(() =>
   import('./components/system/UpdateBanner').then((m) => ({ default: m.UpdateBanner }))
 );
 
+/** T18B — Motivation UI screens (lazy loaded). */
+const StickerAlbumScreen = lazy(() =>
+  import('./components/motivation/StickerAlbumScreen').then((m) => ({ default: m.StickerAlbumScreen }))
+);
+const GachaMachineScreen = lazy(() =>
+  import('./components/motivation/GachaMachineScreen').then((m) => ({ default: m.GachaMachineScreen }))
+);
+const StreakCalendarScreen = lazy(() =>
+  import('./components/motivation/StreakCalendarScreen').then((m) => ({ default: m.StreakCalendarScreen }))
+);
+const LevelUpCelebrationModal = lazy(() =>
+  import('./components/motivation/LevelUpCelebrationModal').then((m) => ({ default: m.LevelUpCelebrationModal }))
+);
+
 /** Accessible loading state for lazily loaded screens. */
 const ScreenFallback: React.FC<{ label: string }> = ({ label }) => (
   <div
@@ -61,21 +76,24 @@ const ScreenFallback: React.FC<{ label: string }> = ({ label }) => (
   </div>
 );
 
-/** Quick-access destinations for the sticky bottom navigation bar. */
-const BOTTOM_NAV: { screen: ActiveScreen; label: string; icon: string }[] = [
-  { screen: 'home', label: 'Trang Chủ', icon: '🏠' },
-  { screen: 'world_map', label: 'Bản Đồ', icon: '🗺️' },
-  { screen: 'reading_fluency', label: 'Luyện Đọc', icon: '📖' },
-  { screen: 'competition', label: 'Đấu Trường', icon: '🏆' },
-  { screen: 'games', label: 'Trò Chơi', icon: '🎮' },
-  { screen: 'daily_review', label: 'Ôn Tập', icon: '💡' },
-  { screen: 'achievements', label: 'Vườn Sao', icon: '🌳' },
-];
+/** Quick-access destinations for the sticky bottom navigation bar (T06). */
+const BOTTOM_NAV = NAVIGATION;
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState<ActiveScreen>('home');
   const [selectedSubject, setSelectedSubject] = useState<SubjectType>('tieng-viet');
   const [profile, setProfile] = useState<ChildProfile>(StorageService.getChildProfile());
+  const [competitionStartMode, setCompetitionStartMode] = useState<'kid' | 'real'>('kid');
+
+  // Night mode — apply data-theme="night" to document root
+  useEffect(() => {
+    const settings = StorageService.getParentSettings();
+    if (settings.nightMode) {
+      document.documentElement.setAttribute('data-theme', 'night');
+    } else {
+      document.documentElement.removeAttribute('data-theme');
+    }
+  }, [profile]); // re-run when profile changes (parent settings may have changed)
 
   // Parent modal state
   const [isParentModalOpen, setIsParentModalOpen] = useState(false);
@@ -106,9 +124,48 @@ export default function App() {
     return () => clearInterval(timer);
   }, [isScreenTimeAlertOpen]);
 
+  // T18B — Level up celebration modal state
+  const [levelUpModal, setLevelUpModal] = useState<{
+    isOpen: boolean;
+    result: import('./services/storage').LevelClaimResult;
+    currentLevel: number;
+    levelTitle: string;
+  }>({ isOpen: false, result: { claimed: [], stars: 0, tickets: 0, stickerIds: [] }, currentLevel: 1, levelTitle: '' });
+
+  // Check for pending level rewards on profile change
+  useEffect(() => {
+    const motivation = StorageService.getMotivationState();
+    const pending = StorageService.getLevelInfo().pending;
+    if (pending.length > 0) {
+      const levelInfo = StorageService.getLevelInfo();
+      const rng = () => Math.random();
+      const result = StorageService.claimLevelRewards(rng);
+      if (result.claimed.length > 0) {
+        setLevelUpModal({
+          isOpen: true,
+          result,
+          currentLevel: levelInfo.level,
+          levelTitle: levelInfo.title,
+        });
+        refreshProfile();
+      }
+    }
+  }, [profile.xp]);
+
   const refreshProfile = () => {
     setProfile(StorageService.getChildProfile());
   };
+
+  // T01B/4 — đổi màn hình cuộn về đầu trang (kẻo bé kẹt ở cuối trang cũ).
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+      window.scrollTo({ top: 0, left: 0, behavior: reduce ? 'auto' : 'instant' as ScrollBehavior });
+    } catch {
+      window.scrollTo(0, 0);
+    }
+  }, [currentScreen]);
 
   const handleSelectSubject = (sub: SubjectType) => {
     setSelectedSubject(sub);
@@ -202,8 +259,12 @@ export default function App() {
         {currentScreen === 'competition' && (
           <Suspense fallback={<ScreenFallback label="Đấu Trường" />}>
             <CompetitionHubScreen
-              onBack={() => setCurrentScreen('home')}
+              onBack={() => {
+                setCompetitionStartMode('kid');
+                setCurrentScreen('home');
+              }}
               onProfileUpdate={refreshProfile}
+              initialMode={competitionStartMode}
             />
           </Suspense>
         )}
@@ -225,34 +286,72 @@ export default function App() {
             />
           </Suspense>
         )}
+
+        {currentScreen === 'sticker_album' && (
+          <Suspense fallback={<ScreenFallback label="Album Sticker" />}>
+            <StickerAlbumScreen
+              profile={profile}
+              onBack={() => setCurrentScreen('home')}
+              onProfileUpdate={refreshProfile}
+            />
+          </Suspense>
+        )}
+
+        {currentScreen === 'gacha_machine' && (
+          <Suspense fallback={<ScreenFallback label="Máy Gắp Sticker" />}>
+            <GachaMachineScreen
+              profile={profile}
+              onBack={() => setCurrentScreen('home')}
+              onProfileUpdate={refreshProfile}
+            />
+          </Suspense>
+        )}
+
+        {currentScreen === 'streak_calendar' && (
+          <Suspense fallback={<ScreenFallback label="Lịch Chuỗi Ngày" />}>
+            <StreakCalendarScreen
+              profile={profile}
+              onBack={() => setCurrentScreen('home')}
+              onProfileUpdate={refreshProfile}
+            />
+          </Suspense>
+        )}
       </main>
 
       {/*
-        Sticky bottom navigation for everything below xl, where the top nav is
-        hidden. Horizontally scrollable so seven destinations never overflow the
-        viewport, with 44px minimum touch targets.
+        T01/B11 + T06 — sticky bottom nav ONLY below lg (1024px). At lg+ the Header
+        top nav is the single navigation. 5 compact tabs fit 375px without
+        clipping: flex-1 + min-w-0, labels ≥ 14px, 44px+ touch targets.
+        Active item uses subject-themed color (T06).
       */}
       <nav
         aria-label="Điều hướng nhanh"
-        className="2xl:hidden fixed bottom-0 inset-x-0 bg-white/95 backdrop-blur-md border-t border-amber-200 flex items-stretch gap-1 px-2 pt-1.5 pb-[max(0.375rem,env(safe-area-inset-bottom))] z-30 shadow-lg overflow-x-auto"
+        className="lg:hidden fixed bottom-0 inset-x-0 bg-white/95 backdrop-blur-md border-t border-amber-200 flex items-stretch gap-0.5 px-1.5 pt-1.5 pb-[max(0.375rem,env(safe-area-inset-bottom))] z-30 shadow-lg"
       >
-        {BOTTOM_NAV.map((tab) => (
-          <button
-            key={tab.screen}
-            onClick={() => setCurrentScreen(tab.screen)}
-            aria-current={currentScreen === tab.screen ? 'page' : undefined}
-            className={`flex-1 min-w-[64px] min-h-[48px] flex flex-col items-center justify-center gap-0.5 text-[11px] font-bold rounded-xl transition-all ${
-              currentScreen === tab.screen
-                ? 'text-amber-600 font-black bg-amber-50'
-                : 'text-slate-500'
-            }`}
-          >
-            <span className="text-xl leading-none" aria-hidden="true">
-              {tab.icon}
-            </span>
-            <span className="truncate">{tab.label}</span>
-          </button>
-        ))}
+        {BOTTOM_NAV.map((tab) => {
+          const activeColor = tab.subjectColor ?? 'amber';
+          return (
+            <button
+              key={tab.screen}
+              onClick={() => setCurrentScreen(tab.screen)}
+              aria-current={currentScreen === tab.screen ? 'page' : undefined}
+              // T01B/11 — QA hook thống nhất + accessible name đầy đủ.
+              data-testid={`nav-${tab.screen}`}
+              aria-label={tab.label}
+              title={tab.label}
+              className={`flex-1 min-w-0 min-h-[48px] flex flex-col items-center justify-center gap-0.5 font-bold rounded-xl transition-all px-0.5 ${
+                currentScreen === tab.screen
+                  ? `text-${activeColor}-600 font-black bg-${activeColor}-50`
+                  : 'text-slate-500'
+              }`}
+            >
+              <span className="text-xl leading-none" aria-hidden="true">
+                {tab.icon}
+              </span>
+              <span className="text-[14px] truncate max-w-full leading-tight">{tab.shortLabel}</span>
+            </button>
+          );
+        })}
       </nav>
 
       {/* Parent Dashboard Modal */}
@@ -261,6 +360,11 @@ export default function App() {
           isOpen={isParentModalOpen}
           onClose={() => setIsParentModalOpen(false)}
           onDataReset={refreshProfile}
+          onOpenCompetitionReal={() => {
+            setCompetitionStartMode('real');
+            setIsParentModalOpen(false);
+            setCurrentScreen('competition');
+          }}
         />
       </Suspense>
 
@@ -284,6 +388,17 @@ export default function App() {
               dailyLimitMinutes: settings.dailyLimitMinutes + 10,
             });
           }}
+        />
+      </Suspense>
+
+      {/* T18B — Level Up Celebration Modal */}
+      <Suspense fallback={null}>
+        <LevelUpCelebrationModal
+          isOpen={levelUpModal.isOpen}
+          onClose={() => setLevelUpModal((prev) => ({ ...prev, isOpen: false }))}
+          result={levelUpModal.result}
+          currentLevel={levelUpModal.currentLevel}
+          levelTitle={levelUpModal.levelTitle}
         />
       </Suspense>
     </div>

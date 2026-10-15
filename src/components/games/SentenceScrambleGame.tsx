@@ -3,53 +3,15 @@ import { GameModalWrapper } from './GameModalWrapper';
 import { sound } from '../../services/sound';
 import { RotateCcw } from 'lucide-react';
 import { useGameStage } from '../../hooks/useGameStage';
-import { defaultRoundsPerTier, getTierMeta, pickDistinct, seededRng } from '../../data/gameLevels';
+import { defaultRoundsPerTier, getTierMeta } from '../../data/gameLevels';
+import {
+  SENTENCE_POOL,
+  buildScrambleRounds,
+  scrambleWords,
+} from '../../data/games/sentence_scramble';
+import type { SentenceLevel } from '../../data/games/sentence_scramble';
 
-interface SentenceLevel {
-  correctWords: string[];
-  meaning: string;
-  emoji: string;
-}
-
-const SENTENCE_POOL: { words: string[]; meaning: string; emoji: string }[] = [
-  { words: ['Lan', 'đi', 'học'], meaning: 'Lan đi học đến trường', emoji: '🎒' },
-  { words: ['Bé', 'yêu', 'mẹ'], meaning: 'Bé thương yêu mẹ', emoji: '❤️' },
-  { words: ['Mèo', 'kêu', 'meo'], meaning: 'Chú mèo kêu meo meo', emoji: '🐱' },
-  { words: ['Trời', 'đang', 'mưa'], meaning: 'Trời đang mưa', emoji: '🌧️' },
-  { words: ['Bé', 'chơi', 'bóng'], meaning: 'Bé chơi bóng', emoji: '⚽' },
-  { words: ['Hoa', 'rất', 'đẹp'], meaning: 'Bông hoa rất đẹp', emoji: '🌸' },
-  { words: ['Con', 'mèo', 'trèo', 'cây'], meaning: 'Chú mèo trèo cây', emoji: '🐱' },
-  { words: ['Bà', 'nấu', 'cháo', 'ngon'], meaning: 'Bà nấu cháo rất ngon', emoji: '🍲' },
-  { words: ['Bố', 'đi', 'làm', 'sớm'], meaning: 'Bố đi làm từ sớm', emoji: '💼' },
-  { words: ['Chim', 'sơn', 'ca', 'hót'], meaning: 'Chim sơn ca hót', emoji: '🐦' },
-  { words: ['Bạn', 'Nam', 'chăm', 'chỉ'], meaning: 'Bạn Nam rất chăm chỉ', emoji: '👦' },
-  { words: ['Chú', 'thỏ', 'ăn', 'cà', 'rốt'], meaning: 'Chú thỏ ăn cà rốt', emoji: '🐰' },
-  { words: ['Bé', 'tưới', 'nước', 'cho', 'hoa'], meaning: 'Bé tưới nước cho hoa', emoji: '💧' },
-  { words: ['Mẹ', 'nấu', 'cơm', 'ngon', 'quá'], meaning: 'Mẹ nấu cơm ngon quá', emoji: '🍚' },
-  { words: ['Hoa', 'nở', 'rực', 'rỡ'], meaning: 'Bông hoa khoe sắc', emoji: '🌺' },
-  { words: ['Bé', 'gấp', 'quần', 'áo', 'gọn'], meaning: 'Bé gấp quần áo gọn gàng', emoji: '👕' },
-  { words: ['Ông', 'mặt', 'trời', 'tỏa', 'nắng'], meaning: 'Ông mặt trời tỏa nắng ấm', emoji: '☀️' },
-  { words: ['Con', 'gà', 'trống', 'gáy', 'to'], meaning: 'Con gà trống gáy ò ó o', emoji: '🐓' },
-  { words: ['Bé', 'rửa', 'tay', 'trước', 'khi', 'ăn'], meaning: 'Bé rửa tay trước khi ăn cơm', emoji: '🧼' },
-  { words: ['Bố', 'đọc', 'truyện', 'cho', 'bé', 'nghe'], meaning: 'Bố đọc truyện cho bé nghe', emoji: '📖' },
-  { words: ['Em', 'giúp', 'mẹ', 'quét', 'nhà'], meaning: 'Em giúp mẹ quét nhà thật sạch', emoji: '🧹' },
-  { words: ['Đàn', 'gà', 'con', 'chạy', 'lon', 'ton'], meaning: 'Đàn gà con chạy lon ton theo mẹ', emoji: '🐤' },
-  { words: ['Bé', 'cùng', 'bà', 'trồng', 'hoa'], meaning: 'Bé cùng bà trồng hoa trước sân nhà', emoji: '🌱' },
-  { words: ['Mùa', 'xuân', 'hoa', 'nở', 'rực', 'rỡ'], meaning: 'Mùa xuân về muôn hoa nở rực rỡ', emoji: '🌸' },
-];
-
-function buildScrambleRounds(tier: number): SentenceLevel[] {
-  const roundsPerTier = defaultRoundsPerTier();
-  const count = roundsPerTier[tier - 1];
-  const rng = seededRng(6700 + tier * 29);
-  let pool: { words: string[]; meaning: string; emoji: string }[];
-  if (tier <= 1) pool = SENTENCE_POOL.filter((s) => s.words.length <= 3);
-  else if (tier === 2) pool = SENTENCE_POOL.filter((s) => s.words.length === 4);
-  else if (tier === 3) pool = SENTENCE_POOL.filter((s) => s.words.length === 4 || s.words.length === 5);
-  else if (tier === 4) pool = SENTENCE_POOL.filter((s) => s.words.length === 5 || s.words.length === 6);
-  else pool = SENTENCE_POOL.filter((s) => s.words.length >= 5);
-  return pickDistinct(pool, count, rng).map((s) => ({ correctWords: s.words, meaning: s.meaning, emoji: s.emoji }));
-}
+export { SENTENCE_POOL, buildScrambleRounds };
 
 export const SentenceScrambleGame: React.FC<{ onExit: () => void }> = ({ onExit }) => {
   const roundsPerTier = useMemo(() => defaultRoundsPerTier(), []);
@@ -57,7 +19,7 @@ export const SentenceScrambleGame: React.FC<{ onExit: () => void }> = ({ onExit 
   const [assembledWords, setAssembledWords] = useState<string[]>([]);
   const [trainDriving, setTrainDriving] = useState(false);
 
-  const rounds = useMemo(() => buildScrambleRounds(stage.tier), [stage.tier]);
+  const rounds = useMemo(() => buildScrambleRounds(stage.tier, stage.nonce), [stage.tier, stage.nonce]);
   const currentLevel = rounds[stage.roundIdx];
 
   useEffect(() => {
@@ -65,15 +27,12 @@ export const SentenceScrambleGame: React.FC<{ onExit: () => void }> = ({ onExit 
     setTrainDriving(false);
   }, [stage.tier, stage.roundIdx]);
 
-  // Scramble pool (excluding already assembled ones)
-  const availableWords = React.useMemo(() => {
-    const copy = [...currentLevel.correctWords];
-    copy.reverse();
-    if (copy.join(' ') === currentLevel.correctWords.join(' ')) {
-      copy.push(copy.shift()!);
-    }
-    return copy;
-  }, [currentLevel]);
+  // T02B/B2 — seeded scramble (mixes play nonce): never the correct order
+  // and never the plain reverse that children could game right-to-left.
+  const availableWords = React.useMemo(
+    () => scrambleWords(currentLevel.correctWords, stage.tier, stage.nonce, stage.roundIdx),
+    [currentLevel, stage.tier, stage.nonce, stage.roundIdx]
+  );
 
   const handleWordTap = (word: string) => {
     if (stage.locked || trainDriving) return;
@@ -81,15 +40,17 @@ export const SentenceScrambleGame: React.FC<{ onExit: () => void }> = ({ onExit 
     const nextAssembled = [...assembledWords, word];
     setAssembledWords(nextAssembled);
 
-    if (nextAssembled.length === currentLevel.correctWords.length) {
+      if (nextAssembled.length === currentLevel.correctWords.length) {
       if (nextAssembled.join(' ') === currentLevel.correctWords.join(' ')) {
         sound.playCorrect();
         sound.speak(`Hoan hô! "${nextAssembled.join(' ')}"`);
         setTrainDriving(true);
         stage.submitCorrect();
       } else {
+        // T02B/B2 — a wrong assembly counts as a real mistake (stars).
         sound.playWrong();
         sound.speak('Chưa đúng thứ tự rồi, bé bấm nút xếp lại nhé!');
+        stage.submitWrong();
       }
     }
   };
@@ -114,6 +75,7 @@ export const SentenceScrambleGame: React.FC<{ onExit: () => void }> = ({ onExit 
 
   return (
     <GameModalWrapper
+      gameId="sentence_scramble"
       title="Đoàn Tàu Xếp Câu"
       subtitle="Bấm các toa tàu theo đúng thứ tự để tạo thành câu hoàn chỉnh"
       mascotEmoji="🚂"
@@ -129,7 +91,8 @@ export const SentenceScrambleGame: React.FC<{ onExit: () => void }> = ({ onExit 
       nextTierMeta={stage.tier + 1 <= stage.tierCount ? getTierMeta(stage.tier + 1) : undefined}
       onNextTier={stage.startNextTier}
       earnedXp={stage.xpEarned}
-      earnedStars={1}
+      earnedStars={stage.starsEarned}
+      prevBestStars={stage.prevBestStars}
       onRestart={stage.restartGame}
       onExit={onExit}
       instructions="Bé hãy chạm vào từng từ theo đúng thứ tự để đoàn tàu lăn bánh!"

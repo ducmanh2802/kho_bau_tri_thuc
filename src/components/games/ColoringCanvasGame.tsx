@@ -4,30 +4,17 @@ import { sound } from '../../services/sound';
 import { Eraser, Trash2, CheckCircle, Palette } from 'lucide-react';
 import { useGameStage } from '../../hooks/useGameStage';
 import { getTierMeta } from '../../data/gameLevels';
+import {
+  COLORS,
+  MIN_PAINT_COVERAGE,
+  TEMPLATES,
+  coverageFromPixels,
+  effectiveCoverage,
+  starsForCoverage,
+  templateForTier,
+} from '../../data/games/coloring_canvas';
 
-const COLORS = [
-  '#EF4444', // Red
-  '#F97316', // Orange
-  '#FBBF24', // Yellow
-  '#10B981', // Green
-  '#06B6D4', // Cyan
-  '#3B82F6', // Blue
-  '#8B5CF6', // Purple
-  '#EC4899', // Pink
-  '#78350F', // Brown
-  '#1F2937', // Black
-];
-
-const TEMPLATES = [
-  { name: 'Ngôi Nhà Thân Thương', emoji: '🏠' },
-  { name: 'Chú Gấu Nhí', emoji: '🐻' },
-  { name: 'Bông Hoa Rực Rỡ', emoji: '🌸' },
-  { name: 'Quả Táo Ngọt Ngào', emoji: '🍎' },
-  { name: 'Chú Cá Đáng Yêu', emoji: '🐠' },
-  { name: 'Chiếc Bánh Sinh Nhật', emoji: '🎂' },
-];
-
-const ROUNDS_PER_TIER = TEMPLATES.map(() => 1);
+export { MIN_PAINT_COVERAGE, coverageFromPixels, starsForCoverage };
 
 export const ColoringCanvasGame: React.FC<{ onExit: () => void }> = ({ onExit }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -36,9 +23,15 @@ export const ColoringCanvasGame: React.FC<{ onExit: () => void }> = ({ onExit })
   const [isEraser, setIsEraser] = useState(false);
   const [isDrawing, setIsDrawing] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState(TEMPLATES[0]);
+  const [coverage, setCoverage] = useState(0);
+  const [needMorePaint, setNeedMorePaint] = useState(false);
+  // T02B/B13 — baseline snapshot right after the template outline is drawn,
+  // so faint template pixels never count as the child's painting.
+  const baselineRef = useRef(0);
 
+  const ROUNDS_PER_TIER = TEMPLATES.map(() => 1);
   const stage = useGameStage({ gameId: 'coloring_canvas', roundsPerTier: ROUNDS_PER_TIER, advanceDelayMs: 900 });
-  const missionTemplate = TEMPLATES[Math.min(stage.tier - 1, TEMPLATES.length - 1)];
+  const missionTemplate = templateForTier(stage.tier);
 
   // Each tier is a new themed masterpiece.
   useEffect(() => {
@@ -57,6 +50,15 @@ export const ColoringCanvasGame: React.FC<{ onExit: () => void }> = ({ onExit })
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     drawTemplateOutline(ctx, selectedTemplate.emoji);
+    // T02B/B13 — snapshot the template-only coverage as baseline.
+    try {
+      const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      baselineRef.current = coverageFromPixels(img.data);
+    } catch {
+      baselineRef.current = 0;
+    }
+    setCoverage(0);
+    setNeedMorePaint(false);
   }, [selectedTemplate]);
 
   const drawTemplateOutline = (ctx: CanvasRenderingContext2D, emoji: string) => {
@@ -121,6 +123,21 @@ export const ColoringCanvasGame: React.FC<{ onExit: () => void }> = ({ onExit })
 
   const stopDrawing = () => {
     setIsDrawing(false);
+    refreshCoverage();
+  };
+
+  const refreshCoverage = () => {
+    try {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+      const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      // T02B/B13 — effective coverage excludes the faint template baseline.
+      setCoverage(effectiveCoverage(coverageFromPixels(img.data), baselineRef.current));
+    } catch {
+      // Canvas unavailable (tests): keep last value.
+    }
   };
 
   const clearCanvas = () => {
@@ -133,6 +150,14 @@ export const ColoringCanvasGame: React.FC<{ onExit: () => void }> = ({ onExit })
     ctx.fillStyle = '#FFFFFF';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     drawTemplateOutline(ctx, selectedTemplate.emoji);
+    try {
+      const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      baselineRef.current = coverageFromPixels(img.data);
+    } catch {
+      baselineRef.current = 0;
+    }
+    setCoverage(0);
+    setNeedMorePaint(false);
   };
 
   const stampIcon = (emoji: string) => {
@@ -146,14 +171,45 @@ export const ColoringCanvasGame: React.FC<{ onExit: () => void }> = ({ onExit })
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(emoji, 100 + Math.random() * 300, 80 + Math.random() * 200);
+    refreshCoverage();
   };
 
   const finishPainting = () => {
     if (stage.locked) return;
+    refreshCoverage();
+    const canvas = canvasRef.current;
+    let ratio = coverage;
+    try {
+      if (canvas) {
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          ratio = effectiveCoverage(coverageFromPixels(img.data), baselineRef.current);
+          setCoverage(ratio);
+        }
+      }
+    } catch {
+      // Fall through with last known coverage.
+    }
+    // T02/B3 — an (almost) blank canvas earns nothing.
+    if (ratio < MIN_PAINT_COVERAGE) {
+      setNeedMorePaint(true);
+      sound.playClick();
+      sound.speak(`Bé mới tô được ${Math.round(ratio * 100)} phần trăm. Bé tô thêm chút nữa cho tranh rực rỡ nhé!`);
+      window.setTimeout(() => setNeedMorePaint(false), 2500);
+      return;
+    }
+    setNeedMorePaint(false);
     sound.playCorrect();
-    sound.speak('Bức tranh của bé đẹp tuyệt vời!');
+    // T02B/B13 — stars from REAL coverage (≥30% 1★, ≥60% 2★, ≥85% 3★).
+    const stars = starsForCoverage(ratio);
+    sound.speak(
+      stars >= 3
+        ? 'Bức tranh của bé đẹp tuyệt vời!'
+        : 'Bức tranh của bé đẹp lắm! Bé tô thêm cho rực rỡ hơn nhé!'
+    );
     setSelectedColor(COLORS[0]);
-    stage.submitCorrect();
+    stage.submitCorrect(stars);
   };
 
   const restartGame = () => {
@@ -163,6 +219,7 @@ export const ColoringCanvasGame: React.FC<{ onExit: () => void }> = ({ onExit })
 
   return (
     <GameModalWrapper
+      gameId="coloring_canvas"
       title="Bé Tập Vẽ & Tô Màu Diệu Kỳ"
       subtitle={`Mỗi màn là một tác phẩm mới — màn này: "${missionTemplate.name}"`}
       mascotEmoji="🎨"
@@ -178,7 +235,8 @@ export const ColoringCanvasGame: React.FC<{ onExit: () => void }> = ({ onExit })
       nextTierMeta={stage.tier + 1 <= stage.tierCount ? getTierMeta(stage.tier + 1) : undefined}
       onNextTier={stage.startNextTier}
       earnedXp={stage.xpEarned}
-      earnedStars={1}
+      earnedStars={stage.starsEarned}
+      prevBestStars={stage.prevBestStars}
       onRestart={restartGame}
       onExit={onExit}
       instructions={`Hãy tô màu cho "${missionTemplate.name}" (${missionTemplate.emoji}) thật đẹp rồi bấm Hoàn thành nhé!`}
@@ -297,9 +355,14 @@ export const ColoringCanvasGame: React.FC<{ onExit: () => void }> = ({ onExit })
               className="px-4 py-2 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white rounded-xl shadow-md font-black text-xs md:text-sm flex items-center gap-1.5 active:scale-95 transition-transform"
             >
               <CheckCircle className="w-4 h-4" />
-              <span>Hoàn thành tranh 🎨</span>
+              <span>Hoàn thành tranh 🎨 ({Math.round(coverage * 100)}%)</span>
             </button>
           </div>
+          {needMorePaint && (
+            <p className="text-xs font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-3 py-1.5">
+              Bé tô thêm chút nữa (cần {Math.round(MIN_PAINT_COVERAGE * 100)}% tranh) rồi hẵng bấm Hoàn thành nhé! 💪
+            </p>
+          )}
         </div>
       </div>
     </GameModalWrapper>

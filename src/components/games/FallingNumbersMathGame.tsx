@@ -3,6 +3,11 @@ import { GameModalWrapper } from './GameModalWrapper';
 import { sound } from '../../services/sound';
 import { useGameStage } from '../../hooks/useGameStage';
 import { defaultRoundsPerTier, getTierMeta } from '../../data/gameLevels';
+import { TIER_CONFIG } from '../../data/games/falling_numbers';
+import type { Condition } from '../../data/games/falling_numbers';
+
+export { TIER_CONFIG };
+export type { Condition };
 
 interface FallingBall {
   id: number;
@@ -14,39 +19,6 @@ interface FallingBall {
 }
 
 const BALL_COLORS = ['bg-rose-500', 'bg-blue-500', 'bg-emerald-500', 'bg-amber-500', 'bg-purple-500'];
-
-interface Condition {
-  text: string;
-  check: (n: number) => boolean;
-  speech: string;
-}
-
-const TIER_CONFIG: { condition: Condition; maxVal: number; spawnMs: number; speedMin: number; speedMax: number }[] = [
-  {
-    condition: { text: 'LỚN HƠN 5 (> 5)', check: (n) => n > 5, speech: 'Hứng các quả bóng có số lớn hơn năm' },
-    maxVal: 10, spawnMs: 1100, speedMin: 0.35, speedMax: 0.6,
-  },
-  {
-    condition: { text: 'SỐ CHẴN', check: (n) => n % 2 === 0, speech: 'Hứng các quả bóng mang số chẵn' },
-    maxVal: 10, spawnMs: 1000, speedMin: 0.35, speedMax: 0.62,
-  },
-  {
-    condition: { text: 'BÉ HƠN 7 (< 7)', check: (n) => n < 7, speech: 'Hứng các quả bóng có số bé hơn bảy' },
-    maxVal: 12, spawnMs: 900, speedMin: 0.38, speedMax: 0.68,
-  },
-  {
-    condition: { text: 'LỚN HƠN 10 (> 10)', check: (n) => n > 10, speech: 'Hứng các quả bóng có số lớn hơn mười' },
-    maxVal: 20, spawnMs: 850, speedMin: 0.4, speedMax: 0.72,
-  },
-  {
-    condition: { text: 'SỐ CHẴN 1–20', check: (n) => n % 2 === 0, speech: 'Hứng các quả bóng mang số chẵn từ một đến hai mươi' },
-    maxVal: 20, spawnMs: 750, speedMin: 0.42, speedMax: 0.78,
-  },
-  {
-    condition: { text: 'SỐ CHIA HẾT CHO 5', check: (n) => n % 5 === 0, speech: 'Hứng các quả bóng mang số chia hết cho năm' },
-    maxVal: 20, spawnMs: 650, speedMin: 0.46, speedMax: 0.86,
-  },
-];
 
 export const FallingNumbersMathGame: React.FC<{ onExit: () => void }> = ({ onExit }) => {
   const roundsPerTier = useMemo(() => defaultRoundsPerTier(), []);
@@ -112,6 +84,7 @@ export const FallingNumbersMathGame: React.FC<{ onExit: () => void }> = ({ onExi
 
   return (
     <GameModalWrapper
+      gameId="falling_numbers"
       title="Hứng Số Rơi Rộn Ràng"
       subtitle="Bé nhanh tay chạm vào các quả bóng số đúng yêu cầu"
       mascotEmoji="🦊"
@@ -127,7 +100,8 @@ export const FallingNumbersMathGame: React.FC<{ onExit: () => void }> = ({ onExi
       nextTierMeta={stage.tier + 1 <= stage.tierCount ? getTierMeta(stage.tier + 1) : undefined}
       onNextTier={stage.startNextTier}
       earnedXp={stage.xpEarned}
-      earnedStars={1}
+      earnedStars={stage.starsEarned}
+      prevBestStars={stage.prevBestStars}
       onRestart={stage.restartGame}
       onExit={onExit}
       instructions={`Bé ơi! Hãy chạm vào các bóng có số: [ ${condition.text} ]`}

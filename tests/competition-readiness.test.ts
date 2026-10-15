@@ -23,6 +23,7 @@ if (typeof globalThis.localStorage === 'undefined') {
 
 import { CompetitionEngine } from '../src/services/competitionEngine';
 import { StorageService } from '../src/services/storage';
+import { seedDemoProfile } from '../src/services/demoSeed';
 import { CompetitionExamResult, ReadinessAssessment } from '../src/types/competition';
 
 
@@ -173,7 +174,7 @@ describe('Competition Readiness Model & Persistence Tests', () => {
   });
 
   it('cleanses competition history when parent executes full reset', () => {
-    StorageService.seedDemoProfile();
+    seedDemoProfile();
     let history = StorageService.getCompetitionHistory();
     expect(history.examResults.length).toBeGreaterThanOrEqual(1);
 

@@ -1,7 +1,7 @@
 import { Question, SkillMastery, SubjectType } from '../types';
 import { getAllQuestions, getAllSkills } from '../data/curriculum';
 import { StorageService } from './storage';
-import { READING_SKILLS } from '../data/readingContent';
+import { READING_SKILLS } from '../data/readingTaxonomy';
 import type { ReadingProfile, ReadingStage } from '../types/reading';
 
 export interface SmartReviewSet {
@@ -143,6 +143,7 @@ export class AdaptiveService {
       'tieng-viet': { total: 0, correct: 0 },
       'toan': { total: 0, correct: 0 },
       'english': { total: 0, correct: 0 },
+      'cuoc-song': { total: 0, correct: 0 },
     };
 
     skills.forEach((s) => {
@@ -168,6 +169,7 @@ export class AdaptiveService {
       'tieng-viet': getSubjectStatus('tieng-viet'),
       'toan': getSubjectStatus('toan'),
       'english': getSubjectStatus('english'),
+      'cuoc-song': getSubjectStatus('cuoc-song'),
     };
 
     // Filter weak skills

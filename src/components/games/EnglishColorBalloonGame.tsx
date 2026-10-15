@@ -5,28 +5,16 @@ import { Volume2 } from 'lucide-react';
 import { useGameStage } from '../../hooks/useGameStage';
 import { GAME_LEVEL_POLICY } from '../../config/policy';
 import { getTierMeta } from '../../data/gameLevels';
+import {
+  COLOR_TARGETS,
+  TIER_CONFIG,
+  balloonTextClass,
+  paletteForTier,
+} from '../../data/games/color_balloon';
+import type { ColorTarget } from '../../data/games/color_balloon';
 
-interface ColorTarget {
-  name: string;
-  vietnamese: string;
-  cssColor: string;
-  hex: string;
-}
-
-const COLOR_TARGETS: ColorTarget[] = [
-  { name: 'RED', vietnamese: 'Màu đỏ', cssColor: 'bg-red-500', hex: '#EF4444' },
-  { name: 'BLUE', vietnamese: 'Màu xanh dương', cssColor: 'bg-blue-500', hex: '#3B82F6' },
-  { name: 'GREEN', vietnamese: 'Màu xanh lá', cssColor: 'bg-emerald-500', hex: '#10B981' },
-  { name: 'YELLOW', vietnamese: 'Màu vàng', cssColor: 'bg-amber-400', hex: '#FBBF24' },
-  { name: 'PURPLE', vietnamese: 'Màu tím', cssColor: 'bg-purple-500', hex: '#8B5CF6' },
-  { name: 'ORANGE', vietnamese: 'Màu cam', cssColor: 'bg-orange-500', hex: '#F97316' },
-  { name: 'PINK', vietnamese: 'Màu hồng', cssColor: 'bg-pink-500', hex: '#EC4899' },
-  { name: 'BLACK', vietnamese: 'Màu đen', cssColor: 'bg-slate-900', hex: '#1F2937' },
-  { name: 'BROWN', vietnamese: 'Màu nâu', cssColor: 'bg-amber-900', hex: '#78350F' },
-  { name: 'GRAY', vietnamese: 'Màu xám', cssColor: 'bg-slate-500', hex: '#6B7280' },
-  { name: 'TURQUOISE', vietnamese: 'Màu ngọc lam', cssColor: 'bg-teal-500', hex: '#14B8A6' },
-  { name: 'LIME', vietnamese: 'Màu chanh', cssColor: 'bg-lime-500', hex: '#84CC16' },
-];
+export { COLOR_TARGETS, TIER_CONFIG };
+export type { ColorTarget };
 
 const TIER_GOALS = GAME_LEVEL_POLICY.TIERS.map((t, i) => 5 + (i < 3 ? i : 3));
 
@@ -39,15 +27,6 @@ interface Balloon {
   speed: number;
 }
 
-const TIER_CONFIG: { colorCount: number; spawnMs: number; speedMin: number; speedMax: number }[] = [
-  { colorCount: 5, spawnMs: 1100, speedMin: 0.4, speedMax: 0.55 },
-  { colorCount: 7, spawnMs: 1000, speedMin: 0.42, speedMax: 0.6 },
-  { colorCount: 8, spawnMs: 900, speedMin: 0.44, speedMax: 0.66 },
-  { colorCount: 10, spawnMs: 820, speedMin: 0.46, speedMax: 0.7 },
-  { colorCount: 11, spawnMs: 720, speedMin: 0.5, speedMax: 0.78 },
-  { colorCount: 12, spawnMs: 620, speedMin: 0.54, speedMax: 0.9 },
-];
-
 export const EnglishColorBalloonGame: React.FC<{ onExit: () => void }> = ({ onExit }) => {
   const roundsPerTier = useMemo(() => TIER_GOALS, []);
   const stage = useGameStage({ gameId: 'color_balloon', roundsPerTier, advanceDelayMs: 900 });
@@ -55,7 +34,7 @@ export const EnglishColorBalloonGame: React.FC<{ onExit: () => void }> = ({ onEx
   const [balloons, setBalloons] = useState<Balloon[]>([]);
 
   const config = TIER_CONFIG[Math.min(stage.tier - 1, TIER_CONFIG.length - 1)];
-  const palette = COLOR_TARGETS.slice(0, config.colorCount);
+  const palette = paletteForTier(stage.tier);
   const currentTarget = palette[targetIdx % palette.length];
 
   const playVoice = () => {
@@ -128,6 +107,7 @@ export const EnglishColorBalloonGame: React.FC<{ onExit: () => void }> = ({ onEx
 
   return (
     <GameModalWrapper
+      gameId="color_balloon"
       title="Pop The Color Balloons!"
       subtitle="Đập vỡ những quả bóng bay đúng màu sắc tiếng Anh"
       mascotEmoji="🎈"
@@ -143,7 +123,8 @@ export const EnglishColorBalloonGame: React.FC<{ onExit: () => void }> = ({ onEx
       nextTierMeta={stage.tier + 1 <= stage.tierCount ? getTierMeta(stage.tier + 1) : undefined}
       onNextTier={stage.startNextTier}
       earnedXp={stage.xpEarned}
-      earnedStars={1}
+      earnedStars={stage.starsEarned}
+      prevBestStars={stage.prevBestStars}
       onRestart={stage.restartGame}
       onExit={onExit}
       instructions={`Touch & Pop: [ ${currentTarget.name} ] (${currentTarget.vietnamese})`}
@@ -159,7 +140,7 @@ export const EnglishColorBalloonGame: React.FC<{ onExit: () => void }> = ({ onEx
         <div className="absolute top-3 left-1/2 -translate-x-1/2 bg-white/95 px-6 py-2.5 rounded-2xl shadow-lg border-2 border-sky-300 flex items-center gap-3 z-10">
           <span className="text-xs md:text-sm font-bold text-slate-700">Pop the color:</span>
           <span
-            className={`px-4 py-1.5 text-white font-black text-lg md:text-xl rounded-xl shadow-md ${currentTarget.cssColor} animate-pulse-subtle`}
+            className={`px-4 py-1.5 font-black text-lg md:text-xl rounded-xl shadow-md border-2 ${currentTarget.cssColor} ${balloonTextClass(currentTarget.name)} animate-pulse-subtle`}
           >
             {currentTarget.name}
           </span>
@@ -181,7 +162,7 @@ export const EnglishColorBalloonGame: React.FC<{ onExit: () => void }> = ({ onEx
               left: `${b.x}%`,
               top: `${b.y}%`,
             }}
-            className={`absolute w-16 h-20 md:w-20 md:h-24 ${b.cssColor} rounded-full shadow-2xl flex flex-col items-center justify-center text-white border-2 border-white/50 active:scale-125 cursor-pointer transform -translate-x-1/2 transition-transform`}
+            className={`absolute w-16 h-20 md:w-20 md:h-24 ${b.cssColor} rounded-full shadow-2xl flex flex-col items-center justify-center border-2 active:scale-125 cursor-pointer transform -translate-x-1/2 transition-transform ${balloonTextClass(b.colorName)}`}
           >
             <span className="font-black text-xs md:text-sm uppercase tracking-wider">{b.colorName}</span>
             <div className="absolute -bottom-2 w-1.5 h-3 bg-white/80 rounded-full" />

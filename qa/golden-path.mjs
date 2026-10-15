@@ -109,11 +109,11 @@ async function body(page, ui) {
   // ---------- 2. VIETNAMESE LESSON ----------
   await page.getByRole('button', { name: /Tiếng Việt/ }).first().click(CLICK);
   await page.waitForSelector('text=Vương Quốc Tiếng Việt', { timeout: 20000 });
-  const lessonButtons = await page.getByRole('button', { name: /Vào học|Học lại/ }).count();
+  const lessonButtons = await page.locator('[data-testid^="lesson-button-"]').count();
   log('vietnameseSubject', { lessonCount: lessonButtons });
   if (lessonButtons === 0) fail('no lessons listed for Vietnamese');
 
-  await page.getByRole('button', { name: /Vào học/ }).first().click(CLICK);
+  await page.locator('[data-testid^="lesson-button-"]').first().click(CLICK); await page.getByRole('button', { name: /Bắt đầu/ }).click(CLICK);
   await page.waitForSelector('text=Câu hỏi 1', { timeout: 20000 });
   log('lessonOpened', { ok: true });
 
@@ -217,9 +217,14 @@ async function body(page, ui) {
   await snap(page, 'afterReading', state.steps);
 
   // ---------- 4. COMPETITION ----------
+  // T06: Competition no longer in main nav; access from Home via World Map or direct navigation
   await page.goto(APP_ORIGIN + '/');
   await page.waitForSelector('text=Xin chào', { timeout: 20000 });
-  await page.getByRole('navigation', { name: 'Điều hướng nhanh' }).getByRole('button', { name: 'Đấu Trường', exact: true }).click(CLICK);
+  // Navigate to World Map first (in main nav), then to Competition
+  await page.getByRole('navigation', { name: 'Điều hướng nhanh' }).getByRole('button', { name: 'Bản Đồ', exact: true }).click(CLICK);
+  await page.waitForSelector('text=Bản Đồ Học Tập', { timeout: 20000 });
+  // From World Map, find and click Competition entry
+  await page.getByRole('button', { name: /Đấu Trường|Thi Thử/ }).first().click(CLICK);
   await page.waitForSelector('text=Kho Báu Đấu Trường Tri Thức', { timeout: 20000 });
   log('competitionHub', { ok: true });
 

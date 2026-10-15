@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Lesson, Question } from '../../types';
 import { AdaptiveService, SmartReviewSet } from '../../services/adaptive';
+import { StorageService } from '../../services/storage';
 import { sound } from '../../services/sound';
 import { LessonPlayerModal } from '../learning/LessonPlayerModal';
 import { ArrowLeft, Lightbulb, Play, CheckCircle2, AlertCircle, RefreshCw } from 'lucide-react';
@@ -50,7 +51,7 @@ export const DailyReviewScreen: React.FC<DailyReviewScreenProps> = ({
             sound.playClick();
             onBack();
           }}
-          className="flex items-center gap-1.5 px-4 py-2 bg-white hover:bg-amber-50 border-2 border-amber-300 rounded-2xl font-bold text-xs md:text-sm text-amber-950 transition-all active:scale-95 shadow-xs cursor-pointer"
+          className="flex items-center gap-1.5 px-4 min-h-[44px] py-2 bg-white hover:bg-amber-50 border-2 border-amber-300 rounded-2xl font-bold text-xs md:text-sm text-amber-950 transition-all active:scale-95 shadow-xs cursor-pointer"
         >
           <ArrowLeft className="w-4 h-4" />
           <span>Về Trang Chủ</span>
@@ -174,6 +175,10 @@ export const DailyReviewScreen: React.FC<DailyReviewScreenProps> = ({
           lesson={reviewLesson}
           onClose={() => setIsReviewing(false)}
           onComplete={() => {
+            // T01/B10 — a finished review counts toward ach_review_pro (5 days).
+            StorageService.recordDailyReviewCompleted();
+            // T18A — quest ôn tập + số câu đã ôn qua engine chung (không đếm trùng).
+            StorageService.recordReviewQuestions(reviewSet.questions.length);
             onProfileUpdate();
           }}
         />

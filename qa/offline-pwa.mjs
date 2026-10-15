@@ -135,7 +135,7 @@ export default async function run(page, ui) {
     // Core learning must still work offline: complete a question's feedback loop.
     await page.getByRole('button', { name: /Tiếng Việt/ }).first().click({ timeout: 12000 });
     await page.waitForSelector('text=Vương Quốc Tiếng Việt', { timeout: 20000 });
-    await page.getByRole('button', { name: /Vào học/ }).first().click({ timeout: 12000 });
+    await page.locator('[data-testid^="lesson-button-"]').first().click({ timeout: 12000 }); await page.getByRole('button', { name: /Bắt đầu/ }).click({ timeout: 12000 });
     await page.waitForSelector('text=Câu hỏi 1', { timeout: 20000 });
     const opt = page.locator('[data-testid=answer-option]').first();
     if (await opt.count()) await opt.click({ timeout: 12000 });

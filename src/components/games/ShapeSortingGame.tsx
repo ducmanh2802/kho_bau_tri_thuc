@@ -2,66 +2,19 @@ import React, { useMemo } from 'react';
 import { GameModalWrapper } from './GameModalWrapper';
 import { sound } from '../../services/sound';
 import { useGameStage } from '../../hooks/useGameStage';
-import { defaultRoundsPerTier, getTierMeta, pickDistinct, seededRng } from '../../data/gameLevels';
+import { defaultRoundsPerTier, getTierMeta } from '../../data/gameLevels';
+import { BASKETS, SHAPE_POOL, buildShapeRounds } from '../../data/games/shape_sorting';
+import type { ShapeCategory, ShapeItem } from '../../data/games/shape_sorting';
 
-type ShapeCategory = 'tron' | 'vuong' | 'tam-giac' | 'chu-nhat';
-
-interface ShapeItem {
-  name: string;
-  emoji: string;
-  category: ShapeCategory;
-  hint: string;
-}
-
-const SHAPE_POOL: ShapeItem[] = [
-  { name: 'Quả bóng đá', emoji: '⚽', category: 'tron', hint: 'Quả bóng lăn tròn lông lốc' },
-  { name: 'Hộp quà vuông', emoji: '🎁', category: 'vuong', hint: 'Hộp quà có các mặt vuông vức' },
-  { name: 'Miếng dưa hấu', emoji: '🍉', category: 'tam-giac', hint: 'Cắt lát hình tam giác 3 cạnh' },
-  { name: 'Cuốn sách bài tập', emoji: '📘', category: 'chu-nhat', hint: 'Có hai cạnh dài và hai cạnh ngắn' },
-  { name: 'Chiếc bánh quy tròn', emoji: '🍪', category: 'tron', hint: 'Bánh quy bơ tròn xoe' },
-  { name: 'Biển báo nguy hiểm', emoji: '⚠️', category: 'tam-giac', hint: 'Biển cảnh báo màu vàng 3 cạnh' },
-  { name: 'Quả xoài', emoji: '🥭', category: 'tron', hint: 'Quả xoài tròn dài' },
-  { name: 'Cửa sổ lớp học', emoji: '🪟', category: 'chu-nhat', hint: 'Cửa sổ có khung dài' },
-  { name: 'Mặt đồng hồ', emoji: '⏰', category: 'tron', hint: 'Đồng hồ quay tròn kim' },
-  { name: 'Điểm an toàn', emoji: '🛡️', category: 'tam-giac', hint: 'Tấm khiên 3 cạnh' },
-  { name: 'Sô cô la vuông', emoji: '🍫', category: 'vuong', hint: 'Miếng sô cô la 4 cạnh bằng nhau' },
-  { name: 'Cái bảng lớp', emoji: '📋', category: 'chu-nhat', hint: 'Bảng có hai cạnh dài' },
-  { name: 'Quả dưa hấu', emoji: '🍈', category: 'tron', hint: 'Quả dưa lăn tròn' },
-  { name: 'Thước ê ke', emoji: '📐', category: 'tam-giac', hint: 'Thước vẽ góc 3 cạnh' },
-  { name: 'Chiếc khăn mùi xoa', emoji: '🧣', category: 'vuong', hint: 'Khăn gấp 4 cạnh bằng nhau' },
-  { name: 'Cánh cửa tủ', emoji: '🚪', category: 'chu-nhat', hint: 'Cánh cửa dài đứng' },
-  { name: 'Quả cam', emoji: '🍊', category: 'tron', hint: 'Quả cam tròn xoe' },
-  { name: 'Cờ sina', emoji: '🚩', category: 'tam-giac', hint: 'Lá cờ nhỏ 3 cạnh' },
-  { name: 'Tấm gạch vuông', emoji: '🧱', category: 'vuong', hint: 'Viên gạch 4 cạnh bằng nhau' },
-  { name: 'Chiếc bánh mì', emoji: '🍞', category: 'chu-nhat', hint: 'Ổ bánh dài' },
-  { name: 'Hòn bi sắt', emoji: '🍇', category: 'tron', hint: 'Viên tròn lăn' },
-  { name: 'Mái nhà', emoji: '🏠', category: 'tam-giac', hint: 'Mái hiên 3 cạnh' },
-  { name: 'Gói kẹo vuông', emoji: '🍬', category: 'vuong', hint: 'Viên kẹo 4 cạnh bằng nhau' },
-  { name: 'Bức ảnh khung', emoji: '🖼️', category: 'chu-nhat', hint: 'Khung ảnh dài' },
-];
-
-function buildShapeRounds(tier: number): ShapeItem[] {
-  const roundsPerTier = defaultRoundsPerTier();
-  const count = roundsPerTier[tier - 1];
-  const seed = 4500 + tier * 43;
-  // Tier 1-2 only show near-obvious items; higher tiers add tricky shapes.
-  const pool = tier <= 2 ? SHAPE_POOL.slice(0, 10) : SHAPE_POOL;
-  return pickDistinct<ShapeItem>(pool, count, seededRng(seed));
-}
+export { SHAPE_POOL, buildShapeRounds };
+export type { ShapeCategory, ShapeItem };
 
 export const ShapeSortingGame: React.FC<{ onExit: () => void }> = ({ onExit }) => {
   const roundsPerTier = useMemo(() => defaultRoundsPerTier(), []);
   const stage = useGameStage({ gameId: 'shape_sorting', roundsPerTier, advanceDelayMs: 1200 });
 
-  const items = useMemo(() => buildShapeRounds(stage.tier), [stage.tier]);
+  const items = useMemo(() => buildShapeRounds(stage.tier, stage.nonce), [stage.tier, stage.nonce]);
   const currentItem = items[stage.roundIdx];
-
-  const BASKETS: { category: ShapeCategory; title: string; emoji: string; color: string }[] = [
-    { category: 'tron', title: 'Hình Tròn', emoji: '🔴', color: 'border-red-400 bg-red-50 text-red-900' },
-    { category: 'vuong', title: 'Hình Vuông', emoji: '🟦', color: 'border-blue-400 bg-blue-50 text-blue-900' },
-    { category: 'tam-giac', title: 'Hình Tam Giác', emoji: '🔺', color: 'border-amber-400 bg-amber-50 text-amber-900' },
-    { category: 'chu-nhat', title: 'Hình Chữ Nhật', emoji: '🟩', color: 'border-emerald-400 bg-emerald-50 text-emerald-900' },
-  ];
 
   const handleBasketTap = (cat: ShapeCategory) => {
     if (stage.locked) return;
@@ -78,6 +31,7 @@ export const ShapeSortingGame: React.FC<{ onExit: () => void }> = ({ onExit }) =
 
   return (
     <GameModalWrapper
+      gameId="shape_sorting"
       title="Phân Loại Hình Học Vui Nhộn"
       subtitle="Xếp các đồ vật quen thuộc vào đúng giỏ hình học"
       mascotEmoji="📦"
@@ -93,7 +47,8 @@ export const ShapeSortingGame: React.FC<{ onExit: () => void }> = ({ onExit }) =
       nextTierMeta={stage.tier + 1 <= stage.tierCount ? getTierMeta(stage.tier + 1) : undefined}
       onNextTier={stage.startNextTier}
       earnedXp={stage.xpEarned}
-      earnedStars={1}
+      earnedStars={stage.starsEarned}
+      prevBestStars={stage.prevBestStars}
       onRestart={stage.restartGame}
       onExit={onExit}
       instructions={`Hãy xếp "${currentItem.name}" vào chiếc giỏ hình học đúng!`}

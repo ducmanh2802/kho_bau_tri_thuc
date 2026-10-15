@@ -1,4 +1,6 @@
-export type SubjectType = 'tieng-viet' | 'toan' | 'english';
+import type { DailyQuestType, ShopItemType } from './motivation';
+
+export type SubjectType = 'tieng-viet' | 'toan' | 'english' | 'cuoc-song';
 
 export type MasteryStatus = 'NOT_STARTED' | 'LEARNING' | 'PRACTICING' | 'MASTERED' | 'NEEDS_REVIEW';
 
@@ -14,23 +16,45 @@ export type QuestionType =
   | 'image-choice'
   | 'audio-choice'
   | 'math-expression'
-  | 'true-false';
+  | 'true-false'
+  | 'classify';
+
+/** SVG visual components a question may reference (T11A, T11B). */
+export type VisualKind =
+  | 'TenFrame'
+  | 'NumberLine'
+  | 'PlaceValueBlocks'
+  | 'Ruler'
+  | 'ClockFace';
 
 export interface Question {
-  id: string;
-  subject: SubjectType;
-  topicId: string;
-  skillId: string;
-  difficulty: 1 | 2 | 3;
-  type: QuestionType;
-  prompt: string;
-  audioPrompt?: string; // Text to be read by TTS
-  mediaEmoji?: string;
-  options?: string[];
-  correctAnswer: string | string[]; // Can be string or array for ordering/matching
-  pairs?: { left: string; right: string }[];
-  hint?: string;
-  explanation?: string;
+   id: string;
+   subject: SubjectType;
+   topicId: string;
+   skillId: string;
+   difficulty: 1 | 2 | 3;
+   type: QuestionType;
+   prompt: string;
+   audioPrompt?: string; // Text to be read by TTS
+   mediaEmoji?: string;
+   options?: string[];
+   correctAnswer: string | string[]; // Can be string or array for ordering/matching
+   pairs?: { left: string; right: string }[];
+   matchingPairs?: { left: string; right: string }[];
+   orderingItems?: string[];
+   categoryBuckets?: string[];
+   hint?: string;
+   explanation?: string;
+   visual?: {
+     kind: VisualKind;
+     props?: Record<string, unknown>;
+   };
+   /**
+    * Machine-checkable arithmetic payload (CONTENT_GUIDE §3, T11A/T11B).
+    * A test recomputes `a op b` and compares it with `Number(correctAnswer)`,
+    * so a hand-written arithmetic answer can never silently drift.
+    */
+   calc?: { a: number; op: '+' | '-'; b: number };
 }
 
 export interface Lesson {
@@ -75,7 +99,7 @@ export interface DailyQuest {
   rewardStars: number;
   rewardXp: number;
   completed: boolean;
-  type: 'lesson_viet' | 'lesson_math' | 'lesson_english' | 'play_game' | 'daily_review';
+  type: DailyQuestType;
 }
 
 export interface Achievement {
@@ -91,10 +115,12 @@ export interface Achievement {
 export interface AvatarItem {
   id: string;
   name: string;
-  type: 'hat' | 'glasses' | 'shirt' | 'backpack' | 'pet';
+  type: ShopItemType;
   emoji: string;
   priceStars: number;
   unlocked: boolean;
+  /** Level bé tối thiểu để mở bán (mặc định 1 = bán ngay). */
+  minLevel?: number;
 }
 
 export interface ChildProfile {
@@ -108,6 +134,8 @@ export interface ChildProfile {
     shirt?: string;
     backpack?: string;
     pet?: string;
+    background?: string;
+    frame?: string;
   };
   xp: number;
   stars: number;
@@ -119,6 +147,12 @@ export interface ChildProfile {
   completedLessons: string[];
   completedWeeklyChallenges: string[];
   dailyChestClaimedDate?: string;
+  /** Stars earned per lesson (1–3). Key = lessonId, value = star count. */
+  lessonStars: Record<string, number>;
+  /** Whether a topic chest has been opened. Key = topicId, value = true if claimed. */
+  chestState: Record<string, boolean>;
+  /** Parent override to unlock all lessons (bypasses sequential gating). */
+  unlockAllLessons: boolean;
   /**
    * True when the profile was populated by the parent-only demo seeder.
    * Demo figures are fabricated for showcasing reports and must never be
@@ -172,6 +206,27 @@ export interface ParentSettings {
   reviewIntensity: 'light' | 'standard' | 'intensive';
   /** Offer an explicit break/pause inside long sessions (never force a 6-year-old). */
   optionalBreaks: boolean;
+  /** Night mode (eye-friendly dark theme). */
+  nightMode: boolean;
+
+  // T18C — Hệ thống động lực
+  /** Giới hạn số lượt quay máy gắp sticker mỗi ngày (0 = không giới hạn). */
+  maxGachaPerDay: number;
+  /** Bật/tắt toàn bộ phần thưởng (sao, XP, vé, sticker, đồ Shop). */
+  rewardsEnabled: boolean;
+  /** Lịch sử phần thưởng gần đây (tối đa 50 mục). */
+  rewardHistory: RewardHistoryEntry[];
+
+  // T19 — Âm nhạc nền (mặc định TẮT, phụ huynh/bé tự bật)
+  bgMusicEnabled: boolean;
+}
+
+export interface RewardHistoryEntry {
+  date: string; // YYYY-MM-DD
+  type: 'stars' | 'xp' | 'tickets' | 'sticker' | 'shop_item' | 'level_reward' | 'quest' | 'chest' | 'gacha';
+  amount: number;
+  description: string;
+  itemId?: string; // stickerId, shopItemId, level, questId
 }
 
 /**
@@ -204,9 +259,13 @@ export type ActiveScreen =
   | 'competition'
   | 'achievements'
   | 'avatar_shop'
-  | 'kidbox_companion';
+  | 'kidbox_companion'
+  | 'sticker_album'
+  | 'gacha_machine'
+  | 'streak_calendar';
 
 export * from './competition';
 export * from './reading';
 export * from './learningOS';
 export * from './decisionEngine';
+export * from './motivation';

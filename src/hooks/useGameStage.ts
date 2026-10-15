@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { GAME_LEVEL_POLICY } from '../config/policy';
 import { clampTier, getTierMeta, type GameTierMeta } from '../data/gameLevels';
 import { StorageService } from '../services/storage';
@@ -30,13 +30,18 @@ export interface GameStage {
   locked: boolean;
   starsEarned: number;
   xpEarned: number;
-  submitCorrect: () => void;
+  /** Best stars BEFORE the current tier completion (T02/B2 replay delta). */
+  prevBestStars: number;
+  /** Play count for the current tier (T02/B5 replay shuffling). */
+  nonce: number;
+  submitCorrect: (starsOverride?: number) => void;
   submitWrong: () => void;
   startNextTier: () => void;
   restartGame: () => void;
 }
 
-function computeStars(mistakes: number): number {
+/** T02/B1 — stars from real performance (single source of truth). */
+export function computeStars(mistakes: number): number {
   if (mistakes <= GAME_LEVEL_POLICY.STAR_THREE_MAX_MISTAKES) return 3;
   if (mistakes <= GAME_LEVEL_POLICY.STAR_TWO_MAX_MISTAKES) return 2;
   return 1;
@@ -56,11 +61,27 @@ export function useGameStage(options: UseGameStageOptions): GameStage {
   );
   const [roundIdx, setRoundIdx] = useState(0);
   const [score, setScore] = useState(0);
+  // T02B/B16 — score inside the CURRENT tier only (best score is stored
+  // per tier; the cumulative `score` above stays for HUD display).
+  const [tierScore, setTierScore] = useState(0);
   const [mistakesInTier, setMistakesInTier] = useState(0);
   const [locked, setLocked] = useState(false);
   const [phase, setPhase] = useState<GameStagePhase>('playing');
   const [starsEarned, setStarsEarned] = useState(0);
+  const [prevBestStars, setPrevBestStars] = useState(0);
+  const [nonce, setNonce] = useState(0);
   const timerRef = useRef<number | null>(null);
+
+  // T01/B10 — never leave a pending advance timer running after unmount
+  // (closing the game modal mid-delay previously leaked the timeout).
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) {
+        window.clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
+    };
+  }, []);
 
   const tierSafe = clampTier(tier);
   const roundTotal = roundsPerTier[Math.min(tierSafe - 1, roundsPerTier.length - 1)] ?? 1;
@@ -68,9 +89,21 @@ export function useGameStage(options: UseGameStageOptions): GameStage {
   const isLastTier = tierSafe >= Math.max(tierCount, 1);
   const xpEarned = GAME_LEVEL_POLICY.XP_PER_TIER[Math.min(tierSafe - 1, GAME_LEVEL_POLICY.XP_PER_TIER.length - 1)];
 
-  const submitCorrect = () => {
+  // T02/B5 — every (re)play of a tier bumps its nonce so builders reshuffle.
+  // Runs on mount and whenever the tier changes (startNextTier / restart).
+  useEffect(() => {
+    try {
+      setNonce(StorageService.bumpPlayNonce(gameId, tierSafe));
+    } catch {
+      setNonce((n) => n + 1);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tierSafe]);
+
+  const submitCorrect = (starsOverride?: number) => {
     if (locked || phase !== 'playing') return;
     setScore((s) => s + 1);
+    setTierScore((s) => s + 1);
     setLocked(true);
     if (timerRef.current) window.clearTimeout(timerRef.current);
     timerRef.current = window.setTimeout(() => {
@@ -78,8 +111,21 @@ export function useGameStage(options: UseGameStageOptions): GameStage {
       if (roundIdx + 1 < roundTotal) {
         setRoundIdx((i) => i + 1);
       } else {
-        const stars = computeStars(mistakesInTier);
-        StorageService.completeGameTier(gameId, tierSafe, stars, score + 1);
+        // T02B/B13 — explicit stars (e.g. ColoringCanvas coverage) win;
+        // otherwise stars come from real mistakes in THIS tier.
+        const stars =
+          typeof starsOverride === 'number'
+            ? Math.min(Math.max(Math.round(starsOverride), 1), 3)
+            : computeStars(mistakesInTier);
+        // T02/B2 — capture best BEFORE persisting so the reward receipt
+        // can pay only the delta on replays.
+        try {
+          setPrevBestStars(StorageService.getGameProgress(gameId).starsByTier[tierSafe] ?? 0);
+        } catch {
+          setPrevBestStars(0);
+        }
+        // T02B/B16 — persist the PER-TIER score, never the cumulative total.
+        StorageService.completeGameTier(gameId, tierSafe, stars, tierScore + 1);
         setStarsEarned(stars);
         setPhase(isLastTier ? 'allComplete' : 'tierComplete');
       }
@@ -95,22 +141,33 @@ export function useGameStage(options: UseGameStageOptions): GameStage {
     if (phase !== 'tierComplete') return;
     setTier((t) => clampTier(t + 1));
     setRoundIdx(0);
+    setTierScore(0);
     setMistakesInTier(0);
     setLocked(false);
     setPhase('playing');
     setStarsEarned(0);
+    setPrevBestStars(0);
   };
 
   const restartGame = () => {
     if (timerRef.current) window.clearTimeout(timerRef.current);
     timerRef.current = null;
-    setTier(clampTier(StorageService.getGameProgress(gameId).unlockedTier));
+    const resumeTier = clampTier(StorageService.getGameProgress(gameId).unlockedTier);
+    setTier(resumeTier);
     setRoundIdx(0);
     setScore(0);
+    setTierScore(0);
     setMistakesInTier(0);
     setLocked(false);
     setPhase('playing');
     setStarsEarned(0);
+    setPrevBestStars(0);
+    // T02/B5 — replaying the same tier counts as a new play for shuffling.
+    try {
+      setNonce(StorageService.bumpPlayNonce(gameId, resumeTier));
+    } catch {
+      setNonce((n) => n + 1);
+    }
   };
 
   return {
@@ -128,6 +185,8 @@ export function useGameStage(options: UseGameStageOptions): GameStage {
     locked,
     starsEarned,
     xpEarned,
+    prevBestStars,
+    nonce,
     submitCorrect,
     submitWrong,
     startNextTier,

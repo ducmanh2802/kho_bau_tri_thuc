@@ -61,7 +61,7 @@ export default async function run(page, ui) {
     // Lesson: open, answer one question, check the question surface.
     await page.getByRole('button', { name: /Tiếng Việt/ }).first().click(CLICK);
     await page.waitForSelector('text=Vương Quốc Tiếng Việt', { timeout: 20000 });
-    await page.getByRole('button', { name: /Vào học/ }).first().click(CLICK);
+    await page.locator('[data-testid^="lesson-button-"]').first().click(CLICK); await page.getByRole('button', { name: /Bắt đầu/ }).click(CLICK);
     await page.waitForSelector('[role=dialog]', { timeout: 20000 });
     await page.waitForTimeout(500);
     const lessonOverflow = await overflowPx(page);
@@ -81,10 +81,13 @@ export default async function run(page, ui) {
     // Competition hub on the same viewport.
     await page.goto(APP_ORIGIN);
     await page.waitForSelector('text=Xin chào', { timeout: 20000 });
+    // T06: Competition no longer in main nav; access from World Map
     await page
       .getByRole('navigation', { name: 'Điều hướng nhanh' })
-      .getByRole('button', { name: 'Đấu Trường', exact: true })
+      .getByRole('button', { name: 'Bản Đồ', exact: true })
       .click(CLICK);
+    await page.waitForSelector('text=Bản Đồ Học Tập', { timeout: 20000 });
+    await page.getByRole('button', { name: /Đấu Trường|Thi Thử/ }).first().click(CLICK);
     await page.waitForSelector('text=Kho Báu Đấu Trường Tri Thức', { timeout: 20000 });
     await page.waitForTimeout(400);
     const hubOverflow = await overflowPx(page);
@@ -106,7 +109,7 @@ export default async function run(page, ui) {
   await page.waitForSelector('text=Xin chào', { timeout: 20000 });
   await page.getByRole('button', { name: /Tiếng Việt/ }).first().click(CLICK);
   await page.waitForSelector('text=Vương Quốc Tiếng Việt', { timeout: 20000 });
-  await page.getByRole('button', { name: /Vào học/ }).first().click(CLICK);
+  await page.locator('[data-testid^="lesson-button-"]').first().click(CLICK); await page.getByRole('button', { name: /Bắt đầu/ }).click(CLICK);
   await page.waitForSelector('[role=dialog]', { timeout: 20000 });
 
   await page.setViewportSize({ width: 844, height: 390 });
@@ -135,7 +138,7 @@ export default async function run(page, ui) {
   await page.waitForSelector('text=Xin chào', { timeout: 20000 });
   await page.getByRole('button', { name: /Tiếng Việt/ }).first().click(CLICK);
   await page.waitForSelector('text=Vương Quốc Tiếng Việt', { timeout: 20000 });
-  await page.getByRole('button', { name: /Vào học/ }).first().click(CLICK);
+  await page.locator('[data-testid^="lesson-button-"]').first().click(CLICK); await page.getByRole('button', { name: /Bắt đầu/ }).click(CLICK);
   await page.waitForSelector('[role=dialog]', { timeout: 20000 });
   const promptBefore = await page.locator('[role=dialog]').innerText();
 

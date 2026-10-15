@@ -1,7 +1,20 @@
 import { Topic } from '../types';
 import { balanceTopics } from './optionBalance';
+import { LETTER_LESSONS, LETTER_SKILLS } from './vietnamese/letters';
+import { TONE_LESSONS, TONE_SKILLS } from './vietnamese/tones';
+import { COMPOUND_LESSONS, COMPOUND_SKILLS, COMPOUND_TOPIC } from './vietnamese/compounds';
+import { PUNCT_LESSONS, PUNCT_SKILLS, PUNCT_TOPIC } from './vietnamese/punctuation';
+import { UPGRADE_QUESTIONS_BY_LESSON, UPGRADE_SKILLS_BY_TOPIC } from './vietnamese/upgrades';
+import { RHYME_LESSONS, RHYME_SKILLS } from './vietnamese/rhymes';
 
-export const VIETNAMESE_TOPICS_RAW: Topic[] = [
+/**
+ * T02C/T10A — the hand-authored Grade-1 Vietnamese bank. Old lesson and
+ * question ids are preserved verbatim; the T10A work (letters, tone marks,
+ * compound letters, punctuation, and the "nâng bài cũ" upgrades) is merged in
+ * below to form the exported RAW topics. Keep this literal `const` literal so
+ * the merge stays in one reviewable place at the bottom of the file.
+ */
+const VIETNAMESE_TOPICS_BASE: Topic[] = [
   {
     id: 'vn-chu-cai',
     subject: 'tieng-viet',
@@ -827,7 +840,8 @@ export const VIETNAMESE_TOPICS_RAW: Topic[] = [
             audioPrompt: 'Sắp xếp các từ thành câu đúng',
             mediaEmoji: '🎒',
             options: ['Lan', 'đi', 'học'],
-            correctAnswer: ['Lan', 'đi', 'học'],
+            correctAnswer: 'Lan|đi|học',
+            orderingItems: ['Lan', 'đi', 'học'],
             hint: 'Ai? Đi đâu? Làm gì?',
             explanation: 'Tuyệt vời! Câu đúng là: "Lan đi học".',
           },
@@ -842,7 +856,8 @@ export const VIETNAMESE_TOPICS_RAW: Topic[] = [
             audioPrompt: 'Sắp xếp các từ thành câu đúng',
             mediaEmoji: '❤️',
             options: ['Bé', 'yêu', 'mẹ'],
-            correctAnswer: ['Bé', 'yêu', 'mẹ'],
+            correctAnswer: 'Bé|yêu|mẹ',
+            orderingItems: ['Bé', 'yêu', 'mẹ'],
             hint: 'Bé yêu ai nhất?',
             explanation: 'Rất chuẩn! "Bé yêu mẹ".',
           },
@@ -1299,7 +1314,268 @@ export const VIETNAMESE_TOPICS_RAW: Topic[] = [
       },
     ],
   },
+  {
+    id: 'vn-cac-dang-bai-moi',
+    subject: 'tieng-viet',
+    title: 'Các Dạng Bài Tập Mới',
+    subtitle: 'Nối, đúng/sai, gõ chữ, kéo thả, sắp xếp',
+    iconEmoji: '🎮',
+    color: 'from-rose-400 to-pink-500',
+    skills: ['vn_matching_practice', 'vn_true_false_practice', 'vn_drag_drop_practice', 'vn_ordering_practice'],
+    lessons: [
+      {
+        id: 'vn-les-new-1',
+        topicId: 'vn-cac-dang-bai-moi',
+        subject: 'tieng-viet',
+        title: 'Nối từ với hình',
+        description: 'Chạm trái - chạm phải để nối từ với hình ảnh đúng',
+        mascotTip: 'Gấu Bút Chì: Nối từ như nối dây chun, chạm trái rồi chạm phải nhé!',
+        xpReward: 40,
+        starReward: 3,
+        questions: [
+          {
+            id: 'vn-new-q1',
+            subject: 'tieng-viet',
+            topicId: 'vn-cac-dang-bai-moi',
+            skillId: 'vn_matching_practice',
+            difficulty: 1,
+            type: 'matching',
+            prompt: 'Nối mỗi từ với hình ảnh đúng:',
+            audioPrompt: 'Nối mỗi từ với hình ảnh đúng',
+            mediaEmoji: '🔗',
+            options: ['🍎 Quả táo', '🐟 Con cá', '🐘 Con voi', '🏠 Ngôi nhà'],
+            correctAnswer: 'Táo=🍎 Quả táo|Cá=🐟 Con cá|Voi=🐘 Con voi|Nhà=🏠 Ngôi nhà',
+            matchingPairs: [
+              { left: 'Táo', right: '🍎 Quả táo' },
+              { left: 'Cá', right: '🐟 Con cá' },
+              { left: 'Voi', right: '🐘 Con voi' },
+              { left: 'Nhà', right: '🏠 Ngôi nhà' },
+            ],
+            hint: 'Nhìn hình rồi chọn từ tương ứng.',
+            explanation: 'Táo - Quả táo, Cá - Con cá, Voi - Con voi, Nhà - Ngôi nhà.',
+          },
+          {
+            id: 'vn-new-q2',
+            subject: 'tieng-viet',
+            topicId: 'vn-cac-dang-bai-moi',
+            skillId: 'vn_matching_practice',
+            difficulty: 2,
+            type: 'matching',
+            prompt: 'Nối mỗi vần với từ chứa vần đó:',
+            audioPrompt: 'Nối mỗi vần với từ chứa vần đó',
+            mediaEmoji: '🧩',
+            options: ['bàn', 'cát', 'cam', 'đạp'],
+            correctAnswer: 'an=bàn|at=cát|am=cam|ap=đạp',
+            matchingPairs: [
+              { left: 'an', right: 'bàn' },
+              { left: 'at', right: 'cát' },
+              { left: 'am', right: 'cam' },
+              { left: 'ap', right: 'đạp' },
+            ],
+            hint: 'Đọc to vần và từ để nghe âm.',
+            explanation: 'an - bàn, at - cát, am - cam, ap - đạp.',
+          },
+        ],
+      },
+      {
+        id: 'vn-les-new-2',
+        topicId: 'vn-cac-dang-bai-moi',
+        subject: 'tieng-viet',
+        title: 'Đúng hay Sai',
+        description: 'Chọn Đúng hoặc Sai cho các câu nói',
+        mascotTip: 'Gấu Bút Chì: Đúng thì bấm ✅, Sai thì bấm ❌ nhé!',
+        xpReward: 35,
+        starReward: 3,
+        questions: [
+          {
+            id: 'vn-new-q3',
+            subject: 'tieng-viet',
+            topicId: 'vn-cac-dang-bai-moi',
+            skillId: 'vn_true_false_practice',
+            difficulty: 1,
+            type: 'true-false',
+            prompt: 'Chữ "B" có nét thẳng và hai nét cong. Câu này ĐÚNG hay SAI?',
+            audioPrompt: 'Chữ B có nét thẳng và hai nét cong. Đúng hay sai?',
+            mediaEmoji: '🅱️',
+            options: ['Đúng', 'Sai'],
+            correctAnswer: 'Đúng',
+            hint: 'Chữ B in hoa có một nét thẳng dọc và hai nét cong.',
+            explanation: 'Đúng rồi! Chữ B có nét thẳng và hai nét cong.',
+          },
+          {
+            id: 'vn-new-q4',
+            subject: 'tieng-viet',
+            topicId: 'vn-cac-dang-bai-moi',
+            skillId: 'vn_true_false_practice',
+            difficulty: 2,
+            type: 'true-false',
+            prompt: 'Từ "cái bàn" chứa vần "at". Câu này ĐÚNG hay SAI?',
+            audioPrompt: 'Từ cái bàn chứa vần at. Đúng hay sai?',
+            mediaEmoji: '🪑',
+            options: ['Đúng', 'Sai'],
+            correctAnswer: 'Sai',
+            hint: 'Cái bàn có vần an, không phải at.',
+            explanation: 'Sai! Cái bàn chứa vần an, còn cát mới chứa vần at.',
+          },
+        ],
+      },
+      {
+        id: 'vn-les-new-3',
+        topicId: 'vn-cac-dang-bai-moi',
+        subject: 'tieng-viet',
+        title: 'Kéo thả từ vào nhóm',
+        description: 'Kéo từ vào đúng nhóm: Động vật hoặc Đồ vật',
+        mascotTip: 'Gấu Bút Chì: Chạm từ, rồi chạm vào nhóm đúng để thả!',
+        xpReward: 40,
+        starReward: 3,
+        questions: [
+          {
+            id: 'vn-new-q5',
+            subject: 'tieng-viet',
+            topicId: 'vn-cac-dang-bai-moi',
+            skillId: 'vn_drag_drop_practice',
+            difficulty: 1,
+            type: 'drag-drop',
+            prompt: 'Kéo các từ vào đúng nhóm: Động vật hoặc Đồ vật',
+            audioPrompt: 'Kéo các từ vào đúng nhóm động vật hoặc đồ vật',
+            mediaEmoji: '📦',
+            options: ['Con mèo', 'Cái bàn', 'Con chó', 'Quả táo', 'Con cá', 'Cái ghế'],
+            correctAnswer: 'Động vật',
+            categoryBuckets: ['Động vật', 'Đồ vật'],
+            hint: 'Con vật thì có thể di chuyển, đồ vật thì đứng yên.',
+            explanation: 'Động vật: mèo, chó, cá. Đồ vật: bàn, táo, ghế.',
+          },
+          {
+            id: 'vn-new-q6',
+            subject: 'tieng-viet',
+            topicId: 'vn-cac-dang-bai-moi',
+            skillId: 'vn_drag_drop_practice',
+            difficulty: 2,
+            type: 'drag-drop',
+            prompt: 'Kéo các từ vào đúng nhóm: Có vần "an" hoặc Có vần "at"',
+            audioPrompt: 'Kéo các từ vào nhóm vần an hoặc vần at',
+            mediaEmoji: '🧩',
+            options: ['bàn', 'cát', 'gan', 'mặt', 'thân', 'bát'],
+            correctAnswer: 'Vần an',
+            categoryBuckets: ['Vần an', 'Vần at'],
+            hint: 'Đọc to từng từ, nghe vần cuối của từ.',
+            explanation: 'Vần an: bàn, gan, thân. Vần at: cát, mặt, bát.',
+          },
+        ],
+      },
+      {
+        id: 'vn-les-new-4',
+        topicId: 'vn-cac-dang-bai-moi',
+        subject: 'tieng-viet',
+        title: 'Sắp xếp từ thành câu',
+        description: 'Chạm theo thứ tự để ghép câu hoàn chỉnh',
+        mascotTip: 'Gấu Bút Chì: Chạm từ theo thứ tự câu nói nhé!',
+        xpReward: 45,
+        starReward: 3,
+        questions: [
+          {
+            id: 'vn-new-q7',
+            subject: 'tieng-viet',
+            topicId: 'vn-cac-dang-bai-moi',
+            skillId: 'vn_ordering_practice',
+            difficulty: 1,
+            type: 'ordering',
+            prompt: 'Sắp xếp các từ thành câu: "Bé Lan học bài"',
+            audioPrompt: 'Sắp xếp từ thành câu: Bé Lan học bài',
+            mediaEmoji: '📝',
+            options: ['Bé', 'Lan', 'học', 'bài'],
+            correctAnswer: 'Bé|Lan|học|bài',
+            orderingItems: ['Bé', 'Lan', 'học', 'bài'],
+            hint: 'Ai làm gì? Bé Lan học bài.',
+            explanation: 'Câu đúng: Bé Lan học bài.',
+          },
+          {
+            id: 'vn-new-q8',
+            subject: 'tieng-viet',
+            topicId: 'vn-cac-dang-bai-moi',
+            skillId: 'vn_ordering_practice',
+            difficulty: 2,
+            type: 'ordering',
+            prompt: 'Sắp xếp các từ thành câu: "Con mèo bắt chuột"',
+            audioPrompt: 'Sắp xếp từ thành câu: Con mèo bắt chuột',
+            mediaEmoji: '🐱',
+            options: ['Con', 'mèo', 'bắt', 'chuột'],
+            correctAnswer: 'Con|mèo|bắt|chuột',
+            orderingItems: ['Con', 'mèo', 'bắt', 'chuột'],
+            hint: 'Con gì làm gì? Con mèo bắt chuột.',
+            explanation: 'Câu đúng: Con mèo bắt chuột.',
+          },
+        ],
+      },
+    ],
+  },
 ];
+
+/**
+ * T10A merge — apply the "nâng bài cũ" upgrades, then fold in the new units
+ * (bảng chữ cái, dấu thanh, chữ ghép, dấu câu). Old ids are never renamed and
+ * every append keeps the raw bank deterministic so option balancing stays pure.
+ */
+export const VIETNAMESE_TOPICS_RAW: Topic[] = (() => {
+  const topics: Topic[] = VIETNAMESE_TOPICS_BASE.map((topic) => {
+    const upgradeSkills = UPGRADE_SKILLS_BY_TOPIC[topic.id] ?? [];
+    const skills = [
+      ...topic.skills,
+      ...upgradeSkills.filter((skill) => !topic.skills.includes(skill)),
+    ];
+    const lessons = topic.lessons.map((lesson) => {
+      const upgrade = UPGRADE_QUESTIONS_BY_LESSON[lesson.id];
+      if (!upgrade) return lesson;
+      return { ...lesson, questions: [...lesson.questions, ...upgrade.questions] };
+    });
+    return { ...topic, skills, lessons };
+  });
+
+  const byId = new Map(topics.map((topic) => [topic.id, topic]));
+
+  const chuCai = byId.get('vn-chu-cai');
+  if (chuCai) {
+    chuCai.skills = [...chuCai.skills, ...LETTER_SKILLS];
+    chuCai.lessons = [...chuCai.lessons, ...LETTER_LESSONS];
+  }
+
+  const dauThanh = byId.get('vn-dau-thanh');
+  if (dauThanh) {
+    dauThanh.skills = [...dauThanh.skills, ...TONE_SKILLS];
+    dauThanh.lessons = [...dauThanh.lessons, ...TONE_LESSONS];
+  }
+
+  const vanCoBan = byId.get('vn-van-co-ban');
+  if (vanCoBan) {
+    vanCoBan.skills = [...vanCoBan.skills, ...RHYME_SKILLS];
+    vanCoBan.lessons = [...vanCoBan.lessons, ...RHYME_LESSONS];
+  }
+
+  topics.push(
+    {
+      id: COMPOUND_TOPIC,
+      subject: 'tieng-viet',
+      title: 'Chữ Ghép & Quy Tắc Âm Đầu',
+      subtitle: 'ch, nh, ph, th, kh, gh, gi, qu, tr, ng/ngh',
+      iconEmoji: '🧩',
+      color: 'from-teal-400 to-cyan-500',
+      skills: [...COMPOUND_SKILLS],
+      lessons: [...COMPOUND_LESSONS],
+    },
+    {
+      id: PUNCT_TOPIC,
+      subject: 'tieng-viet',
+      title: 'Dấu Câu & Viết Hoa',
+      subtitle: 'Dấu chấm, dấu hỏi, dấu chấm than và viết hoa đầu câu',
+      iconEmoji: '❓',
+      color: 'from-violet-400 to-purple-500',
+      skills: [...PUNCT_SKILLS],
+      lessons: [...PUNCT_LESSONS],
+    }
+  );
+
+  return topics;
+})();
 
 /** Balanced copy — correct answers distributed across option positions (P41 §5). */
 export const VIETNAMESE_TOPICS: Topic[] = balanceTopics(VIETNAMESE_TOPICS_RAW);
