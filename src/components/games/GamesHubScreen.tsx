@@ -7,54 +7,15 @@ import { GAMES_CATALOG, type GameCategory, type GameInfo } from '../../data/game
 export { GAMES_CATALOG };
 export type { GameCategory, GameInfo };
 import { getTierMeta } from '../../data/gameLevels';
-import { CatchFallingLettersGame } from './CatchFallingLettersGame';
-import { SyllableBuilderGame } from './SyllableBuilderGame';
-import { RhymeHunterGame } from './RhymeHunterGame';
-import { SentenceScrambleGame } from './SentenceScrambleGame';
-import { ListenPickPhonicsGame } from './ListenPickPhonicsGame';
-import { SpellingDuelGame } from './SpellingDuelGame';
-import { FallingNumbersMathGame } from './FallingNumbersMathGame';
-import { MathSpeedRacingGame } from './MathSpeedRacingGame';
-import { NumberTowerGame } from './NumberTowerGame';
-import { OceanFishingGame } from './OceanFishingGame';
-import { ShapeSortingGame } from './ShapeSortingGame';
-import { ClockMoneyGame } from './ClockMoneyGame';
-import { WordStoryGame } from './WordStoryGame';
-import { EnglishAnimalSoundGame } from './EnglishAnimalSoundGame';
-import { EnglishColorBalloonGame } from './EnglishColorBalloonGame';
-import { PhonicsPopGame } from './PhonicsPopGame';
-import { MemoryCardsGame } from './MemoryCardsGame';
-import { ColoringCanvasGame } from './ColoringCanvasGame';
+import { GAME_REGISTRY } from './registry';
 import { KidButton, KidCard, Pill, SectionTitle, ProgressStars } from '../ui';
-
-/** Registry: game id -> component. Thêm game mới chỉ cần thêm 1 dòng ở đây + catalog. */
-const GAME_REGISTRY: Record<string, React.ComponentType<{ onExit: () => void }>> = {
-  catch_letters: CatchFallingLettersGame,
-  syllable_builder: SyllableBuilderGame,
-  rhyme_hunter: RhymeHunterGame,
-  sentence_scramble: SentenceScrambleGame,
-  listen_pick: ListenPickPhonicsGame,
-  spelling_duel: SpellingDuelGame,
-  falling_numbers: FallingNumbersMathGame,
-  speed_racing: MathSpeedRacingGame,
-  number_tower: NumberTowerGame,
-  ocean_fishing: OceanFishingGame,
-  shape_sorting: ShapeSortingGame,
-  clock_money: ClockMoneyGame,
-  word_story: WordStoryGame,
-  animal_safari: EnglishAnimalSoundGame,
-  color_balloon: EnglishColorBalloonGame,
-  phonics_pop: PhonicsPopGame,
-  memory_cards: MemoryCardsGame,
-  coloring_canvas: ColoringCanvasGame,
-};
 
 function GameProgressDots({ gameId }: { gameId: string }) {
   const progress = StorageService.getGameProgress(gameId);
   const maxTier = GAME_LEVEL_POLICY.MAX_TIER;
   return (
     <div className="mt-2 space-y-1">
-      <div className="flex items-center gap-1 text-[10px] text-slate-500 font-bold">
+      <div className="flex items-center gap-1 text-sm text-slate-500 font-bold">
         <span>{getTierMeta(progress.unlockedTier).emoji}</span>
         <span>Màn {progress.unlockedTier}/{maxTier}</span>
         <span className="ml-auto flex items-center gap-0.5">
@@ -116,6 +77,18 @@ export const GamesHubScreen: React.FC<{ onBack: () => void; onProfileUpdate: () 
       ? GAMES_CATALOG
       : GAMES_CATALOG.filter((g) => g.category === activeCategory);
 
+  const recommendedGames = useMemo(() => {
+    const ranked = GAMES_CATALOG.map((game) => {
+      const progress = StorageService.getGameProgress(game.id);
+      const stars = Object.values(progress.starsByTier ?? {}).reduce(
+        (a: number, b: unknown) => a + (typeof b === 'number' ? b : 0),
+        0
+      );
+      return { game, stars };
+    }).sort((a, b) => a.stars - b.stars || a.game.id.localeCompare(b.game.id));
+    return ranked.slice(0, 3).map((r) => r.game);
+  }, []);
+
   const handleLaunchGame = (gameId: string) => {
     sound.playClick();
     setActiveGameId(gameId);
@@ -159,7 +132,7 @@ export const GamesHubScreen: React.FC<{ onBack: () => void; onProfileUpdate: () 
             <h1 className="text-2xl md:text-3xl font-black font-display text-white">
               Đấu Trường Trò Chơi Trí Tuệ
             </h1>
-            <p className="text-xs md:text-sm text-purple-100 font-bold mt-1 max-w-lg leading-relaxed">
+            <p className="text-sm md:text-sm text-purple-100 font-bold mt-1 max-w-lg leading-relaxed">
               Vừa chơi vừa học! 6 màn từ dễ đến Vua Trò Chơi 👑 — mỗi màn mở khóa màn tiếp theo, nhận Sao & XP.
             </p>
             <div className="mt-2 flex flex-wrap gap-1.5 justify-center md:justify-start">
@@ -172,14 +145,41 @@ export const GamesHubScreen: React.FC<{ onBack: () => void; onProfileUpdate: () 
           </div>
         </div>
 
-        <div className="px-4 py-2 bg-white/20 rounded-2xl text-xs font-black flex items-center gap-1.5 backdrop-blur-xs">
+        <div className="px-4 py-2 bg-white/20 rounded-2xl text-sm font-black flex items-center gap-1.5 backdrop-blur-xs">
           <Star className="w-4 h-4 fill-amber-300 text-amber-200" />
           <span>⭐ Nhận Sao & XP sau mỗi màn</span>
         </div>
       </div>
 
+      {/* Recommended for the child */}
+      <div className="space-y-3" data-testid="recommended-games">
+        <SectionTitle icon="🔥" size="lg" className="mb-1">
+          Gợi ý cho bé
+        </SectionTitle>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {recommendedGames.map((game) => (
+            <KidCard key={game.id} hoverable subjectBorder="none" className="flex items-center gap-3">
+              <span className="text-4xl shrink-0">{game.emoji}</span>
+              <div className="flex-1 min-w-0">
+                <h3 className="text-sm font-black text-slate-900 font-display truncate">{game.title}</h3>
+                <p className="text-sm text-slate-500 font-medium truncate">{game.skillTag}</p>
+              </div>
+              <KidButton
+                variant="primary"
+                size="md"
+                className="min-h-[44px] shrink-0"
+                onClick={() => handleLaunchGame(game.id)}
+                leftIcon={<Play className="w-3.5 h-3.5 fill-white" />}
+              >
+                Chơi
+              </KidButton>
+            </KidCard>
+          ))}
+        </div>
+      </div>
+
       {/* Category Tabs — counts computed dynamically */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-2">
+      <div className="grid grid-cols-5 gap-1 pb-2">
         {categoryTabs.map((tab) => {
           const count = counts[tab.id];
           return (
@@ -221,18 +221,18 @@ export const GamesHubScreen: React.FC<{ onBack: () => void; onProfileUpdate: () 
                   <Pill variant="default" size="sm" className="bg-purple-50 text-purple-700 border-purple-200">
                     {game.categoryLabel}
                   </Pill>
-                  {game.isNew && (
-                    <Pill variant="default" size="sm" className="bg-rose-500 text-white animate-pulse-subtle">
-                      ✨ Mới
-                    </Pill>
-                  )}
+                   {StorageService.isNewGame(game.id) && (
+                     <Pill variant="default" size="sm" className="bg-rose-500 text-white animate-pulse-subtle">
+                       ✨ Mới
+                     </Pill>
+                   )}
                 </div>
               </div>
 
               <h3 className="text-base md:text-lg font-black text-slate-900 font-display">
                 {game.title}
               </h3>
-              <p className="text-xs text-slate-500 font-medium mt-1 line-clamp-2">
+              <p className="text-sm text-slate-500 font-medium mt-1 line-clamp-2">
                 {game.description}
               </p>
 
@@ -245,7 +245,7 @@ export const GamesHubScreen: React.FC<{ onBack: () => void; onProfileUpdate: () 
             </div>
 
             <div className="pt-4 mt-4 border-t border-slate-100 flex items-center justify-between">
-              <span className="text-[11px] font-bold text-slate-400">{game.mascot}</span>
+              <span className="text-sm font-bold text-slate-400">{game.mascot}</span>
               <KidButton
                 variant="primary"
                 size="md"
@@ -261,7 +261,11 @@ export const GamesHubScreen: React.FC<{ onBack: () => void; onProfileUpdate: () 
       </div>
 
       {/* Render Active Game via registry */}
-      {ActiveGame && <ActiveGame onExit={handleCloseGame} />}
+      {ActiveGame && (
+        <React.Suspense fallback={null}>
+          <ActiveGame onExit={handleCloseGame} />
+        </React.Suspense>
+      )}
     </div>
   );
 };

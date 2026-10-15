@@ -19,6 +19,7 @@ import {
   SubjectType,
 } from '../types';
 import { getAllSkills, getTopicsBySubject } from '../data/curriculum';
+import { GAMES_CATALOG } from '../data/gamesCatalog';
 import { localDateKey, diffDateKeys } from './dateUtils';
 import { LearningOS, LEARNING_OS_POLICY } from './learningOS';
 // T02C — storage (first-load chunk) must NOT import CompetitionEngine,
@@ -53,6 +54,8 @@ const STORAGE_KEYS = {
   GAME_PROGRESS: 'kho_bau_game_progress',
   REVIEW_DAYS: 'kho_bau_review_days',
   GAME_NONCE: 'kho_bau_game_nonce',
+  // T08 — ngày bé thấy mỗi trò chơi lần đầu (YYYY-MM-DD giờ máy).
+  GAME_FIRST_SEEN: 'kho_bau_game_first_seen',
   // T01B/10 — ngày tưới cây gần nhất (YYYY-MM-DD giờ máy). Key mới hoàn toàn
   // nên không cần migration; giá trị lạ được sanitizer loại bỏ, tiến độ cũ giữ nguyên.
   TREE_WATER: 'kho_bau_tree_water',
@@ -1442,6 +1445,85 @@ public static getParentSettings(): ParentSettings {
     }
     return next;
   }
+
+  // --- T08 game first-seen dates: when the child first saw a game ----------
+  private static sanitizeGameFirstSeen(raw: unknown): Record<string, string> {
+    const out: Record<string, string> = {};
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return out;
+    for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
+      if (typeof k !== 'string' || !k.trim()) continue;
+      if (typeof v !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(v)) continue;
+      out[k] = v;
+    }
+    return out;
+  }
+
+  private static readGameFirstSeenStoreRaw(): Record<string, string> | null {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEYS.GAME_FIRST_SEEN);
+      if (raw === null) return null;
+      const parsed = JSON.parse(raw) as unknown;
+      return StorageService.sanitizeGameFirstSeen(parsed);
+    } catch {
+      return {};
+    }
+  }
+
+  /** Baseline: every game in the current catalog is considered already seen (>7 days ago). */
+  private static baselineGameFirstSeen(): Record<string, string> {
+    const oldKey = localDateKey(new Date(Date.now() - 8 * 86400000));
+    const out: Record<string, string> = {};
+    for (const g of GAMES_CATALOG) out[g.id] = oldKey;
+    return out;
+  }
+
+  public static getGameFirstSeenStore(): Record<string, string> {
+    let raw: string | null = null;
+    try { raw = localStorage.getItem(STORAGE_KEYS.GAME_FIRST_SEEN); } catch { raw = null; }
+    if (raw === null) {
+      const baseline = StorageService.baselineGameFirstSeen();
+      try { localStorage.setItem(STORAGE_KEYS.GAME_FIRST_SEEN, JSON.stringify(baseline)); } catch {}
+      return baseline;
+    }
+    try {
+      return StorageService.sanitizeGameFirstSeen(JSON.parse(raw));
+    } catch {
+      return {};
+    }
+  }
+
+  public static getGameFirstSeen(gameId: string): string | null {
+    const store = StorageService.getGameFirstSeenStore();
+    return typeof store[gameId] === 'string' ? store[gameId] : null;
+  }
+
+  public static markGameSeen(gameId: string, dateKey: string = localDateKey()): string {
+    if (typeof gameId !== 'string' || !gameId.trim()) return localDateKey();
+    const store = StorageService.getGameFirstSeenStore();
+    if (!store[gameId]) {
+      store[gameId] = dateKey;
+      try { localStorage.setItem(STORAGE_KEYS.GAME_FIRST_SEEN, JSON.stringify(store)); } catch {}
+    }
+    return store[gameId];
+  }
+
+  /** A game is "NEW" for 7 days after the child first sees it. First call marks it seen. */
+  public static isGameNew(gameId: string, now: Date = new Date()): boolean {
+    const today = localDateKey(now);
+    let seen = StorageService.getGameFirstSeen(gameId);
+    if (!seen) {
+      seen = StorageService.markGameSeen(gameId, today);
+      return true;
+    }
+    const diff = diffDateKeys(seen, today);
+    return diff !== null && diff >= 0 && diff <= 7;
+  }
+
+  // Aliases for differing naming conventions.
+  public static isNewGame(gameId: string, now?: Date): boolean { return StorageService.isGameNew(gameId, now ?? new Date()); }
+  public static gameFirstSeen(gameId: string): string | null { return StorageService.getGameFirstSeen(gameId); }
+  public static setGameFirstSeen(gameId: string, dateKey?: string): string { return StorageService.markGameSeen(gameId, dateKey ?? localDateKey()); }
+  public static recordGameSeen(gameId: string, dateKey?: string): string { return StorageService.markGameSeen(gameId, dateKey ?? localDateKey()); }
 
   /**
    * T02/B2 — fair replay economy for tiered games.
