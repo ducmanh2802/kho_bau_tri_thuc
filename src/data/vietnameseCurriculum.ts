@@ -5,6 +5,7 @@ import { TONE_LESSONS, TONE_SKILLS } from './vietnamese/tones';
 import { COMPOUND_LESSONS, COMPOUND_SKILLS, COMPOUND_TOPIC } from './vietnamese/compounds';
 import { PUNCT_LESSONS, PUNCT_SKILLS, PUNCT_TOPIC } from './vietnamese/punctuation';
 import { UPGRADE_QUESTIONS_BY_LESSON, UPGRADE_SKILLS_BY_TOPIC } from './vietnamese/upgrades';
+import { RHYME_LESSONS, RHYME_SKILLS } from './vietnamese/rhymes';
 
 /**
  * T02C/T10A — the hand-authored Grade-1 Vietnamese bank. Old lesson and
@@ -1542,6 +1543,12 @@ export const VIETNAMESE_TOPICS_RAW: Topic[] = (() => {
   if (dauThanh) {
     dauThanh.skills = [...dauThanh.skills, ...TONE_SKILLS];
     dauThanh.lessons = [...dauThanh.lessons, ...TONE_LESSONS];
+  }
+
+  const vanCoBan = byId.get('vn-van-co-ban');
+  if (vanCoBan) {
+    vanCoBan.skills = [...vanCoBan.skills, ...RHYME_SKILLS];
+    vanCoBan.lessons = [...vanCoBan.lessons, ...RHYME_LESSONS];
   }
 
   topics.push(
