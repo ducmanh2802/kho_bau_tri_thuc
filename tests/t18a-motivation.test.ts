@@ -483,3 +483,251 @@ describe('T18A storage: migration + sanitizer + API', () => {
     expect(m.daily.comboBest).toBe(0);
   });
 });
+
+// ---------------------------------------------------------------- T18C: Parent Settings + Reward History
+describe('T18C parent settings: maxGachaPerDay, rewardsEnabled, rewardHistory', () => {
+  beforeEach(() => {
+    clearLs();
+  });
+
+  it('parent settings mặc định có maxGachaPerDay=5, rewardsEnabled=true, rewardHistory=[]', () => {
+    const settings = StorageService.getParentSettings();
+    expect(settings.maxGachaPerDay).toBe(5);
+    expect(settings.rewardsEnabled).toBe(true);
+    expect(settings.rewardHistory).toEqual([]);
+  });
+
+  it('cập nhật maxGachaPerDay qua saveParentSettings', () => {
+    StorageService.saveParentSettings({ ...StorageService.getParentSettings(), maxGachaPerDay: 10 });
+    const settings = StorageService.getParentSettings();
+    expect(settings.maxGachaPerDay).toBe(10);
+  });
+
+  it('cập nhật rewardsEnabled qua saveParentSettings', () => {
+    StorageService.saveParentSettings({ ...StorageService.getParentSettings(), rewardsEnabled: false });
+    const settings = StorageService.getParentSettings();
+    expect(settings.rewardsEnabled).toBe(false);
+  });
+
+  it('maxGachaPerDay=0 nghĩa là không giới hạn', () => {
+    StorageService.saveParentSettings({ ...StorageService.getParentSettings(), maxGachaPerDay: 0 });
+    const settings = StorageService.getParentSettings();
+    expect(settings.maxGachaPerDay).toBe(0);
+  });
+
+  it('gacha dùng maxGachaPerDay từ cài đặt phụ huynh', () => {
+    const rng = seededRandom(7);
+    const profile = StorageService.getChildProfile();
+    profile.tickets = 20;
+    StorageService.saveChildProfile(profile);
+
+    // Mặc định 5 lượt
+    for (let i = 0; i < 5; i += 1) {
+      expect(StorageService.drawGacha(rng).ok).toBe(true);
+    }
+    expect(StorageService.drawGacha(rng).reason).toBe('daily-limit');
+
+    clearLs();
+    // Đặt giới hạn 10 lượt
+    StorageService.saveParentSettings({ ...StorageService.getParentSettings(), maxGachaPerDay: 10 });
+    profile.tickets = 20;
+    StorageService.saveChildProfile(profile);
+    for (let i = 0; i < 10; i += 1) {
+      expect(StorageService.drawGacha(rng).ok).toBe(true);
+    }
+    expect(StorageService.drawGacha(rng).reason).toBe('daily-limit');
+  });
+
+  it('rewardsEnabled=false không ghi rewardHistory', () => {
+    StorageService.saveParentSettings({ ...StorageService.getParentSettings(), rewardsEnabled: false });
+    const rng = seededRandom(7);
+    const profile = StorageService.getChildProfile();
+    profile.tickets = 10;
+    profile.stars = 1000;
+    StorageService.saveChildProfile(profile);
+
+    StorageService.drawGacha(rng);
+    StorageService.completeLesson('vn-les-1', 'tieng-viet', 30, 3);
+
+    const settings = StorageService.getParentSettings();
+    expect(settings.rewardHistory.length).toBe(0);
+  });
+
+  it('rewardsEnabled=true ghi rewardHistory cho các loại phần thưởng', () => {
+    StorageService.saveParentSettings({ ...StorageService.getParentSettings(), rewardsEnabled: true });
+    const rng = seededRandom(7);
+    const profile = StorageService.getChildProfile();
+    profile.tickets = 10;
+    profile.stars = 1000;
+    StorageService.saveChildProfile(profile);
+
+    // Gacha
+    StorageService.drawGacha(rng);
+    // Hoàn thành bài học
+    StorageService.completeLesson('vn-les-1', 'tieng-viet', 30, 3);
+    // Mua đồ shop
+    StorageService.buyShopItem('shirt_yellow');
+
+    const settings = StorageService.getParentSettings();
+    expect(settings.rewardHistory.length).toBeGreaterThan(0);
+    // Kiểm tra có sticker, stars, xp, tickets, shop_item
+    const types = settings.rewardHistory.map((e) => e.type);
+    expect(types).toContain('sticker');
+    expect(types).toContain('stars');
+    expect(types).toContain('xp');
+    expect(types).toContain('tickets');
+    expect(types).toContain('shop_item');
+  });
+
+  it('rewardHistory tối đa 50 mục, mới nhất lên đầu', () => {
+    StorageService.saveParentSettings({ ...StorageService.getParentSettings(), rewardsEnabled: true });
+    const profile = StorageService.getChildProfile();
+    profile.stars = 10000;
+    StorageService.saveChildProfile(profile);
+
+    // Use completeLesson to add reward history (public method) - each lesson adds 3 entries
+    for (let i = 0; i < 60; i += 1) {
+      StorageService.completeLesson(`test-les-${i}`, 'tieng-viet', 10, 1);
+    }
+    const settings = StorageService.getParentSettings();
+    expect(settings.rewardHistory.length).toBe(50);
+    // Mới nhất ở đầu - completeLesson adds: XP, stars, tickets (tickets last)
+    expect(settings.rewardHistory[0].description).toContain('test-les-59');
+    expect(settings.rewardHistory[49].description).toContain('test-les-');
+  });
+
+  it('claimLevelRewards ghi rewardHistory cho stars, tickets, sticker', () => {
+    StorageService.saveParentSettings({ ...StorageService.getParentSettings(), rewardsEnabled: true });
+    const profile = StorageService.getChildProfile();
+    profile.xp = xpForLevel(5);
+    StorageService.saveChildProfile(profile);
+    const rng = seededRandom(3);
+    StorageService.claimLevelRewards(rng);
+
+    const settings = StorageService.getParentSettings();
+    const types = settings.rewardHistory.map((e) => e.type);
+    expect(types).toContain('stars');
+    expect(types).toContain('tickets');
+    expect(types).toContain('sticker');
+  });
+
+  it('claimDailyChest ghi rewardHistory', () => {
+    StorageService.saveParentSettings({ ...StorageService.getParentSettings(), rewardsEnabled: true });
+    StorageService.claimDailyChest(10, 50);
+
+    const settings = StorageService.getParentSettings();
+    const types = settings.rewardHistory.map((e) => e.type);
+    expect(types).toContain('stars');
+    expect(types).toContain('xp');
+  });
+
+  it('recordTierReward ghi rewardHistory', () => {
+    StorageService.saveParentSettings({ ...StorageService.getParentSettings(), rewardsEnabled: true });
+    StorageService.recordTierReward('shape_sorting', 1, 3, 50, 100, 0);
+
+    const settings = StorageService.getParentSettings();
+    const types = settings.rewardHistory.map((e) => e.type);
+    expect(types).toContain('xp');
+    expect(types).toContain('stars');
+  });
+
+  it('recordGamePlayed ghi rewardHistory', () => {
+    StorageService.saveParentSettings({ ...StorageService.getParentSettings(), rewardsEnabled: true });
+    StorageService.recordGamePlayed(15, 1, 'shape_sorting');
+
+    const settings = StorageService.getParentSettings();
+    const types = settings.rewardHistory.map((e) => e.type);
+    expect(types).toContain('xp');
+    expect(types).toContain('stars');
+  });
+
+  it('checkAchievements ghi rewardHistory khi mở khóa thành tựu', () => {
+    StorageService.saveParentSettings({ ...StorageService.getParentSettings(), rewardsEnabled: true });
+    const profile = StorageService.getChildProfile();
+    profile.xp = xpForLevel(10);
+    StorageService.saveChildProfile(profile);
+    StorageService.checkAchievements();
+
+    const settings = StorageService.getParentSettings();
+    const types = settings.rewardHistory.map((e) => e.type);
+    expect(types).toContain('xp');
+  });
+
+  it('recordCompetitionResult ghi rewardHistory', () => {
+    StorageService.saveParentSettings({ ...StorageService.getParentSettings(), rewardsEnabled: true });
+    const profile = StorageService.getChildProfile();
+    profile.xp = 0;
+    profile.stars = 0;
+    StorageService.saveChildProfile(profile);
+
+    StorageService.recordCompetitionResult(
+      {
+        id: 'test_exam_1',
+        blueprintId: 'math_p1',
+        examTitle: 'Thi Thử Môn Toán',
+        subject: 'toan',
+        timestamp: new Date().toISOString(),
+        durationSeconds: 600,
+        timeUsedSeconds: 600,
+        totalQuestions: 10,
+        correctCount: 8,
+        accuracy: 80,
+        score: 8,
+        speedRating: 'STEADY',
+        speedLabel: 'Bình thường',
+        averageSecondsPerQuestion: 60,
+        responses: [],
+        skillBreakdown: {},
+        strongSkills: [],
+        weakSkills: [],
+        errorAnalysis: [],
+        readinessSnapshot: {
+          overallLevel: 'DEVELOPING',
+          overallLabel: 'Cần luyện tập thêm',
+          knowledgeScore: 50,
+          accuracyScore: 80,
+          speedScore: 60,
+          consistencyScore: 70,
+          skillCoverageScore: 40,
+          evidence: {
+            totalExamsTaken: 1,
+            recentAccuracyAverage: 80,
+            medianSecondsPerQuestion: 60,
+            strongSkillsCount: 0,
+            weakSkillsCount: 1,
+            totalSkillsCovered: 1,
+          },
+          recommendations: ['Luyện tập thêm Toán'],
+          isSufficientData: false,
+        },
+        scoring: {
+          rawScore: 8,
+          maxScore: 10,
+          accuracy: 80,
+          completion: 100,
+          attemptedCount: 10,
+          correctCount: 8,
+          totalQuestions: 10,
+          totalSeconds: 600,
+          averageSecondsPerQuestion: 60,
+          fastestQuestionSeconds: 30,
+          slowestQuestionSeconds: 120,
+          skillPerformance: {},
+          questionTypePerformance: {},
+        },
+        provenance: {
+          blueprintVersion: 1,
+          questionBankVersion: 1,
+          seed: 12345,
+        },
+      },
+      100,
+      5
+    );
+
+    const settings = StorageService.getParentSettings();
+    const types = settings.rewardHistory.map((e) => e.type);
+    expect(types).toContain('xp');
+    expect(types).toContain('stars');
+  });
+});

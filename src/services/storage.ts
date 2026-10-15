@@ -17,6 +17,7 @@ import {
   MotivationStats,
   ParentSettings,
   QuestEvent,
+  RewardHistoryEntry,
   SessionFatigueState,
   SessionProfileKind,
   SkillMastery,
@@ -1018,13 +1019,22 @@ public static getParentSettings(): ParentSettings {
               : 'standard',
             optionalBreaks: parsed.optionalBreaks === true,
             nightMode: parsed.nightMode === true,
+            maxGachaPerDay: typeof parsed.maxGachaPerDay === 'number' && parsed.maxGachaPerDay >= 0
+              ? Math.round(parsed.maxGachaPerDay)
+              : 5,
+            rewardsEnabled: parsed.rewardsEnabled === true,
+            rewardHistory: Array.isArray(parsed.rewardHistory) ? parsed.rewardHistory.slice(-50) : [],
           };
         }
       }
     } catch {
       // Ignore
     }
-    return DEFAULT_PARENT_SETTINGS;
+    // Return a fresh copy to avoid mutating the shared default object.
+    return {
+      ...DEFAULT_PARENT_SETTINGS,
+      rewardHistory: [],
+    };
   }
 
   public static saveParentSettings(settings: ParentSettings) {
@@ -1367,6 +1377,7 @@ public static getParentSettings(): ParentSettings {
         profile.stars += q.rewardStars;
         profile.xp += q.rewardXp;
         motivation.starsEarnedTotal += q.rewardStars;
+        StorageService.addRewardHistory({ type: 'quest', amount: q.rewardStars, description: `Hoàn thành nhiệm vụ: ${q.title}`, itemId: q.id });
       }
       motivation.questsCompletedTotal += newlyCompleted.length;
       StorageService.saveChildProfile(profile);
@@ -1571,10 +1582,14 @@ public static getParentSettings(): ParentSettings {
       profile.tickets += 1; // Earn 1 arcade ticket per new lesson!
       // Record stars earned for this lesson (1–3)
       profile.lessonStars[lessonId] = Math.min(Math.max(Math.round(stars), 1), 3);
+      StorageService.addRewardHistory({ type: 'xp', amount: xp, description: `Hoàn thành bài học ${lessonId}`, itemId: lessonId });
+      StorageService.addRewardHistory({ type: 'stars', amount: stars, description: `Sao bài học ${lessonId}`, itemId: lessonId });
+      StorageService.addRewardHistory({ type: 'tickets', amount: 1, description: `Vé bài học ${lessonId}`, itemId: lessonId });
     } else {
       // Retaking an already completed lesson grants practice review XP (+5 XP)
       // but does NOT duplicate stars/tickets (anti-farming reward integrity)
       profile.xp += 5;
+      StorageService.addRewardHistory({ type: 'xp', amount: 5, description: `Luyện lại bài ${lessonId}`, itemId: lessonId });
     }
     StorageService.saveChildProfile(profile);
 
@@ -1625,6 +1640,7 @@ public static getParentSettings(): ParentSettings {
     motivation.chestsOpenedTotal += 1;
     StorageService.saveMotivationState(motivation);
     StorageService.recordQuestEvent({ kind: 'chest' });
+    StorageService.addRewardHistory({ type: 'stars', amount: safeStars, description: `Rương chủ đề ${topicId}`, itemId: topicId });
     return safeStars;
   }
 
@@ -1645,6 +1661,8 @@ public static getParentSettings(): ParentSettings {
     motivation.chestsOpenedTotal += 1;
     StorageService.saveMotivationState(motivation);
     StorageService.recordQuestEvent({ kind: 'chest' });
+    StorageService.addRewardHistory({ type: 'stars', amount: stars, description: `Rương hàng ngày`, itemId: 'daily_chest' });
+    StorageService.addRewardHistory({ type: 'xp', amount: xp, description: `Rương hàng ngày`, itemId: 'daily_chest' });
     return true;
   }
 
@@ -1925,6 +1943,12 @@ public static getParentSettings(): ParentSettings {
     // T18A — quest game (kể cả game Tiếng Anh) qua engine chung.
     const game = GAMES_CATALOG.find((g) => g.id === gameId);
     StorageService.recordQuestEvent({ kind: 'game', englishGame: game?.category === 'english' });
+    if (xpAwarded > 0) {
+      StorageService.addRewardHistory({ type: 'xp', amount: xpAwarded, description: `Game ${gameId} tier ${tier} ${isFirstClear ? 'lần đầu' : 'luyện lại'}`, itemId: `${gameId}_t${tier}` });
+    }
+    if (starsAwarded > 0) {
+      StorageService.addRewardHistory({ type: 'stars', amount: starsAwarded, description: `Sao game ${gameId} tier ${tier}`, itemId: `${gameId}_t${tier}` });
+    }
     return { starsAwarded, xpAwarded, isFirstClear, isNewBest };
   }
 
@@ -1946,6 +1970,12 @@ public static getParentSettings(): ParentSettings {
     // T18A — quest game qua engine chung (biết game Tiếng Anh khi có gameId).
     const game = typeof gameId === 'string' ? GAMES_CATALOG.find((g) => g.id === gameId) : undefined;
     StorageService.recordQuestEvent({ kind: 'game', englishGame: game?.category === 'english' });
+    if (xpReward > 0) {
+      StorageService.addRewardHistory({ type: 'xp', amount: xpReward, description: `Chơi game ${gameId ?? 'mini'}`, itemId: gameId });
+    }
+    if (starReward > 0) {
+      StorageService.addRewardHistory({ type: 'stars', amount: starReward, description: `Sao game ${gameId ?? 'mini'}`, itemId: gameId });
+    }
   }
 
   /** Distinct local-day keys on which the child finished a daily review. */
@@ -2012,6 +2042,7 @@ public static getParentSettings(): ParentSettings {
         profile.stars += q.rewardStars;
         profile.xp += q.rewardXp;
         motivation.starsEarnedTotal += q.rewardStars;
+        StorageService.addRewardHistory({ type: 'quest', amount: q.rewardStars, description: `Hoàn thành nhiệm vụ ôn tập: ${q.title}`, itemId: q.id });
       }
       motivation.questsCompletedTotal += newlyCompleted.length;
       StorageService.saveChildProfile(profile);
@@ -2033,6 +2064,7 @@ public static getParentSettings(): ParentSettings {
     }
     // T18A — quest "Thử Thách Tuần" qua engine chung.
     StorageService.recordQuestEvent({ kind: 'weekly' });
+    StorageService.addRewardHistory({ type: 'xp', amount: 0, description: `Hoàn thành Thử Thách Tuần ${challengeId}`, itemId: challengeId });
   }
 
   /**
@@ -2057,9 +2089,13 @@ public static getParentSettings(): ParentSettings {
         a.unlockedAt = now;
       }
     }
-    profile.xp += xpForUnlocks(newlyUnlocked);
+    const xpReward = xpForUnlocks(newlyUnlocked);
+    profile.xp += xpReward;
     StorageService.saveAchievements(achs);
     StorageService.saveChildProfile(profile);
+    if (xpReward > 0) {
+      StorageService.addRewardHistory({ type: 'xp', amount: xpReward, description: `Mở khóa thành tựu: ${newlyUnlocked.join(', ')}`, itemId: newlyUnlocked.join(',') });
+    }
   }
 
   public static getCompetitionHistory(): CompetitionHistoryStore {
@@ -2163,14 +2199,17 @@ public static getParentSettings(): ParentSettings {
 
     StorageService.saveAnalytics(analytics);
     StorageService.checkAchievements();
+    if (xpReward > 0) {
+      StorageService.addRewardHistory({ type: 'xp', amount: xpReward, description: `Thi đấu ${result.examTitle}`, itemId: result.id });
+    }
+    if (starsReward > 0) {
+      StorageService.addRewardHistory({ type: 'stars', amount: starsReward, description: `Sao thi đấu ${result.examTitle}`, itemId: result.id });
+    }
   }
 
   // ==========================================================
   // T18A — Máy gắp sticker, quà level, mua đồ Shop (UI ở T18B/T18C)
   // ==========================================================
-
-  /** Giới hạn lượt gắp/ngày (phụ huynh chỉnh chi tiết ở T18C). */
-  public static readonly MAX_GACHA_PER_DAY = 5;
 
   /** Level + danh hiệu + thanh XP của bé từ tổng XP (đọc nhanh cho Header T18B). */
   public static getLevelInfo() {
@@ -2184,14 +2223,29 @@ public static getParentSettings(): ParentSettings {
   }
 
   /**
-   * Quay máy gắp sticker: tốn 1 vé, tối đa 5 lượt/ngày, không trùng
-   * tới khi đủ 60 sticker. Trùng thì cứ 5 sticker trùng +2 sao an ủi.
+   * T18C — Ghi nhận phần thưởng vào lịch sử (tối đa 50 mục, mới nhất lên đầu).
+   */
+  private static addRewardHistory(entry: Omit<RewardHistoryEntry, 'date'>): void {
+    const settings = StorageService.getParentSettings();
+    if (!settings.rewardsEnabled) return;
+    const today = getTodayString();
+    const history = settings.rewardHistory ?? [];
+    history.unshift({ date: today, ...entry });
+    if (history.length > 50) history.length = 50;
+    StorageService.saveParentSettings({ ...settings, rewardHistory: history });
+  }
+
+  /**
+   * Quay máy gắp sticker: tốn 1 vé, tối đa lượt/ngày theo cài đặt phụ huynh,
+   * không trùng tới khi đủ 60 sticker. Trùng thì cứ 5 sticker trùng +2 sao an ủi.
    */
   public static drawGacha(rng?: RandomFn): GachaResult {
+    const settings = StorageService.getParentSettings();
+    const maxDaily = settings.maxGachaPerDay > 0 ? settings.maxGachaPerDay : 5;
     const profile = StorageService.getChildProfile();
     const motivation = StorageService.getMotivationState();
     if (profile.tickets < 1) return { ok: false, reason: 'no-ticket' };
-    if (motivation.daily.gachaDraws >= StorageService.MAX_GACHA_PER_DAY) {
+    if (motivation.daily.gachaDraws >= maxDaily) {
       return { ok: false, reason: 'daily-limit' };
     }
     const { stickerId, isNew } = drawSticker(motivation.stickers, rng);
@@ -2204,11 +2258,15 @@ public static getParentSettings(): ParentSettings {
         consolationStars = 2;
         profile.stars += 2;
         motivation.starsEarnedTotal += 2;
+        StorageService.addRewardHistory({ type: 'stars', amount: 2, description: '5 sticker trùng tặng 2 sao an ủi', itemId: stickerId });
       }
     }
     StorageService.saveChildProfile(profile);
     StorageService.saveMotivationState(motivation);
     StorageService.recordQuestEvent({ kind: 'gacha' });
+    if (stickerId) {
+      StorageService.addRewardHistory({ type: 'sticker', amount: 1, description: `Nhận sticker từ máy gắp`, itemId: stickerId });
+    }
     return { ok: true, reason: 'ok', stickerId, isNew, consolationStars };
   }
 
@@ -2240,6 +2298,15 @@ public static getParentSettings(): ParentSettings {
     StorageService.saveChildProfile(profile);
     StorageService.saveMotivationState(motivation);
     StorageService.checkAchievements();
+    if (result.stars > 0) {
+      StorageService.addRewardHistory({ type: 'stars', amount: result.stars, description: `Quà level ${result.claimed.join(', ')}`, itemId: `level_${result.claimed[0]}` });
+    }
+    if (result.tickets > 0) {
+      StorageService.addRewardHistory({ type: 'tickets', amount: result.tickets, description: `Quà level ${result.claimed.join(', ')}`, itemId: `level_${result.claimed[0]}` });
+    }
+    for (const stickerId of result.stickerIds) {
+      StorageService.addRewardHistory({ type: 'sticker', amount: 1, description: `Sticker từ quà level`, itemId: stickerId });
+    }
     return result;
   }
 
@@ -2260,6 +2327,7 @@ public static getParentSettings(): ParentSettings {
     motivation.shopBoughtTotal += 1;
     StorageService.saveMotivationState(motivation);
     StorageService.checkAchievements();
+    StorageService.addRewardHistory({ type: 'shop_item', amount: 1, description: `Mua ${item.name} (${item.priceStars} sao)`, itemId: itemId });
     return { ok: true, reason: 'ok' };
   }
 
