@@ -69,6 +69,7 @@ export default function App() {
   const [currentScreen, setCurrentScreen] = useState<ActiveScreen>('home');
   const [selectedSubject, setSelectedSubject] = useState<SubjectType>('tieng-viet');
   const [profile, setProfile] = useState<ChildProfile>(StorageService.getChildProfile());
+  const [competitionStartMode, setCompetitionStartMode] = useState<'kid' | 'real'>('kid');
 
   // Night mode — apply data-theme="night" to document root
   useEffect(() => {
@@ -216,8 +217,12 @@ export default function App() {
         {currentScreen === 'competition' && (
           <Suspense fallback={<ScreenFallback label="Đấu Trường" />}>
             <CompetitionHubScreen
-              onBack={() => setCurrentScreen('home')}
+              onBack={() => {
+                setCompetitionStartMode('kid');
+                setCurrentScreen('home');
+              }}
               onProfileUpdate={refreshProfile}
+              initialMode={competitionStartMode}
             />
           </Suspense>
         )}
@@ -283,6 +288,11 @@ export default function App() {
           isOpen={isParentModalOpen}
           onClose={() => setIsParentModalOpen(false)}
           onDataReset={refreshProfile}
+          onOpenCompetitionReal={() => {
+            setCompetitionStartMode('real');
+            setIsParentModalOpen(false);
+            setCurrentScreen('competition');
+          }}
         />
       </Suspense>
 
