@@ -202,6 +202,9 @@ export interface ParentSettings {
   rewardsEnabled: boolean;
   /** Lịch sử phần thưởng gần đây (tối đa 50 mục). */
   rewardHistory: RewardHistoryEntry[];
+
+  // T19 — Âm nhạc nền (mặc định TẮT, phụ huynh/bé tự bật)
+  bgMusicEnabled: boolean;
 }
 
 export interface RewardHistoryEntry {
