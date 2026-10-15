@@ -713,7 +713,7 @@ export class StorageService {
         if (!value || typeof value !== 'object' || Array.isArray(value)) continue;
         const v = value as Partial<KnowledgeState>;
         const subject: SubjectType =
-          v.subject === 'toan' || v.subject === 'english' ? v.subject : 'tieng-viet';
+          v.subject === 'toan' || v.subject === 'english' || v.subject === 'cuoc-song' ? v.subject : 'tieng-viet';
         const num = (n: unknown, fallback = 0) =>
           typeof n === 'number' && Number.isFinite(n) ? n : fallback;
         const count = (n: unknown) => Math.max(0, Math.round(num(n, 0)));

@@ -1,6 +1,6 @@
 import { SubjectType } from './index';
 
-export type CompetitionSubject = SubjectType;
+export type CompetitionSubject = 'tieng-viet' | 'toan' | 'english';
 
 export type CompetitionDifficulty = 'EASY' | 'MEDIUM' | 'HARD' | 'CHALLENGE';
 

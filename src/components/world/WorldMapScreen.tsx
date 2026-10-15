@@ -89,6 +89,19 @@ export const WorldMapScreen: React.FC<WorldMapScreenProps> = ({
       percent: subjectPercent('english'),
     },
     {
+      id: 'cuoc-song',
+      title: 'Làng Cuộc Sống',
+      subtitle: 'Cảm xúc · An toàn · Kỹ năng sống',
+      emoji: '🏡',
+      mascot: '🐻 Gấu Bút Chì',
+      color: 'from-purple-500 to-violet-500',
+      borderColor: 'border-purple-300',
+      action: () => onSelectSubject('cuoc-song'),
+      x: 920,
+      y: 260,
+      percent: subjectPercent('cuoc-song'),
+    },
+    {
       id: 'games',
       title: 'Đấu Trường Trò Chơi',
       subtitle: `${GAMES_CATALOG.length} Mini-Game trí tuệ bổ ích`,
@@ -130,7 +143,7 @@ export const WorldMapScreen: React.FC<WorldMapScreenProps> = ({
   ];
 
   // The region the child is closest to learning next (first with progress < 100).
-  const nearest = regions.find((r) => r.percent < 100 && (r.id === 'viet' || r.id === 'toan' || r.id === 'english' || r.id === 'games')) || regions[0];
+  const nearest = regions.find((r) => r.percent < 100 && (r.id === 'viet' || r.id === 'toan' || r.id === 'english' || r.id === 'cuoc-song' || r.id === 'games')) || regions[0];
 
   // Dotted connecting route across island centres.
   const routePoints = regions.map((r) => `${r.x + 50},${r.y + 40}`).join(' L ');

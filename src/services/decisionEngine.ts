@@ -64,6 +64,7 @@ const SUBJECT_LABEL: Record<SubjectType, string> = {
   'tieng-viet': 'Tiếng Việt',
   toan: 'Toán',
   english: 'English',
+  'cuoc-song': 'Em & Cuộc sống',
 };
 
 const REASON_LABEL_VI: Record<DecisionReasonCode, string> = {
@@ -617,6 +618,7 @@ function computeSubjectBalanceBoost(
     'tieng-viet': 0,
     toan: 0,
     english: 0,
+    'cuoc-song': 0,
   };
 
   // Prefer real evidence timestamps; fall back to knowledge state counts.
@@ -647,13 +649,13 @@ function computeSubjectBalanceBoost(
 
   // If recommendation history is heavily skewed to one subject, starve the others.
   if (history && history.length >= 5) {
-    const bySubject: Record<SubjectType, number> = { 'tieng-viet': 0, toan: 0, english: 0 };
+    const bySubject: Record<SubjectType, number> = { 'tieng-viet': 0, toan: 0, english: 0, 'cuoc-song': 0 };
     const states = Object.values(knowledgeMap);
     for (const h of history) {
       const st = states.find((s) => s.skillId === h.skillId);
       if (st) bySubject[st.subject] += 1;
     }
-    const histMax = Math.max(bySubject['tieng-viet'], bySubject.toan, bySubject.english);
+    const histMax = Math.max(bySubject['tieng-viet'], bySubject.toan, bySubject.english, bySubject['cuoc-song']);
     if (histMax >= 5) {
       for (const subject of subjects) {
         if (bySubject[subject] === 0) {
@@ -928,6 +930,7 @@ export class DecisionEngine {
       'tieng-viet': 0,
       toan: 0,
       english: 0,
+      'cuoc-song': 0,
     };
 
     for (const state of skillStates) {
@@ -1033,7 +1036,7 @@ export class DecisionEngine {
               childExplanation: `Mình cùng làm vài câu ${SUBJECT_LABEL[subject]} cho vui nhé!`,
               estimatedMinutes: 4,
               priority: 70,
-              badgeEmoji: subject === 'toan' ? '🔢' : subject === 'english' ? '🐰' : '📚',
+              badgeEmoji: subject === 'toan' ? '🔢' : subject === 'english' ? '🐰' : subject === 'cuoc-song' ? '💜' : '📚',
             }
           : {
               id: `balance_lesson_${subject}`,

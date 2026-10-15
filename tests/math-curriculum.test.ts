@@ -13,7 +13,7 @@ describe('Curriculum Deterministic Correctness & Invariants', () => {
       expect(q.id).toBeDefined();
       expect(q.prompt.trim().length).toBeGreaterThan(0);
       expect(q.correctAnswer).toBeDefined();
-      expect(q.subject).toMatch(/^(tieng-viet|toan|english)$/);
+      expect(q.subject).toMatch(/^(tieng-viet|toan|english|cuoc-song)$/);
 
       if (q.type === 'multiple-choice' || q.type === 'image-choice' || q.type === 'audio-choice' || q.type === 'fill-blank') {
         expect(Array.isArray(q.options)).toBe(true);

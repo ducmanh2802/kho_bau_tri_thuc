@@ -3,7 +3,7 @@ import {
   CompetitionExamResult,
   CompetitionQuestion,
   ExamBlueprint,
-  SubjectType,
+  CompetitionSubject,
 } from '../../types';
 import { EXAM_BLUEPRINTS } from '../../data/competitionBlueprints';
 import { COMPETITION_SKILLS, getSkillsBySubject } from '../../data/competitionTaxonomy';
@@ -55,7 +55,7 @@ export const CompetitionHubScreen: React.FC<CompetitionHubScreenProps> = ({
     return 'kid';
   });
   const [activeTab, setActiveTab] = useState<'practice' | 'challenge' | 'achievements'>('practice');
-  const [selectedSubject, setSelectedSubject] = useState<SubjectType>('tieng-viet');
+  const [selectedSubject, setSelectedSubject] = useState<CompetitionSubject>('tieng-viet');
 
   // Active exam session
   const [activeBlueprint, setActiveBlueprint] = useState<ExamBlueprint | null>(null);
@@ -307,9 +307,9 @@ export const CompetitionHubScreen: React.FC<CompetitionHubScreenProps> = ({
       {activeTab === 'practice' && (
         <div className="flex items-center gap-2">
           {[
-            { id: 'toan' as SubjectType, label: 'Môn Toán', emoji: '🔢' },
-            { id: 'tieng-viet' as SubjectType, label: 'Môn Tiếng Việt', emoji: '📚' },
-            { id: 'english' as SubjectType, label: 'Tiếng Anh', emoji: '🇬🇧' },
+            { id: 'toan' as CompetitionSubject, label: 'Môn Toán', emoji: '🔢' },
+            { id: 'tieng-viet' as CompetitionSubject, label: 'Môn Tiếng Việt', emoji: '📚' },
+            { id: 'english' as CompetitionSubject, label: 'Tiếng Anh', emoji: '🇬🇧' },
           ].map((sub) => (
             <button
               key={sub.id}
