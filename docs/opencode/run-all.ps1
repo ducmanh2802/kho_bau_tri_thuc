@@ -45,7 +45,7 @@ param(
   [string]$StatusFile = '',
   [string]$OcPath = '',
   [int]$MergeWaitMin = 180,
-  [int]$StallMin = 15,
+  [int]$StallMin = 25,
   [int]$CooldownMin = 60,
   [switch]$Once,
   [switch]$NoAutostart,
@@ -489,12 +489,16 @@ function Run-OpenCode([string]$Prompt, [string]$Title, [string]$LogBase, [int]$T
       & taskkill.exe /PID $p.Id /T /F 2>$null | Out-Null
       return 124
     }
-    # OpenCode prints every tool call; silence for a long time means it is waiting on a rate limit
-    # or retrying the same failing request (504/503) - give up and let the caller switch models
+    # Progress = OpenCode output grew or a project file changed. OpenCode's redirected output is
+    # buffered (a model writing big content files can print nothing for a long time), so files count
+    # too. No progress at all for a long time means it is waiting on a rate limit or retrying the
+    # same failing request (504/503) - give up and let the caller switch models.
     $size = 0
     foreach ($lf in @($out, $err)) { try { $size += (Get-Item $lf -ErrorAction Stop).Length } catch {} }
     if ($size -ne $lastSize) { $lastSize = $size; $lastGrow = Get-Date }
-    elseif (((Get-Date) - $lastGrow).TotalMinutes -ge $StallMin) {
+    $work = Newest-Change
+    if ($work -gt $lastGrow) { $lastGrow = $work }
+    if (((Get-Date) - $lastGrow).TotalMinutes -ge $StallMin) {
       Log ('Khong tien trien ' + $StallMin + ' phut - dung OpenCode (' + $Title + ').')
       & taskkill.exe /PID $p.Id /T /F 2>$null | Out-Null
       return 125
