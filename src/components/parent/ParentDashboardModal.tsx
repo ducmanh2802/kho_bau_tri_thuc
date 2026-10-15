@@ -179,6 +179,13 @@ const [activeTab, setActiveTab] = useState<
     }
   };
 
+  const handleToggleUnlockAll = () => {
+    const profile = StorageService.getChildProfile();
+    profile.unlockAllLessons = !profile.unlockAllLessons;
+    StorageService.saveChildProfile(profile);
+    sound.playClick();
+  };
+
   const handleExportData = () => {
     const profile = StorageService.getChildProfile();
     const analytics = StorageService.getAnalytics();
@@ -1027,7 +1034,34 @@ const [activeTab, setActiveTab] = useState<
                     </div>
                   </div>
 
-                  {/* Session Profile Settings */}
+                  {/* Unlock All Lessons (T07) */}
+                  <div className="p-5 bg-slate-50 border border-slate-200 rounded-2xl space-y-3">
+                    <h4 className="text-sm font-black text-slate-800 mb-2 flex items-center gap-2">
+                      <span className="w-5 h-5 text-emerald-600" aria-hidden="true">🔓</span>
+                      Mở Khoá Tất Cả Bài Học
+                    </h4>
+                    <p className="text-xs text-slate-500 mb-3">
+                      Tạm thời mở tất cả bài học cho bé (bỏ qua gating theo thứ tự). Ảnh hưởng đến dữ liệu tiến độ thật.
+                    </p>
+                    <div className="flex items-center justify-between py-2 text-xs">
+                      <div>
+                        <span className="font-bold text-slate-800 block">Mở hết bài học</span>
+                        <span className="text-slate-500">Bật/tắt theo ý phụ huynh</span>
+                      </div>
+                      <button
+                        onClick={handleToggleUnlockAll}
+                        data-testid="unlock-all-lessons-toggle"
+                        className={`px-3 py-1.5 rounded-lg font-bold text-xs ${
+                          StorageService.getChildProfile().unlockAllLessons
+                            ? 'bg-emerald-600 text-white'
+                            : 'bg-slate-300 text-slate-700'
+                        }`}
+                      >
+                        {StorageService.getChildProfile().unlockAllLessons ? 'Bật' : 'Tắt'}
+                      </button>
+                    </div>
+                  </div>
+
                   <div className="p-5 bg-slate-50 border border-slate-200 rounded-2xl space-y-3">
                     <h4 className="text-sm font-black text-slate-800 mb-2 flex items-center gap-2">
                       <Timer className="w-5 h-5 text-amber-600" />
