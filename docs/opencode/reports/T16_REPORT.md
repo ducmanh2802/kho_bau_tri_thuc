@@ -49,6 +49,12 @@
 4. **Khen MATH qua prop** (`praiseSubject="MATH"`) thay vì sửa `getPraiseSubjectFromGameId` — ít chạm file chung nhất mà vẫn đúng môn.
 5. **Nhãn "MỚI"**: như T15/T17A — Hub tự gắn qua `StorageService.isNewGame`, vẫn đặt `isNew: true` trong catalog cho đủ dữ liệu.
 
+## Auto-fix
+
+- Lỗi typecheck: `src/data/games/ten_frame_market.ts(119,88)` — hàm `sticks()` truyền `need` vào helper `m()` nhưng kiểu tham số `extra` của `m()` chỉ khai báo `chuc/donVi/askPart` nên TS2353.
+- Sửa: thêm `need?: number` vào kiểu `extra` của `m()` (1 dòng). Không đổi logic game/data, không đụng test.
+- Kiểm lại: `npm run typecheck` PASS, `npm test` 797/797 PASS (51 files), `npm run build` PASS.
+
 ## Việc còn tồn
 
 - `qa/games.mjs` cần T20 sửa selector (`Xin chào` → `Chào`, nav desktop) để nghiệm thu chung chạy lại được.

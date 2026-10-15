@@ -65,7 +65,7 @@ function m(
   fruitEmoji: string,
   have: number,
   target: number,
-  extra?: { chuc?: number; donVi?: number; askPart?: 'chuc' | 'donVi' },
+  extra?: { chuc?: number; donVi?: number; askPart?: 'chuc' | 'donVi'; need?: number },
 ): MarketTarget {
   return { kind, customer, customerEmoji, fruit, fruitEmoji, have, target, ...extra };
 }
