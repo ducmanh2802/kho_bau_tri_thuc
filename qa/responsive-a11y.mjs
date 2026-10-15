@@ -17,7 +17,7 @@ export default async function run(page, ui) {
 
   await page.evaluate(() => localStorage.clear());
   await page.reload();
-  await page.waitForSelector('text=Xin chào', { timeout: 20000 });
+  await page.waitForSelector('[data-testid="nav-home"]:visible', { timeout: 20000 });
 
   // --- Responsive: horizontal overflow + touch target size ---
   for (const vp of VIEWPORTS) {
@@ -101,7 +101,7 @@ export default async function run(page, ui) {
   // --- Reduced motion (§24) ---
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.reload();
-  await page.waitForSelector('text=Xin chào', { timeout: 20000 });
+  await page.waitForSelector('[data-testid="nav-home"]:visible', { timeout: 20000 });
   await page.waitForTimeout(500);
   out.reducedMotion = await page.evaluate(() => {
     const el = document.querySelector('.animate-float') || document.querySelector('main *');

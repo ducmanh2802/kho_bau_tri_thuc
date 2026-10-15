@@ -4,6 +4,7 @@
  * -> COMPETITION -> TIMED TEST -> RESULT -> REVIEW -> PARENT MODE -> RELOAD -> PERSISTENCE
  */
 
+import { openFirstLesson } from './lib.mjs';
 const state = { steps: [], errors: [] };
 
 function log(name, detail) {
@@ -88,7 +89,7 @@ async function body(page, ui) {
     localStorage.setItem('__sentinel', 'alive');
   });
   await page.reload();
-  await page.waitForSelector('text=Xin chào', { timeout: 20000 });
+  await page.waitForSelector('[data-testid="nav-home"]:visible', { timeout: 20000 });
 
   const homeText = await page.evaluate(() => document.body.innerText);
   const nextBestAction = /Hôm Nay Bé Nên Học Gì|Bé Nên Làm Gì Tiếp Theo/.test(homeText);
@@ -113,7 +114,7 @@ async function body(page, ui) {
   log('vietnameseSubject', { lessonCount: lessonButtons });
   if (lessonButtons === 0) fail('no lessons listed for Vietnamese');
 
-  await page.locator('[data-testid^="lesson-button-"]').first().click(CLICK); await page.getByRole('button', { name: /Bắt đầu/ }).click(CLICK);
+  await openFirstLesson(page);
   await page.waitForSelector('text=Câu hỏi 1', { timeout: 20000 });
   log('lessonOpened', { ok: true });
 
@@ -148,11 +149,21 @@ async function body(page, ui) {
   if (!osAfterLesson || osAfterLesson.skillCount === 0)
     fail('Learning OS evidence was not persisted after the lesson');
 
-  await page.getByRole('button', { name: 'Về bản đồ' }).click(CLICK);
+  // T20A / B-03: the lesson result screen is skipped (the modal closes itself
+  // on completion), so the "Về bản đồ" button never appears. Record the defect
+  // and carry on with the rest of the journey instead of aborting here.
+  const backToMap = page.getByRole('button', { name: 'Về bản đồ' });
+  if (await backToMap.count()) {
+    await backToMap.click(CLICK);
+  } else {
+    fail('lesson result screen skipped (B-03) — no "Về bản đồ" button after the last question');
+    const lessonClose = page.locator('[data-testid="lesson-close"]');
+    if (await lessonClose.count()) await lessonClose.first().click(CLICK).catch(() => {});
+  }
   await page.waitForTimeout(300);
 
   // ---------- 3. READING FLUENCY ----------
-  await page.getByRole('navigation', { name: 'Điều hướng nhanh' }).getByRole('button', { name: 'Luyện Đọc', exact: true }).click(CLICK);
+  await page.locator('[data-testid="nav-reading_fluency"]:visible').first().click(CLICK);
   await page.waitForSelector('text=Thang Luyện Đọc Của Bé', { timeout: 20000 });
 
   const ladderText = await page.evaluate(() => document.body.innerText);
@@ -219,10 +230,10 @@ async function body(page, ui) {
   // ---------- 4. COMPETITION ----------
   // T06: Competition no longer in main nav; access from Home via World Map or direct navigation
   await page.goto(APP_ORIGIN + '/');
-  await page.waitForSelector('text=Xin chào', { timeout: 20000 });
+  await page.waitForSelector('[data-testid="nav-home"]:visible', { timeout: 20000 });
   // Navigate to World Map first (in main nav), then to Competition
-  await page.getByRole('navigation', { name: 'Điều hướng nhanh' }).getByRole('button', { name: 'Bản Đồ', exact: true }).click(CLICK);
-  await page.waitForSelector('text=Bản Đồ Học Tập', { timeout: 20000 });
+  await page.locator('[data-testid="nav-world_map"]:visible').first().click(CLICK);
+  await page.waitForSelector('[data-testid="world-map-viewport"]', { timeout: 20000 });
   // From World Map, find and click Competition entry
   await page.getByRole('button', { name: /Đấu Trường|Thi Thử/ }).first().click(CLICK);
   await page.waitForSelector('text=Kho Báu Đấu Trường Tri Thức', { timeout: 20000 });
@@ -389,7 +400,7 @@ async function body(page, ui) {
   await snap(page, 'afterParent', state.steps);
   const before = await read();
   await page.reload();
-  await page.waitForSelector('text=Xin chào', { timeout: 20000 });
+  await page.waitForSelector('[data-testid="nav-home"]:visible', { timeout: 20000 });
   const after = await read();
 
   const persisted =
@@ -418,7 +429,7 @@ async function body(page, ui) {
   log('persistenceAfterReload', { before, after, persisted });
 
   await page.reload();
-  await page.waitForSelector('text=Xin chào', { timeout: 20000 });
+  await page.waitForSelector('[data-testid="nav-home"]:visible', { timeout: 20000 });
   const afterSecond = await read();
   log('noDuplicateRewards', { xpBefore: after.xp, xpAfter: afterSecond.xp });
   if (afterSecond.xp !== after.xp) fail('XP changed on reload');

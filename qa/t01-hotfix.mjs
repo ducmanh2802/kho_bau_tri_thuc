@@ -37,13 +37,14 @@ export default async function run(page, ui) {
     console.log('hero backgroundImage:', heroBg);
     if (heroBg === 'NO_HERO' || heroBg === 'none') errors.push('hero pattern missing');
 
-    // Go to Games Hub via the "Chơi ngay" button
-    const hubBtn = page.getByRole('button', { name: /Chơi ngay/i });
+    // Go to Games Hub through the navigation bar (T20A: the home screen no
+    // longer carries a "Chơi ngay" shortcut button).
+    const hubBtn = page.locator('[data-testid="nav-games"]:visible').first();
     if ((await hubBtn.count()) > 0) {
-      await hubBtn.first().click();
+      await hubBtn.click();
       await page.waitForTimeout(1200);
     } else {
-      errors.push('games hub button not found');
+      errors.push('games hub nav button not found');
     }
     await shot(page, 'T01_hub_1280.png', { width: 1280, height: 900 });
 
@@ -53,9 +54,9 @@ export default async function run(page, ui) {
     await shot(page, 'T01_home_375.png', { width: 375, height: 667 });
 
     // Mobile 375 — Hub
-    const hubBtn2 = page.getByRole('button', { name: /Chơi ngay/i });
+    const hubBtn2 = page.locator('[data-testid="nav-games"]:visible').first();
     if ((await hubBtn2.count()) > 0) {
-      await hubBtn2.first().click();
+      await hubBtn2.click();
       await page.waitForTimeout(1200);
     }
     await shot(page, 'T01_hub_375.png', { width: 375, height: 667 });

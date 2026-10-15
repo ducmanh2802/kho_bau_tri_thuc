@@ -10,6 +10,7 @@
  *      usually has none — that path is the AUDIO_UNAVAILABLE evidence).
  */
 
+import { openFirstLesson } from './lib.mjs';
 const CLICK = { timeout: 12000 };
 
 export default async function run(page, ui) {
@@ -56,14 +57,14 @@ async function body(page, ui, out) {
 
   await page.evaluate(() => localStorage.clear());
   await page.goto(APP_ORIGIN);
-  await page.waitForSelector('text=Xin chào', { timeout: 20000 });
+  await page.waitForSelector('[data-testid="nav-home"]:visible', { timeout: 20000 });
 
   step('synthesis', await synth());
 
   // ---- 1) Lesson question audio button ----
   await page.getByRole('button', { name: /Tiếng Việt/ }).first().click(CLICK);
   await page.waitForSelector('text=Vương Quốc Tiếng Việt', { timeout: 20000 });
-  await page.locator('[data-testid^="lesson-button-"]').first().click(CLICK); await page.getByRole('button', { name: /Bắt đầu/ }).click(CLICK);
+  await openFirstLesson(page);
   await page.waitForSelector('[role=dialog]', { timeout: 20000 });
   await page.waitForTimeout(1500); // let the (default-ON) autoplay settle
 
@@ -107,7 +108,7 @@ async function body(page, ui, out) {
   // ---- 2) Autoplay OFF is honoured ----
   await page.keyboard.press('Escape').catch(() => {});
   await page.goto(APP_ORIGIN);
-  await page.waitForSelector('text=Xin chào', { timeout: 20000 });
+  await page.waitForSelector('[data-testid="nav-home"]:visible', { timeout: 20000 });
   await page.evaluate(() => {
     const s = JSON.parse(localStorage.getItem('kho_bau_parent_settings') || '{}');
     s.questionAutoplay = false;
@@ -118,7 +119,7 @@ async function body(page, ui, out) {
   });
   await page.getByRole('button', { name: /Tiếng Việt/ }).first().click(CLICK);
   await page.waitForSelector('text=Vương Quốc Tiếng Việt', { timeout: 20000 });
-  await page.locator('[data-testid^="lesson-button-"]').first().click(CLICK); await page.getByRole('button', { name: /Bắt đầu/ }).click(CLICK);
+  await openFirstLesson(page);
   await page.waitForSelector('[role=dialog]', { timeout: 20000 });
   // The old code auto-spoke 300ms after every question; with the setting off
   // the synthesiser must stay untouched well past that window.
@@ -131,10 +132,8 @@ async function body(page, ui, out) {
 
   // ---- 3) Reading passage audio ----
   await page.goto(APP_ORIGIN);
-  await page.waitForSelector('text=Xin chào', { timeout: 20000 });
-  const readingNav = page
-    .getByRole('navigation', { name: 'Điều hướng nhanh' })
-    .getByRole('button', { name: 'Luyện Đọc', exact: true });
+  await page.waitForSelector('[data-testid="nav-home"]:visible', { timeout: 20000 });
+  const readingNav = page.locator('[data-testid="nav-reading_fluency"]:visible');
   if (await readingNav.count()) {
     await readingNav.first().click(CLICK);
     await page.waitForSelector('text=Thang Luyện Đọc Của Bé', { timeout: 20000 });
@@ -176,7 +175,7 @@ async function body(page, ui, out) {
     } catch {}
   });
   await page.goto(APP_ORIGIN);
-  await page.waitForSelector('text=Xin chào', { timeout: 20000 });
+  await page.waitForSelector('[data-testid="nav-home"]:visible', { timeout: 20000 });
   const voiceless = await page.evaluate(() => ({
     apiType: typeof window.speechSynthesis,
   }));
@@ -184,7 +183,7 @@ async function body(page, ui, out) {
 
   await page.getByRole('button', { name: /Tiếng Việt/ }).first().click(CLICK);
   await page.waitForSelector('text=Vương Quốc Tiếng Việt', { timeout: 20000 });
-  await page.locator('[data-testid^="lesson-button-"]').first().click(CLICK); await page.getByRole('button', { name: /Bắt đầu/ }).click(CLICK);
+  await openFirstLesson(page);
   await page.waitForSelector('[role=dialog]', { timeout: 20000 });
   await page.waitForTimeout(1200); // past the autoplay window — must stay silent
 

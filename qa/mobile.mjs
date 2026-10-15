@@ -7,6 +7,7 @@
  * across rotation + backgrounding.
  */
 
+import { openFirstLesson, openCompetitionHub } from './lib.mjs';
 const CLICK = { timeout: 12000 };
 const VIEWPORTS = [
   { name: '360x800', width: 360, height: 800 },
@@ -48,7 +49,7 @@ export default async function run(page, ui) {
   for (const vp of VIEWPORTS) {
     await page.setViewportSize({ width: vp.width, height: vp.height });
     await page.goto(APP_ORIGIN);
-    await page.waitForSelector('text=Xin chào', { timeout: 20000 });
+    await page.waitForSelector('[data-testid="nav-home"]:visible', { timeout: 20000 });
     await page.waitForTimeout(600);
 
     const home = {
@@ -61,7 +62,7 @@ export default async function run(page, ui) {
     // Lesson: open, answer one question, check the question surface.
     await page.getByRole('button', { name: /Tiếng Việt/ }).first().click(CLICK);
     await page.waitForSelector('text=Vương Quốc Tiếng Việt', { timeout: 20000 });
-    await page.locator('[data-testid^="lesson-button-"]').first().click(CLICK); await page.getByRole('button', { name: /Bắt đầu/ }).click(CLICK);
+    await openFirstLesson(page);
     await page.waitForSelector('[role=dialog]', { timeout: 20000 });
     await page.waitForTimeout(500);
     const lessonOverflow = await overflowPx(page);
@@ -80,15 +81,9 @@ export default async function run(page, ui) {
 
     // Competition hub on the same viewport.
     await page.goto(APP_ORIGIN);
-    await page.waitForSelector('text=Xin chào', { timeout: 20000 });
-    // T06: Competition no longer in main nav; access from World Map
-    await page
-      .getByRole('navigation', { name: 'Điều hướng nhanh' })
-      .getByRole('button', { name: 'Bản Đồ', exact: true })
-      .click(CLICK);
-    await page.waitForSelector('text=Bản Đồ Học Tập', { timeout: 20000 });
-    await page.getByRole('button', { name: /Đấu Trường|Thi Thử/ }).first().click(CLICK);
-    await page.waitForSelector('text=Kho Báu Đấu Trường Tri Thức', { timeout: 20000 });
+    await page.waitForSelector('[data-testid="nav-home"]:visible', { timeout: 20000 });
+    // T20A / B-04: no world-map entry for the arena — reach it like a parent does.
+    await openCompetitionHub(page);
     await page.waitForTimeout(400);
     const hubOverflow = await overflowPx(page);
     if (hubOverflow > 2) out.errors.push(`${vp.name} competition hub: horizontal overflow ${hubOverflow}px`);
@@ -106,10 +101,10 @@ export default async function run(page, ui) {
   // ---- Landscape leg: rotate mid-modal, answer, rotate back ----
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(APP_ORIGIN);
-  await page.waitForSelector('text=Xin chào', { timeout: 20000 });
+  await page.waitForSelector('[data-testid="nav-home"]:visible', { timeout: 20000 });
   await page.getByRole('button', { name: /Tiếng Việt/ }).first().click(CLICK);
   await page.waitForSelector('text=Vương Quốc Tiếng Việt', { timeout: 20000 });
-  await page.locator('[data-testid^="lesson-button-"]').first().click(CLICK); await page.getByRole('button', { name: /Bắt đầu/ }).click(CLICK);
+  await openFirstLesson(page);
   await page.waitForSelector('[role=dialog]', { timeout: 20000 });
 
   await page.setViewportSize({ width: 844, height: 390 });
@@ -135,10 +130,10 @@ export default async function run(page, ui) {
 
   // ---- Interruption: background the tab mid-lesson, then return ----
   await page.goto(APP_ORIGIN);
-  await page.waitForSelector('text=Xin chào', { timeout: 20000 });
+  await page.waitForSelector('[data-testid="nav-home"]:visible', { timeout: 20000 });
   await page.getByRole('button', { name: /Tiếng Việt/ }).first().click(CLICK);
   await page.waitForSelector('text=Vương Quốc Tiếng Việt', { timeout: 20000 });
-  await page.locator('[data-testid^="lesson-button-"]').first().click(CLICK); await page.getByRole('button', { name: /Bắt đầu/ }).click(CLICK);
+  await openFirstLesson(page);
   await page.waitForSelector('[role=dialog]', { timeout: 20000 });
   const promptBefore = await page.locator('[role=dialog]').innerText();
 

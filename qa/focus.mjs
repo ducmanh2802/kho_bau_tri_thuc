@@ -25,7 +25,7 @@ export default async function run(page, ui) {
 
   await page.evaluate(() => localStorage.clear());
   await page.reload();
-  await page.waitForSelector('text=Xin chào', { timeout: 20000 });
+  await page.waitForSelector('[data-testid="nav-home"]:visible', { timeout: 20000 });
 
   // ---- Lesson dialog ----
   {
@@ -33,7 +33,11 @@ export default async function run(page, ui) {
     await page.getByRole('button', { name: /Tiếng Việt/ }).first().click(CLICK);
     await page.waitForSelector('text=Vương Quốc Tiếng Việt', { timeout: 20000 });
     const trigger = page.locator('[data-testid^="lesson-button-"]').first();
-    await trigger.click(CLICK);
+    // T20A / B-01: the adventure path overlaps its nodes for topics with many
+    // lessons, so a mouse click never lands on the intended node. Keyboard
+    // activation reaches the same handler.
+    await trigger.focus();
+    await page.keyboard.press('Enter');
     await page.waitForSelector('[role=dialog]', { timeout: 20000 });
     await page.waitForTimeout(400);
 
@@ -65,6 +69,9 @@ export default async function run(page, ui) {
       landedOn: onOpen.label,
     });
 
+    const startLesson = page.getByRole('button', { name: /Bắt đầu/ }).first();
+    if (await startLesson.count()) await startLesson.click(CLICK);
+    await page.waitForTimeout(400);
     await page.getByRole('button', { name: 'Đóng bài học' }).click(CLICK);
     await page.waitForTimeout(500);
     const afterClose = await activeInfo(page);
@@ -76,10 +83,10 @@ export default async function run(page, ui) {
   // ---- Game dialog (covers the shared wrapper used by all 14 games) ----
   {
     await page.goto(APP_ORIGIN);
-    await page.waitForSelector('text=Xin chào', { timeout: 20000 });
+    await page.waitForSelector('[data-testid="nav-home"]:visible', { timeout: 20000 });
     await page
-      .getByRole('navigation', { name: 'Điều hướng nhanh' })
-      .getByRole('button', { name: 'Trò Chơi', exact: true })
+      .locator('[data-testid="nav-games"]:visible')
+      .first()
       .click(CLICK);
     await page.waitForSelector('text=Đấu Trường Trò Chơi Trí Tuệ', { timeout: 20000 });
     const play = page.getByRole('button', { name: /Chơi ngay/ }).first();
@@ -114,7 +121,7 @@ export default async function run(page, ui) {
   // ---- Parent dialog ----
   {
     await page.goto(APP_ORIGIN);
-    await page.waitForSelector('text=Xin chào', { timeout: 20000 });
+    await page.waitForSelector('[data-testid="nav-home"]:visible', { timeout: 20000 });
     await page.getByRole('button', { name: 'Khu vực dành cho Ba Mẹ' }).click(CLICK);
     await page.waitForSelector('text=Cổng Xác Nhận Phụ Huynh', { timeout: 20000 });
     await page.waitForTimeout(400);
@@ -150,7 +157,7 @@ export default async function run(page, ui) {
   // ---- ScreenTime dialog (§13): child-safety gate, auto-opens on the 60s tick ----
   {
     await page.goto(APP_ORIGIN);
-    await page.waitForSelector('text=Xin chào', { timeout: 20000 });
+    await page.waitForSelector('[data-testid="nav-home"]:visible', { timeout: 20000 });
 
     // Seed a blown daily limit. The App tick fires every 60s, so the dialog can
     // only appear after one full tick — wait honestly instead of faking it.
@@ -163,7 +170,7 @@ export default async function run(page, ui) {
       localStorage.setItem('kho_bau_analytics', JSON.stringify(analytics));
     });
     await page.reload();
-    await page.waitForSelector('text=Xin chào', { timeout: 20000 });
+    await page.waitForSelector('[data-testid="nav-home"]:visible', { timeout: 20000 });
 
     let appeared = false;
     try {

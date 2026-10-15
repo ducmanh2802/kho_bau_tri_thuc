@@ -288,7 +288,10 @@ export const Header: React.FC<HeaderProps> = ({
             className="min-h-[44px] min-w-[44px] px-3"
             onClick={() => {
               sound.playClick();
-              onOpenParent;
+              // T20A / B-05 — this used to read `onOpenParent;` (a no-op), so the
+              // "Ba Mẹ" button opened nothing and the whole parent area was
+              // unreachable from the header.
+              onOpenParent();
             }}
             aria-label="Khu vực dành cho Ba Mẹ"
             leftIcon={<Shield className="w-3.5 h-3.5 text-amber-400" aria-hidden="true" />}
