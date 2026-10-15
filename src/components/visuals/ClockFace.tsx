@@ -5,7 +5,7 @@ export interface ClockFaceProps {
   gio: number;
   /** Phút 0–59 (giờ đúng = 0). */
   phut: number;
-  /** Vietnamese clocks are 12-hour with sáng/chiều. */
+  /** Vietnamese clocks are 12-hour with sáng/chiều. Định dạng 12 giờ (T11C). */
   amPm: 'sáng' | 'chiều';
   /** Cạnh hình vuông (px). */
   size?: number;
@@ -23,6 +23,9 @@ function polar(cx: number, cy: number, radius: number, degFrom12: number) {
  * 12 số hiển thị đúng vị trí (12 ở đỉnh, 3 bên phải...), kim ngắn chỉ giờ,
  * kim dài chỉ phút. `gio`/`phut` được kẹp về khoảng hợp lệ nên dữ liệu sai
  * không bao giờ vẽ ra hình vô nghĩa cho bé.
+ *
+ * T11C — giữ thuộc tính JSX dạng camelCase ở mọi component visuals;
+ * mặt đồng hồ 12 giờ với nhãn sáng/chiều.
  */
 export const ClockFace: React.FC<ClockFaceProps> = ({ gio, phut, amPm, size = 200 }) => {
   const safeGio = Math.min(12, Math.max(1, Math.round(Number(gio) || 0)));

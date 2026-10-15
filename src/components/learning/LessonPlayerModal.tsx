@@ -431,10 +431,10 @@ export const LessonPlayerModal: React.FC<LessonPlayerModalProps> = ({
                   </div>
                 )}
 
-                  {/* SVG minh hoạ (T11A/T11B): thước, đồng hồ, khay 5 ô, tia số */}
-                  <QuestionVisualForQuestion question={question} />
+                {/* T11C/T11B — hình trực quan (TenFrame/NumberLine/PlaceValueBlocks/Ruler/ClockFace). Single render via dispatcher (avoids double SVG); QuestionVisualForQuestion delegates to QuestionVisual. */}
+                <QuestionVisualForQuestion question={question} />
 
-                  <div className="flex items-center justify-center gap-2 mb-1">
+                <div className="flex items-center justify-center gap-2 mb-1">
                   <h4 className="text-lg md:text-xl font-black text-slate-800 font-display">
                     {question.prompt}
                   </h4>

@@ -43,18 +43,21 @@ export interface Question {
    matchingPairs?: { left: string; right: string }[];
    orderingItems?: string[];
    categoryBuckets?: string[];
-   hint?: string;
-   explanation?: string;
-   visual?: {
-     kind: VisualKind;
-     props?: Record<string, unknown>;
-   };
-   /**
-    * Machine-checkable arithmetic payload (CONTENT_GUIDE §3, T11A/T11B).
-    * A test recomputes `a op b` and compares it with `Number(correctAnswer)`,
-    * so a hand-written arithmetic answer can never silently drift.
-    */
-   calc?: { a: number; op: '+' | '-'; b: number };
+    hint?: string;
+    explanation?: string;
+    visual?: {
+      kind: VisualKind;
+      props?: Record<string, unknown>;
+    };
+    /**
+     * T11A/T11C — machine-checkable arithmetic fact for every calculation
+     * question: the correct answer must equal `a op b`, stay within 0–100,
+     * and be a no-carry operation (Grade 1, GDPT 2018).
+     * Machine-checkable arithmetic payload (CONTENT_GUIDE §3, T11A/T11B).
+     * A test recomputes `a op b` and compares it with `Number(correctAnswer)`,
+     * so a hand-written arithmetic answer can never silently drift.
+     */
+    calc?: { a: number; op: '+' | '-'; b: number };
 }
 
 export interface Lesson {

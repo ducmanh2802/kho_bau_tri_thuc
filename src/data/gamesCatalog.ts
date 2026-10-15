@@ -4,7 +4,7 @@
  * without pulling the whole (lazy) Games Hub chunk into the main bundle.
  */
 
-export type GameCategory = 'all' | 'viet' | 'math' | 'english' | 'fun';
+export type GameCategory = 'all' | 'viet' | 'math' | 'english' | 'logic' | 'fun';
 
 export interface GameInfo {
   id: string;
@@ -220,6 +220,45 @@ export const GAMES_CATALOG: GameInfo[] = [
     skillIds: ["math_word_problems"],
   },
   {
+    id: 'ten_frame_market',
+    title: 'Chợ Khung 10',
+    category: 'math',
+    categoryLabel: 'Toán Học',
+    emoji: '🧺',
+    mascot: '🐻 Gấu Bút Chì',
+    description: 'Giúp bạn thú mua đủ 10 quả, đủ que tính chục–đơn vị và đủ tiền hàng.',
+    skillTag: 'Khung 10 & Chục–đơn vị',
+    color: 'from-blue-500 to-indigo-600',
+    skillIds: ["math_ten_frame"],
+    isNew: true,
+  },
+  {
+    id: 'number_line_hop',
+    title: 'Ếch Nhảy Tia Số',
+    category: 'math',
+    categoryLabel: 'Toán Học',
+    emoji: '🐸',
+    mascot: '🐻 Gấu Bút Chì',
+    description: 'Bấm ếch nhảy từng bước trên tia số rồi tìm số đích.',
+    skillTag: 'Tia số & Cộng trừ',
+    color: 'from-cyan-500 to-blue-600',
+    skillIds: ["math_number_line"],
+    isNew: true,
+  },
+  {
+    id: 'clock_builder',
+    title: 'Thợ Sửa Đồng Hồ',
+    category: 'math',
+    categoryLabel: 'Toán Học',
+    emoji: '⏰',
+    mascot: '🐻 Gấu Bút Chì',
+    description: 'Chỉnh kim giờ đúng theo tranh rồi trả lời thứ, ngày trên tờ lịch.',
+    skillTag: 'Giờ đúng & Thứ–ngày',
+    color: 'from-sky-500 to-indigo-600',
+    skillIds: ["math_time_week"],
+    isNew: true,
+  },
+  {
     id: 'animal_safari',
     title: 'Safari Tiếng Anh — Animals',
     category: 'english',
@@ -280,6 +319,32 @@ export const GAMES_CATALOG: GameInfo[] = [
     skillTag: 'Đánh vần & Từ CVC, sh/ch',
     color: 'from-lime-500 to-green-600',
     skillIds: ["en_word_building"],
+    isNew: true,
+  },
+  {
+    id: 'treasure_coding',
+    title: 'Lập Trình Tìm Kho Báu',
+    category: 'logic',
+    categoryLabel: 'Logic & Khoa học',
+    emoji: '🗺️',
+    mascot: '🐻 Gấu Bút Chì',
+    description: 'Xếp các mũi tên rồi bấm Chạy để đưa Gấu tới rương kho báu.',
+    skillTag: 'Lập trình & Tư duy thứ tự',
+    color: 'from-rose-400 to-pink-600',
+    skillIds: ["logic_sequences"],
+    isNew: true,
+  },
+  {
+    id: 'little_scientist',
+    title: 'Nhà Khoa Học Nhí',
+    category: 'logic',
+    categoryLabel: 'Logic & Khoa học',
+    emoji: '🔬',
+    mascot: '🐻 Gấu Bút Chì',
+    description: 'Thả vật vào chậu nước, đoán chìm nổi, sống, ngày đêm cùng Gấu.',
+    skillTag: 'Khoa học vui: chìm nổi & vật sống',
+    color: 'from-teal-400 to-emerald-600',
+    skillIds: ["life_science_sinkfloat", "life_science_living", "life_weather_daynight"],
     isNew: true,
   },
   {

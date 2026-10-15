@@ -17,6 +17,7 @@ export interface NumberLineProps {
 
 /**
  * T11A/T11B — tia số: ghi số tại mỗi vạch, đánh dấu số đang xét hoặc ô trống.
+ * T11C — giữ JSX camelCase (`strokeWidth`), đường tia số + nhãn start/end/current.
  */
 export const NumberLine: React.FC<NumberLineProps> = ({
   start,
