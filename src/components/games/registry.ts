@@ -32,6 +32,8 @@ export const GAME_REGISTRY: Record<string, React.LazyExoticComponent<React.Compo
   phonics_pop: lazy(() => import('./PhonicsPopGame').then((m) => ({ default: m.PhonicsPopGame }))),
   simon_says: lazy(() => import('./SimonSaysGame').then((m) => ({ default: m.SimonSaysGame }))),
   word_builder_train: lazy(() => import('./WordTrainGame').then((m) => ({ default: m.WordTrainGame }))),
+  treasure_coding: lazy(() => import('./TreasureCodingGame').then((m) => ({ default: m.TreasureCodingGame }))),
+  little_scientist: lazy(() => import('./LittleScientistGame').then((m) => ({ default: m.LittleScientistGame }))),
   memory_cards: lazy(() => import('./MemoryCardsGame').then((m) => ({ default: m.MemoryCardsGame }))),
   coloring_canvas: lazy(() => import('./ColoringCanvasGame').then((m) => ({ default: m.ColoringCanvasGame }))),
 };

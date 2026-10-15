@@ -49,6 +49,7 @@ const categoryTabs = [
   { id: 'viet' as GameCategory, label: 'Tiếng Việt', icon: '📚' },
   { id: 'math' as GameCategory, label: 'Toán Học', icon: '🔢' },
   { id: 'english' as GameCategory, label: 'Tiếng Anh', icon: '🇬🇧' },
+  { id: 'logic' as GameCategory, label: 'Logic & Khoa học', icon: '🔬' },
   { id: 'fun' as GameCategory, label: 'Giải Trí', icon: '🎨' },
 ];
 
@@ -66,6 +67,7 @@ export const GamesHubScreen: React.FC<{ onBack: () => void; onProfileUpdate: () 
       viet: 0,
       math: 0,
       english: 0,
+      logic: 0,
       fun: 0,
     };
     for (const g of GAMES_CATALOG) c[g.category] += 1;
@@ -179,7 +181,7 @@ export const GamesHubScreen: React.FC<{ onBack: () => void; onProfileUpdate: () 
       </div>
 
       {/* Category Tabs — counts computed dynamically */}
-      <div className="grid grid-cols-5 gap-1 pb-2">
+      <div className="grid grid-cols-3 sm:grid-cols-6 gap-1 pb-2">
         {categoryTabs.map((tab) => {
           const count = counts[tab.id];
           return (

@@ -31,6 +31,8 @@ const GAME_TITLES = [
   'Phonics Pop — Bắn Âm',
   'Simon Says — Gấu Ra Lệnh',
   'Word Train — Tàu Chữ Tiếng Anh',
+  'Lập Trình Tìm Kho Báu',
+  'Nhà Khoa Học Nhí',
   'Lật Thẻ Trí Nhớ Vàng',
   'Bé Tập Vẽ & Tô Màu Diệu Kỳ',
 ];
