@@ -46,7 +46,7 @@ import {
   OrderingQuestion,
   MathExpressionQuestion,
 } from './questions';
-import { QuestionVisual } from '../visuals/QuestionVisual';
+import { QuestionVisualForQuestion } from '../visuals/QuestionVisual';
 
 interface LessonPlayerModalProps {
   lesson: Lesson;
@@ -431,12 +431,8 @@ export const LessonPlayerModal: React.FC<LessonPlayerModalProps> = ({
                   </div>
                 )}
 
-                {/* T11C — hình trực quan (TenFrame/NumberLine/PlaceValueBlocks/...) */}
-                {question.visual && (
-                  <div className="mb-3 flex justify-center" data-testid="question-visual">
-                    <QuestionVisual visual={question.visual} />
-                  </div>
-                )}
+                {/* T11C/T11B — hình trực quan (TenFrame/NumberLine/PlaceValueBlocks/Ruler/ClockFace). Single render via dispatcher (avoids double SVG); QuestionVisualForQuestion delegates to QuestionVisual. */}
+                <QuestionVisualForQuestion question={question} />
 
                 <div className="flex items-center justify-center gap-2 mb-1">
                   <h4 className="text-lg md:text-xl font-black text-slate-800 font-display">

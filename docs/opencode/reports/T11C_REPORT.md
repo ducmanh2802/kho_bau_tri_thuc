@@ -78,3 +78,30 @@ Nhánh: `p42/T11C`. Spec gốc: `docs/opencode/T11_toan_den_100.md` (mục 1–5
 - QA browser (`qa/*.mjs`) để SKIPPED — chạy lại khi có môi trường.
 - Mục 6–9 của spec T11 (đo độ dài cm, giờ/lịch, hình/khối, quy luật) là phần
   T11B, không thuộc T11C.
+
+## Merge
+- Runner merge main mới nhất vào `p42/T11C` gây xung đột 11 file; đã gỡ hết
+  marker, giữ việc của cả hai bên.
+- `vite.config.ts`: giữ comment chunk `math-bank` của cả T11B và T11C.
+- `src/types/index.ts`: `visual.kind` dùng `VisualKind` (T11B), giữ cả hai
+  khối comment `calc` (T11A/T11C + T11A/T11B).
+- `src/data/math/factory.ts`: hợp nhất interface (`QuestionInit` +
+  alias `MathQuestionInit`), `mathQ` mặc định `audioPrompt ?? prompt`,
+  giữ đủ helper hai bên (`checkNoCarryAdd/Sub`, `makeCalc` của T11C và
+  `createRng`, `shuffled` của T11B).
+- Visuals: `ClockFace`/`NumberLine` lấy bản T11B (kẹp giá trị, aria, responsive)
+  + ghi chú T11C; `PlaceValueBlocks` bản T11B + thêm `chucColor`/`donViColor`
+  tùy chọn của T11C; `Ruler` bản T11B + thêm `ticks`/`screenWidth` tùy chọn
+  để test T11C compile; `TenFrame` hợp nhất hai API (`count` kiểu T11C
+  nhiều khung 10 ô, `chuc`/`donVi` kiểu T11B) theo nhánh `count !== undefined`.
+- `QuestionVisual.tsx`: giữ dispatcher T11B (parse số phòng thủ, testid,
+  `QuestionVisualForQuestion`, default export) + rẽ `count` cho TenFrame T11C.
+- `LessonPlayerModal.tsx`: render một lần qua `QuestionVisualForQuestion`
+  (ủy thác cho `QuestionVisual`), tránh vẽ SVG hai lần.
+- `src/data/mathCurriculum.ts` (16 hunk): giữ bản T11C — tiếng Việt đúng
+  mã + `calc` cho mọi câu số học; đặc biệt `math-q10-3` giữ `14 + 5 = 19`,
+  `math-q10-4` giữ `50 - 20 = 30` theo test T11C (bản main `14 + 9`/`50 - 18`
+  có nhớ/mượn nên loại). Nội dung câu hỏi hai bên cùng id nên không mất entry.
+- File mới của main (`src/data/math/length|time|shapes|solids|position|logic|numbers100|wordProblems100|calcIn100|upgrades`, `T11B_REPORT.md`, `tests/tmp-stats.test.ts`) giữ nguyên.
+- Kiểm lại sau merge: `npm run typecheck` PASS; `npm test` 49 file / 772 test
+  PASS; `npm run build` PASS (entry ~549,6 kB ≤ 600 kB, chunk `math-bank`).

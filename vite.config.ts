@@ -7,17 +7,25 @@ import {collectPrecacheUrls, injectPrecacheManifest} from './scripts/sw-precache
 /**
  * T02C — replaces `__PRECACHE_MANIFEST__` inside dist/sw.js with the real
  * list of same-origin URLs (every JS/CSS chunk, fonts, icons) so the service
- * worker precaches the whole build output, including lazy chunks. Runs in
- * `closeBundle` so the public/ copy (fonts, icons, sw.js) is already in dist/.
+ * worker precaches the whole build output, including lazy chunks.
+ *
+ * T11B — the injection moved from `closeBundle` to `writeBundle` (guarded):
+ * `closeBundle` is invoked twice by the bundler and runs BEFORE the chunks are
+ * emitted, so it either threw "placeholder missing" on the second call or
+ * produced a manifest without `/assets/*`. `writeBundle` sees the finished
+ * build (public copy + every chunk), so the precache list is complete.
  */
 function swPrecachePlugin() {
+  let injected = false;
   return {
     name: 't02c-sw-precache',
-    apply: 'build' as const,
-    closeBundle() {
-      const outDir = path.resolve('dist');
+    apply: undefined,
+    writeBundle(_options: any) {
+      if (injected) return;
+      const outDir = path.resolve(_options?.dir ?? 'dist');
       const urls = collectPrecacheUrls(outDir);
       injectPrecacheManifest(path.join(outDir, 'sw.js'), urls);
+      injected = true;
     },
   };
 }
@@ -38,6 +46,9 @@ export default defineConfig(() => {
           // T02C — keep react/react-dom out of the first-load entry chunk so
           // the main chunk budget (≤ 600 kB, goal ≤ 450 kB) survives the
           // ~1.300-question content expansion in T10–T14.
+          // T11B — the Toán lesson bank (413 questions across 20 topics) lives
+          // in its own `math-bank` chunk: the entry chunk stays ~550 kB while
+          // the whole subject ships in one extra chunk.
           // T11C — the Toán lesson bank (0–100 content in `src/data/math/`
           // + `src/data/mathCurriculum`) lives in its own `math-bank` chunk
           // so the entry chunk stays within budget after wiring the new units.
@@ -60,10 +71,10 @@ export default defineConfig(() => {
       testTimeout: 20000,
     },
     server: {
-      // HMR is disabled in AI Studio via DISABLE_HMR env var.
+      // HMR is disabled in AI Studio via DISABLE_HMR env variable.
       // Do not modify—file watching is disabled to prevent flickering during agent edits.
       hmr: process.env.DISABLE_HMR !== 'true',
-      // Disable file watching when DISABLE_HMR is true to save CPU during agent edits.
+      // Disable file watching when DISABLE_HMR == true to save CPU for agent edits.
       watch: process.env.DISABLE_HMR === 'true' ? null : {},
     },
   };
