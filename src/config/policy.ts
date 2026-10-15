@@ -284,6 +284,8 @@ export const LAUNCHABLE_GAME_IDS = [
   'phonics_pop',
   'simon_says',
   'word_builder_train',
+  'treasure_coding',
+  'little_scientist',
   'memory_cards',
   'coloring_canvas',
 ] as const;

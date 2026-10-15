@@ -4,7 +4,7 @@
  * without pulling the whole (lazy) Games Hub chunk into the main bundle.
  */
 
-export type GameCategory = 'all' | 'viet' | 'math' | 'english' | 'fun';
+export type GameCategory = 'all' | 'viet' | 'math' | 'english' | 'logic' | 'fun';
 
 export interface GameInfo {
   id: string;
@@ -319,6 +319,32 @@ export const GAMES_CATALOG: GameInfo[] = [
     skillTag: 'Đánh vần & Từ CVC, sh/ch',
     color: 'from-lime-500 to-green-600',
     skillIds: ["en_word_building"],
+    isNew: true,
+  },
+  {
+    id: 'treasure_coding',
+    title: 'Lập Trình Tìm Kho Báu',
+    category: 'logic',
+    categoryLabel: 'Logic & Khoa học',
+    emoji: '🗺️',
+    mascot: '🐻 Gấu Bút Chì',
+    description: 'Xếp các mũi tên rồi bấm Chạy để đưa Gấu tới rương kho báu.',
+    skillTag: 'Lập trình & Tư duy thứ tự',
+    color: 'from-rose-400 to-pink-600',
+    skillIds: ["logic_sequences"],
+    isNew: true,
+  },
+  {
+    id: 'little_scientist',
+    title: 'Nhà Khoa Học Nhí',
+    category: 'logic',
+    categoryLabel: 'Logic & Khoa học',
+    emoji: '🔬',
+    mascot: '🐻 Gấu Bút Chì',
+    description: 'Thả vật vào chậu nước, đoán chìm nổi, sống, ngày đêm cùng Gấu.',
+    skillTag: 'Khoa học vui: chìm nổi & vật sống',
+    color: 'from-teal-400 to-emerald-600',
+    skillIds: ["life_science_sinkfloat", "life_science_living", "life_weather_daynight"],
     isNew: true,
   },
   {
