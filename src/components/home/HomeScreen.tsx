@@ -85,7 +85,8 @@ const SUBJECT_CARDS: readonly SubjectCard[] = [
     border: 'border-purple-300',
     progressColor: 'purple',
     variant: 'subject-life',
-    locked: true,
+    locked: false,
+    subjectType: 'cuoc-song',
   },
 ];
 

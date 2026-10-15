@@ -1,4 +1,4 @@
-export type SubjectType = 'tieng-viet' | 'toan' | 'english';
+export type SubjectType = 'tieng-viet' | 'toan' | 'english' | 'cuoc-song';
 
 export type MasteryStatus = 'NOT_STARTED' | 'LEARNING' | 'PRACTICING' | 'MASTERED' | 'NEEDS_REVIEW';
 
@@ -123,6 +123,12 @@ export interface ChildProfile {
   completedLessons: string[];
   completedWeeklyChallenges: string[];
   dailyChestClaimedDate?: string;
+  /** Stars earned per lesson (1–3). Key = lessonId, value = star count. */
+  lessonStars: Record<string, number>;
+  /** Whether a topic chest has been opened. Key = topicId, value = true if claimed. */
+  chestState: Record<string, boolean>;
+  /** Parent override to unlock all lessons (bypasses sequential gating). */
+  unlockAllLessons: boolean;
   /**
    * True when the profile was populated by the parent-only demo seeder.
    * Demo figures are fabricated for showcasing reports and must never be

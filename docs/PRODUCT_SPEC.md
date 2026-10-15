@@ -8,10 +8,11 @@
 - **Người dùng chính (Học sinh 6–7 tuổi)**: Giao diện trực quan, nút bấm lớn, hình ảnh sinh động, tích hợp giọng đọc nhân tạo (Web Speech API) để các bé chưa thạo chữ vẫn có thể nghe và làm bài độc lập.
 - **Người dùng phụ (Phụ huynh)**: Được trang bị cổng bảo vệ (Parent Gate), bảng phân tích năng lực chi tiết (Diagnostic Insights), giới hạn thời gian học bảo vệ mắt (Screen Time Control) và công cụ xuất báo cáo tiến độ.
 
-### 3. Hệ sinh thái 3 Môn Học
+### 3. Hệ sinh thái 4 Môn Học
 1. **Tiếng Việt**: Bảng chữ cái & Âm đầu, 5 dấu thanh diệu kỳ, Vần cơ bản (an, at, on, ot), Ghép tiếng, Quy tắc chính tả (c/k, g/gh, ng/ngh), Từ chỉ người/vật, Từ chỉ hoạt động, Sắp xếp câu, Đọc hiểu truyện ngắn.
 2. **Toán Học**: Nhận biết & Đếm số 0–10, So sánh số (>, <, =), Phép cộng trong phạm vi 10, Phép trừ trong phạm vi 10, Nhận biết hình phẳng (tròn, vuông, tam giác, chữ nhật), Đo lường (dài-ngắn, cao-thấp), Số từ 11 đến 20, Cộng trừ phạm vi 20, Bài toán có lời văn minh họa sinh động.
 3. **Tiếng Anh**: Phonics & Alphabet, Numbers 1–10, Colors, Animals, Family, School Supplies, My Body, Food & Fruits, Toys, Greetings & Feelings.
+4. **Em & Cuộc Sống** (T14): 14 chủ đề — cảm xúc, an toàn giao thông, gia đình, nhà an toàn, trường học, cộng đồng, thực vật, động vật, cơ thể & giác quan, vệ sinh & ăn uống, thời tiết & mùa, an toàn quanh em (số khẩn cấp 111/113/114/115), lễ phép & kỹ năng sống, khoa học vui — 26 bài, 264 câu hỏi.
 
 ### 4. 14 Mini-Game Tương Tác Độc Quyền
 Mỗi mini-game sở hữu cơ chế gameplay riêng biệt:

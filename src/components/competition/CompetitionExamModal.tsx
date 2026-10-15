@@ -36,6 +36,8 @@ interface CompetitionExamModalProps {
   isOpen: boolean;
   onClose: () => void;
   onFinish: (result: CompetitionExamResult) => void;
+  /** Bé-friendly mode: hide countdown (timer still runs). */
+  kidMode?: boolean;
 }
 
 type MatchingState = Record<string, string>;
@@ -61,6 +63,7 @@ export const CompetitionExamModal: React.FC<CompetitionExamModalProps> = ({
   isOpen,
   onClose,
   onFinish,
+  kidMode = true,
 }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
@@ -365,18 +368,20 @@ export const CompetitionExamModal: React.FC<CompetitionExamModalProps> = ({
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
-            <div
-              role="timer"
-              aria-live={isLowTime ? 'assertive' : 'off'}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full font-mono font-black text-sm md:text-base border transition-all ${
-                isLowTime
-                  ? 'bg-rose-500/20 text-rose-300 border-rose-500/50'
-                  : 'bg-slate-800 text-amber-300 border-slate-700'
-              }`}
-            >
-              <Clock className={`w-4 h-4 ${isLowTime ? 'text-rose-400' : 'text-amber-300'}`} />
-              <span>{formatTimer(secondsRemaining)}</span>
-            </div>
+            {!kidMode && (
+              <div
+                role="timer"
+                aria-live={isLowTime ? 'assertive' : 'off'}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full font-mono font-black text-sm md:text-base border transition-all ${
+                  isLowTime
+                    ? 'bg-rose-500/20 text-rose-300 border-rose-500/50'
+                    : 'bg-slate-800 text-amber-300 border-slate-700'
+                }`}
+              >
+                <Clock className={`w-4 h-4 ${isLowTime ? 'text-rose-400' : 'text-amber-300'}`} />
+                <span>{formatTimer(secondsRemaining)}</span>
+              </div>
+            )}
             <button
               onClick={() => setShowExitConfirm(true)}
               aria-label="Thoát bài thi"

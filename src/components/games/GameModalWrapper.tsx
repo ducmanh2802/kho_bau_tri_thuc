@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useRef, useEffect } from 'react';
-import { Volume2, VolumeX, X, Trophy, Star, Sparkles, RotateCcw, Rocket, Lock, Megaphone, Zap, Heart, Smile } from 'lucide-react';
+import { Volume2, VolumeX, X, Trophy, Star, Sparkles, RotateCcw, Rocket, Lock, Megaphone, Zap, Heart, Smile, Pause } from 'lucide-react';
 import { sound } from '../../services/sound';
 import { fireCelebrationConfetti } from '../../services/confetti';
 import { StorageService } from '../../services/storage';
@@ -64,6 +64,7 @@ interface GameModalWrapperProps {
   onNextTier?: () => void;
   /** Subject for praise engine (VIETNAMESE, MATH, ENGLISH) */
   praiseSubject?: PraiseSubject;
+  isRealtime?: boolean;
 }
 
 const MASCOT_REACTIONS = {
@@ -114,8 +115,10 @@ export const GameModalWrapper: React.FC<GameModalWrapperProps> = ({
   nextTierMeta,
   onNextTier,
   praiseSubject: propsPraiseSubject,
+  isRealtime = false,
 }) => {
   const [isMuted, setIsMuted] = React.useState(sound.getMuted());
+  const [isPaused, setIsPaused] = React.useState(false);
   const claimedKeys = React.useRef<Set<string>>(new Set());
   const [receipt, setReceipt] = React.useState<{ stars: number; xp: number } | null>(null);
   const dialogRef = useFocusTrap<HTMLDivElement>(true);
@@ -334,6 +337,18 @@ export const GameModalWrapper: React.FC<GameModalWrapperProps> = ({
             >
               <Megaphone className="w-5 h-5" aria-hidden="true" />
             </button>
+
+            {isRealtime && (
+              <button
+                onClick={() => setIsPaused((v) => !v)}
+                aria-label={isPaused ? 'Tiếp tục trò chơi' : 'Tạm dừng trò chơi'}
+                title={isPaused ? 'Tiếp tục' : 'Tạm dừng'}
+                data-testid="game-pause"
+                className="min-w-[44px] min-h-[44px] shrink-0 flex items-center justify-center bg-amber-100 hover:bg-amber-200 text-amber-700 rounded-full transition-all active:scale-95"
+              >
+                <Pause className="w-5 h-5" aria-hidden="true" />
+              </button>
+            )}
 
             <button
               onClick={toggleSound}

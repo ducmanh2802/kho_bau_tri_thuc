@@ -26,6 +26,7 @@ interface CompetitionResultModalProps {
   onClose: () => void;
   onRetake: () => void;
   onStartRemediation: (weakSkills: string[]) => void;
+  kidMode?: boolean;
 }
 
 const ERROR_CATEGORY_LABELS: Record<string, string> = {
@@ -42,6 +43,7 @@ export const CompetitionResultModal: React.FC<CompetitionResultModalProps> = ({
   onClose,
   onRetake,
   onStartRemediation,
+  kidMode = true,
 }) => {
   const dialogRef = useFocusTrap<HTMLDivElement>(true);
 
@@ -60,11 +62,22 @@ export const CompetitionResultModal: React.FC<CompetitionResultModalProps> = ({
     return `${mins}m ${secs < 10 ? '0' : ''}${secs}s`;
   };
 
+  const medal =
+    result.score / Math.max(1, result.scoring.maxScore) >= 0.8
+      ? { emoji: '🥇', label: 'Huy chương vàng', praise: 'Bé làm xuất sắc! Cố lên nhé!' }
+      : result.score / Math.max(1, result.scoring.maxScore) >= 0.6
+        ? { emoji: '🥈', label: 'Huy chương bạc', praise: 'Bé làm tốt lắm! Tuyệt vời!' }
+        : { emoji: '🥉', label: 'Huy chương đồng', praise: 'Bé đã cố gắng! Lần sau sẽ tốt hơn!' };
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 md:p-6 bg-slate-900/80 backdrop-blur-md animate-pop">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 md:p-6 bg-slate-900/80 backdrop-blur-md animate-pop"
+      data-testid="competition-result"
+    >
       <div
         ref={dialogRef}
         role="dialog"
+        data-kid-mode={kidMode ? 'true' : 'false'}
         aria-modal="true"
         aria-label={`Kết quả ${result.examTitle}`}
         tabIndex={-1}
@@ -97,7 +110,15 @@ export const CompetitionResultModal: React.FC<CompetitionResultModalProps> = ({
 
         {/* Scrollable Content */}
         <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6">
-          {/* Key Metric Cards */}
+          {kidMode && (
+            <div className="p-6 bg-gradient-to-r from-amber-100 via-yellow-100 to-amber-50 border border-amber-200 rounded-3xl text-center space-y-2">
+              <div className="text-6xl">{medal.emoji}</div>
+              <h3 className="text-xl md:text-2xl font-black text-amber-950 font-display">{medal.label}</h3>
+              <p className="text-sm font-bold text-slate-700">{medal.praise}</p>
+            </div>
+          )}
+
+          {!kidMode && (
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-2xl text-center">
               <span className="text-xs font-bold text-amber-800 block mb-0.5">Điểm Số</span>
@@ -127,8 +148,10 @@ export const CompetitionResultModal: React.FC<CompetitionResultModalProps> = ({
               </span>
             </div>
           </div>
+          )}
 
-          {/* Decomposed scoring (§13): no single opaque number */}
+          {!kidMode && (
+          <>
           <section className="p-4 bg-slate-50 border border-slate-200 rounded-2xl">
             <h4 className="text-xs font-black uppercase tracking-wider text-slate-600 flex items-center gap-1.5 mb-2">
               <ListChecks className="w-4 h-4" />
@@ -182,6 +205,8 @@ export const CompetitionResultModal: React.FC<CompetitionResultModalProps> = ({
               </p>
             </div>
           </div>
+          </>
+          )}
 
           {/* Strengths & Skills to practice */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

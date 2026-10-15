@@ -32,7 +32,7 @@ export default async function run(page, ui) {
     // Navigate: home -> Tiếng Việt -> first lesson
     await page.getByRole('button', { name: /Tiếng Việt/ }).first().click(CLICK);
     await page.waitForSelector('text=Vương Quốc Tiếng Việt', { timeout: 20000 });
-    const trigger = page.getByRole('button', { name: /Vào học/ }).first();
+    const trigger = page.locator('[data-testid^="lesson-button-"]').first();
     await trigger.click(CLICK);
     await page.waitForSelector('[role=dialog]', { timeout: 20000 });
     await page.waitForTimeout(400);

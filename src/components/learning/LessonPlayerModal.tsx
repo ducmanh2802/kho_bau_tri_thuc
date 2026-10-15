@@ -10,6 +10,11 @@ import {
 import { fireCelebrationConfetti } from '../../services/confetti';
 import { StorageService } from '../../services/storage';
 import { checkAnswer } from '../../services/answerCheck';
+import {
+  applyMatchingTap,
+  buildMatchingCanonical,
+  isMatchingComplete,
+} from '../../services/answerCheck';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { useModalHistory } from '../../hooks/useModalHistory';
 import { useSpeak } from '../../hooks/useSpeak';
@@ -136,44 +141,12 @@ export const LessonPlayerModal: React.FC<LessonPlayerModalProps> = ({
   const handleMatch = (side: 'left' | 'right', value: string) => {
     if (isAnswerChecked) return;
     sound.playClick();
-    const state = { ...matchingState };
-    const key = `${question.id}::${value}`;
-    if (side === 'left') {
-      for (const k of Object.keys(state)) {
-        if (k.startsWith(`${question.id}::`) && state[k] === `L:${value}`) delete state[k];
-      }
-      state[key] = `L:${value}`;
-    } else {
-      const leftKey = Object.keys(state).find(
-        (k) => k.startsWith(`${question.id}::`) && state[k] === `R:${value}`
-      );
-      if (leftKey) {
-        const leftValue = leftKey.split('::')[1];
-        delete state[leftKey];
-        state[`${question.id}::${leftValue}`] = `${leftValue}=${value}`;
-      } else {
-        state[key] = `R:${value}`;
-      }
-    }
+    // T14B — pure state machine in answerCheck (pairs can actually complete).
+    const state = applyMatchingTap(matchingState, question.id, side, value);
     setMatchingState(state);
 
     const pairs = question.matchingPairs ?? [];
-    const complete = pairs.every((p: { left: string; right: string }) => {
-      const stored = state[`${question.id}::${p.left}`];
-      return typeof stored === 'string' && stored.includes('=');
-    });
-    if (complete) {
-      const canonical = pairs
-        .map((p: { left: string; right: string }) => `${p.left}=${state[`${question.id}::${p.left}`]}`)
-        .join('|');
-      setSelectedAnswer(canonical);
-    } else {
-      const partial = Object.entries(state)
-        .filter(([k, v]) => k.startsWith(`${question.id}::`) && v.includes('='))
-        .map(([, v]) => v)
-        .join('|');
-      setSelectedAnswer(partial);
-    }
+    setSelectedAnswer(buildMatchingCanonical(pairs, state, question.id));
   };
 
   const handleDragItem = (item: string) => {
@@ -384,10 +357,7 @@ export const LessonPlayerModal: React.FC<LessonPlayerModalProps> = ({
         return orderedList.length === 0;
       case 'matching': {
         const pairs = question.matchingPairs ?? [];
-        return pairs.length > 0 && !pairs.every((p) => {
-          const stored = matchingState[`${question.id}::${p.left}`];
-          return typeof stored === 'string' && stored.includes('=');
-        });
+        return pairs.length > 0 && !isMatchingComplete(pairs, matchingState, question.id);
       }
       case 'drag-drop':
       case 'classify':

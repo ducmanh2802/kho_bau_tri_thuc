@@ -278,7 +278,6 @@ export const LAUNCHABLE_GAME_IDS = [
   'phonics_pop',
   'memory_cards',
   'coloring_canvas',
-  'kidbox_word_safari',
 ] as const;
 
 /** Deterministic seed defaults so every assembly path is reproducible. */

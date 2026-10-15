@@ -109,11 +109,11 @@ async function body(page, ui) {
   // ---------- 2. VIETNAMESE LESSON ----------
   await page.getByRole('button', { name: /Tiếng Việt/ }).first().click(CLICK);
   await page.waitForSelector('text=Vương Quốc Tiếng Việt', { timeout: 20000 });
-  const lessonButtons = await page.getByRole('button', { name: /Vào học|Học lại/ }).count();
+  const lessonButtons = await page.locator('[data-testid^="lesson-button-"]').count();
   log('vietnameseSubject', { lessonCount: lessonButtons });
   if (lessonButtons === 0) fail('no lessons listed for Vietnamese');
 
-  await page.getByRole('button', { name: /Vào học/ }).first().click(CLICK);
+  await page.locator('[data-testid^="lesson-button-"]').first().click(CLICK); await page.getByRole('button', { name: /Bắt đầu/ }).click(CLICK);
   await page.waitForSelector('text=Câu hỏi 1', { timeout: 20000 });
   log('lessonOpened', { ok: true });
 

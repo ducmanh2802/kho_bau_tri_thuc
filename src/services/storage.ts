@@ -18,8 +18,9 @@ import {
   SkillMastery,
   SubjectType,
 } from '../types';
-import { getAllSkills } from '../data/curriculum';
-import { localDateKey, diffDateKeys } from './dateUtils';
+import { getAllSkills, getTopicsBySubject } from '../data/curriculum';
+import { GAMES_CATALOG } from '../data/gamesCatalog';
+import { localDateKey, diffDateKeys, parseDateKey } from './dateUtils';
 import { LearningOS, LEARNING_OS_POLICY } from './learningOS';
 // T02C — storage (first-load chunk) must NOT import CompetitionEngine,
 // ReadingEngine or the competition/reading banks. The demo seeder lives in
@@ -38,7 +39,7 @@ import type {
   SessionState,
 } from '../types/learningOS';
 import type { CompetitionExamResult, ErrorCategory } from '../types/competition';
-import type { ReadingMetrics, ReadingProfile, ReadingSkillState, ReadingStage, ReadingStageState } from '../types/reading';
+import type { ReadingMetrics, ReadingParentRating, ReadingProfile, ReadingSkillState, ReadingStage, ReadingStageState } from '../types/reading';
 
 const STORAGE_KEYS = {
   CHILD_PROFILE: 'kho_bau_child_profile',
@@ -53,6 +54,8 @@ const STORAGE_KEYS = {
   GAME_PROGRESS: 'kho_bau_game_progress',
   REVIEW_DAYS: 'kho_bau_review_days',
   GAME_NONCE: 'kho_bau_game_nonce',
+  // T08 — ngày bé thấy mỗi trò chơi lần đầu (YYYY-MM-DD giờ máy).
+  GAME_FIRST_SEEN: 'kho_bau_game_first_seen',
   // T01B/10 — ngày tưới cây gần nhất (YYYY-MM-DD giờ máy). Key mới hoàn toàn
   // nên không cần migration; giá trị lạ được sanitizer loại bỏ, tiến độ cũ giữ nguyên.
   TREE_WATER: 'kho_bau_tree_water',
@@ -341,6 +344,11 @@ const DEFAULT_CHILD_PROFILE: ChildProfile = {
   unlockedItems: ['hat_cap', 'glasses_nerd', 'bag_dino'],
   completedLessons: [],
   completedWeeklyChallenges: [],
+  dailyChestClaimedDate: undefined,
+  lessonStars: {},
+  chestState: {},
+  unlockAllLessons: false,
+  isDemoData: false,
 };
 
 const DEFAULT_PARENT_SETTINGS: ParentSettings = {
@@ -359,6 +367,17 @@ const DEFAULT_PARENT_SETTINGS: ParentSettings = {
 
 function getTodayString(): string {
   return localDateKey();
+}
+
+/**
+ * T14C — strict YYYY-MM-DD check: correct shape AND a real calendar day.
+ * The old regex-only check accepted impossible dates like `2026-13-99`,
+ * which then poisoned NEW-label and streak math; those are now rejected.
+ */
+function isRealDateKey(value: unknown): value is string {
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const parsed = parseDateKey(value);
+  return parsed !== null && localDateKey(parsed) === value;
 }
 
 function createDefaultQuests(): DailyQuest[] {
@@ -564,6 +583,46 @@ export class StorageService {
   }
 
   /**
+   * Returns parent quick grades keyed by passage id (😀/😐/🙁).
+   */
+  public static getReadingParentRatings(): Record<string, ReadingParentRating> {
+    return StorageService.getReadingProfile().parentRatings ?? {};
+  }
+
+  /** Alias kept for names expected by callers/tests. */
+  public static getReadingParentGrades(): Record<string, ReadingParentRating> {
+    return StorageService.getReadingParentRatings();
+  }
+
+  /** Persists one parent quick grade for a passage (in-place on the profile). */
+  public static saveReadingParentRating(passageId: string, rating: ReadingParentRating): void {
+    if (typeof passageId !== 'string' || !passageId) return;
+    if (!['😀', '😐', '🙁'].includes(rating)) return;
+    const profile = StorageService.getReadingProfile();
+    const next = {
+      ...(profile.parentRatings ?? {}),
+      [passageId]: rating,
+    };
+    const updated: ReadingProfile = {
+      ...profile,
+      parentRatings: next,
+      parentGrades: { ...next },
+      selfReadRatings: [...Object.values(next)],
+    };
+    StorageService.saveReadingProfile(updated);
+  }
+
+  /** Alias kept for names expected by callers/tests. */
+  public static recordReadingParentRating(passageId: string, rating: ReadingParentRating): void {
+    StorageService.saveReadingParentRating(passageId, rating);
+  }
+
+  /** Alias kept for names expected by callers/tests. */
+  public static gradeReadingPassage(passageId: string, rating: ReadingParentRating): void {
+    StorageService.saveReadingParentRating(passageId, rating);
+  }
+
+  /**
    * Rebuilds a valid reading profile from an arbitrary payload.
    */
   private static sanitizeReadingProfile(raw: Record<string, unknown>): ReadingProfile {
@@ -614,6 +673,25 @@ export class StorageService {
       ? (p.currentStage as ReadingStage)
       : 'ACCURACY';
 
+    const VALID_RATING = new Set(['😀', '😐', '🙁']);
+    const safeRating = (v: unknown): ReadingParentRating | undefined =>
+      typeof v === 'string' && VALID_RATING.has(v) ? (v as ReadingParentRating) : undefined;
+
+    const parentRatings: Record<string, ReadingParentRating> = {};
+    for (const srcObj of [p.parentRatings, p.parentGrades, p.selfReadRatings]) {
+      // support both record and array shapes
+      if (srcObj && typeof srcObj === 'object' && !Array.isArray(srcObj)) {
+        for (const [key, val] of Object.entries(srcObj as Record<string, unknown>)) {
+          const r = safeRating(val);
+          if (r) parentRatings[key] = r;
+        }
+      }
+    }
+
+    const selfReadRatings = Array.isArray(p.selfReadRatings)
+      ? (p.selfReadRatings as unknown[]).map(safeRating).filter((r): r is ReadingParentRating => !!r)
+      : Object.values(parentRatings);
+
     return {
       currentStage,
       stageStates,
@@ -625,6 +703,9 @@ export class StorageService {
       headline: typeof p.headline === 'string' ? p.headline : base.headline,
       encouragement: typeof p.encouragement === 'string' ? p.encouragement : base.encouragement,
       lastSessionAt: typeof p.lastSessionAt === 'number' ? p.lastSessionAt : undefined,
+      parentRatings: Object.keys(parentRatings).length ? parentRatings : undefined,
+      parentGrades: Object.keys(parentRatings).length ? { ...parentRatings } : undefined,
+      selfReadRatings: selfReadRatings.length ? selfReadRatings : undefined,
     };
   }
 
@@ -643,7 +724,7 @@ export class StorageService {
         if (!value || typeof value !== 'object' || Array.isArray(value)) continue;
         const v = value as Partial<KnowledgeState>;
         const subject: SubjectType =
-          v.subject === 'toan' || v.subject === 'english' ? v.subject : 'tieng-viet';
+          v.subject === 'toan' || v.subject === 'english' || v.subject === 'cuoc-song' ? v.subject : 'tieng-viet';
         const num = (n: unknown, fallback = 0) =>
           typeof n === 'number' && Number.isFinite(n) ? n : fallback;
         const count = (n: unknown) => Math.max(0, Math.round(num(n, 0)));
@@ -863,6 +944,21 @@ export class StorageService {
               ? raw.completedWeeklyChallenges
               : [],
             dailyChestClaimedDate: raw.dailyChestClaimedDate,
+            lessonStars: raw.lessonStars && typeof raw.lessonStars === 'object' && !Array.isArray(raw.lessonStars)
+              ? Object.fromEntries(
+                  Object.entries(raw.lessonStars as Record<string, unknown>)
+                    .filter(([, v]) => typeof v === 'number' && Number.isFinite(v) && v >= 1 && v <= 3)
+                    .map(([k, v]) => [k, Math.round(v as number)])
+                )
+              : {},
+            chestState: raw.chestState && typeof raw.chestState === 'object' && !Array.isArray(raw.chestState)
+              ? Object.fromEntries(
+                  Object.entries(raw.chestState as Record<string, unknown>)
+                    .filter(([, v]) => v === true)
+                    .map(([k]) => [k, true])
+                )
+              : {},
+            unlockAllLessons: raw.unlockAllLessons === true,
             isDemoData: raw.isDemoData === true,
           };
 
@@ -893,6 +989,9 @@ export class StorageService {
       unlockedItems: [...DEFAULT_CHILD_PROFILE.unlockedItems],
       completedLessons: [],
       completedWeeklyChallenges: [],
+      lessonStars: {},
+      chestState: {},
+      unlockAllLessons: false,
       lastActiveDate: getTodayString(),
       isDemoData: false,
     };
@@ -1067,7 +1166,7 @@ public static getParentSettings(): ParentSettings {
   public static getTreeWateredDate(): string | null {
     try {
       const raw = localStorage.getItem(STORAGE_KEYS.TREE_WATER);
-      if (typeof raw === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+      if (isRealDateKey(raw)) return raw;
     } catch {
       // Ignore — ngoài trình duyệt hoặc quota đầy thì coi như chưa tưới.
     }
@@ -1075,7 +1174,7 @@ public static getParentSettings(): ParentSettings {
   }
 
   public static setTreeWateredDate(dateKey: string): void {
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateKey)) return;
+    if (!isRealDateKey(dateKey)) return;
     try {
       localStorage.setItem(STORAGE_KEYS.TREE_WATER, dateKey);
     } catch {
@@ -1195,6 +1294,8 @@ public static getParentSettings(): ParentSettings {
       profile.xp += xp;
       profile.stars += stars;
       profile.tickets += 1; // Earn 1 arcade ticket per new lesson!
+      // Record stars earned for this lesson (1–3)
+      profile.lessonStars[lessonId] = Math.min(Math.max(Math.round(stars), 1), 3);
     } else {
       // Retaking an already completed lesson grants practice review XP (+5 XP)
       // but does NOT duplicate stars/tickets (anti-farming reward integrity)
@@ -1225,6 +1326,35 @@ public static getParentSettings(): ParentSettings {
 
     // Check achievements
     StorageService.checkAchievements();
+  }
+
+  /**
+   * Claim the treasure chest reward for completing all lessons in a topic.
+   * Returns the stars awarded (0 if already claimed or topic not complete).
+   */
+  public static claimTopicChest(topicId: string, subject: SubjectType, starReward: number): number {
+    const profile = StorageService.getChildProfile();
+    if (profile.chestState[topicId]) return 0; // Already claimed
+
+    // Verify all lessons in this topic are completed
+    const topics = getTopicsBySubject(subject);
+    const topic = topics.find((t) => t.id === topicId);
+    if (!topic) return 0;
+
+    const allLessonsDone = topic.lessons.every((l) => profile.completedLessons.includes(l.id));
+    if (!allLessonsDone) return 0;
+
+    // Award stars and mark chest as claimed
+    const safeStars = Math.min(Math.max(Math.round(starReward), 1), 3);
+    profile.stars += safeStars;
+    profile.chestState[topicId] = true;
+    StorageService.saveChildProfile(profile);
+
+    const analytics = StorageService.getAnalytics();
+    StorageService.saveAnalytics(analytics);
+
+    StorageService.checkAchievements();
+    return safeStars;
   }
 
   // --- Game level progression -------------------------------------------
@@ -1389,6 +1519,85 @@ public static getParentSettings(): ParentSettings {
     return next;
   }
 
+  // --- T08 game first-seen dates: when the child first saw a game ----------
+  private static sanitizeGameFirstSeen(raw: unknown): Record<string, string> {
+    const out: Record<string, string> = {};
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return out;
+    for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
+      if (typeof k !== 'string' || !k.trim()) continue;
+      if (!isRealDateKey(v)) continue;
+      out[k] = v;
+    }
+    return out;
+  }
+
+  private static readGameFirstSeenStoreRaw(): Record<string, string> | null {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEYS.GAME_FIRST_SEEN);
+      if (raw === null) return null;
+      const parsed = JSON.parse(raw) as unknown;
+      return StorageService.sanitizeGameFirstSeen(parsed);
+    } catch {
+      return {};
+    }
+  }
+
+  /** Baseline: every game in the current catalog is considered already seen (>7 days ago). */
+  private static baselineGameFirstSeen(): Record<string, string> {
+    const oldKey = localDateKey(new Date(Date.now() - 8 * 86400000));
+    const out: Record<string, string> = {};
+    for (const g of GAMES_CATALOG) out[g.id] = oldKey;
+    return out;
+  }
+
+  public static getGameFirstSeenStore(): Record<string, string> {
+    let raw: string | null = null;
+    try { raw = localStorage.getItem(STORAGE_KEYS.GAME_FIRST_SEEN); } catch { raw = null; }
+    if (raw === null) {
+      const baseline = StorageService.baselineGameFirstSeen();
+      try { localStorage.setItem(STORAGE_KEYS.GAME_FIRST_SEEN, JSON.stringify(baseline)); } catch {}
+      return baseline;
+    }
+    try {
+      return StorageService.sanitizeGameFirstSeen(JSON.parse(raw));
+    } catch {
+      return {};
+    }
+  }
+
+  public static getGameFirstSeen(gameId: string): string | null {
+    const store = StorageService.getGameFirstSeenStore();
+    return typeof store[gameId] === 'string' ? store[gameId] : null;
+  }
+
+  public static markGameSeen(gameId: string, dateKey: string = localDateKey()): string {
+    if (typeof gameId !== 'string' || !gameId.trim()) return localDateKey();
+    const store = StorageService.getGameFirstSeenStore();
+    if (!store[gameId]) {
+      store[gameId] = dateKey;
+      try { localStorage.setItem(STORAGE_KEYS.GAME_FIRST_SEEN, JSON.stringify(store)); } catch {}
+    }
+    return store[gameId];
+  }
+
+  /** A game is "NEW" for 7 days after the child first sees it. First call marks it seen. */
+  public static isGameNew(gameId: string, now: Date = new Date()): boolean {
+    const today = localDateKey(now);
+    let seen = StorageService.getGameFirstSeen(gameId);
+    if (!seen) {
+      seen = StorageService.markGameSeen(gameId, today);
+      return true;
+    }
+    const diff = diffDateKeys(seen, today);
+    return diff !== null && diff >= 0 && diff <= 7;
+  }
+
+  // Aliases for differing naming conventions.
+  public static isNewGame(gameId: string, now?: Date): boolean { return StorageService.isGameNew(gameId, now ?? new Date()); }
+  public static gameFirstSeen(gameId: string): string | null { return StorageService.getGameFirstSeen(gameId); }
+  public static setGameFirstSeen(gameId: string, dateKey?: string): string { return StorageService.markGameSeen(gameId, dateKey ?? localDateKey()); }
+  public static recordGameSeen(gameId: string, dateKey?: string): string { return StorageService.markGameSeen(gameId, dateKey ?? localDateKey()); }
+
   /**
    * T02/B2 — fair replay economy for tiered games.
    *
@@ -1476,7 +1685,7 @@ public static getParentSettings(): ParentSettings {
       if (raw) {
         const parsed = JSON.parse(raw);
         if (Array.isArray(parsed)) {
-          return parsed.filter((d): d is string => typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d));
+          return parsed.filter((d): d is string => isRealDateKey(d));
         }
       }
     } catch {

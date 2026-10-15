@@ -48,6 +48,16 @@ export function seedDemoProfile(): void {
     unlockedItems: ['hat_cap', 'glasses_nerd', 'bag_dino', 'hat_party'],
     completedLessons: ['vn-les-1', 'vn-les-2', 'math-les-1', 'math-les-2', 'eng-les-1'],
     completedWeeklyChallenges: ['week_1'],
+    dailyChestClaimedDate: undefined,
+    lessonStars: {
+      'vn-les-1': 3,
+      'vn-les-2': 3,
+      'math-les-1': 3,
+      'math-les-2': 2,
+      'eng-les-1': 3,
+    },
+    chestState: {},
+    unlockAllLessons: false,
     isDemoData: true,
   };
   StorageService.saveChildProfile(demoProfile);
