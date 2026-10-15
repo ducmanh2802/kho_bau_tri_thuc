@@ -46,6 +46,7 @@ import {
   OrderingQuestion,
   MathExpressionQuestion,
 } from './questions';
+import { QuestionVisualForQuestion } from '../visuals/QuestionVisual';
 
 interface LessonPlayerModalProps {
   lesson: Lesson;
@@ -430,7 +431,10 @@ export const LessonPlayerModal: React.FC<LessonPlayerModalProps> = ({
                   </div>
                 )}
 
-                <div className="flex items-center justify-center gap-2 mb-1">
+                  {/* SVG minh hoạ (T11A/T11B): thước, đồng hồ, khay 5 ô, tia số */}
+                  <QuestionVisualForQuestion question={question} />
+
+                  <div className="flex items-center justify-center gap-2 mb-1">
                   <h4 className="text-lg md:text-xl font-black text-slate-800 font-display">
                     {question.prompt}
                   </h4>

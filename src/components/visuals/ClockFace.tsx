@@ -1,108 +1,122 @@
 import React from 'react';
 
 export interface ClockFaceProps {
-  /** Giờ (0–11) */
+  /** Giờ 1–12. */
   gio: number;
-  /** Phút (0–59) */
+  /** Phút 0–59 (giờ đúng = 0). */
   phut: number;
-  /** Inclusive 12-hour format */
+  /** Vietnamese clocks are 12-hour with sáng/chiều. */
   amPm: 'sáng' | 'chiều';
+  /** Cạnh hình vuông (px). */
+  size?: number;
 }
 
-export const ClockFace: React.FC<ClockFaceProps> = ({ gio, phut, amPm }) => {
-  const minuteAngle = (phut / 60) * 360;
-  const hourAngle = ((gio % 12) / 12) * 360 + (phut / 60) * 30;
+/** Position on the dial: 0° = 12 o'clock, clockwise positive. */
+function polar(cx: number, cy: number, radius: number, degFrom12: number) {
+  const rad = ((degFrom12 - 90) * Math.PI) / 180;
+  return { x: cx + radius * Math.cos(rad), y: cy + radius * Math.sin(rad) };
+}
+
+/**
+ * T11B — mặt đồng hồ SVG đọc giờ đúng (không dùng emoji).
+ *
+ * 12 số hiển thị đúng vị trí (12 ở đỉnh, 3 bên phải...), kim ngắn chỉ giờ,
+ * kim dài chỉ phút. `gio`/`phut` được kẹp về khoảng hợp lệ nên dữ liệu sai
+ * không bao giờ vẽ ra hình vô nghĩa cho bé.
+ */
+export const ClockFace: React.FC<ClockFaceProps> = ({ gio, phut, amPm, size = 200 }) => {
+  const safeGio = Math.min(12, Math.max(1, Math.round(Number(gio) || 0)));
+  const safePhut = Math.min(59, Math.max(0, Math.round(Number(phut) || 0)));
+  const cx = size / 2;
+  const cy = size / 2;
+  const r = size / 2 - 4;
+  const hourDeg = (safeGio % 12) * 30 + safePhut * 0.5;
+  const minuteDeg = safePhut * 6;
+  const hourTip = polar(cx, cy, r * 0.55, hourDeg);
+  const minuteTip = polar(cx, cy, r * 0.78, minuteDeg);
 
   return (
     <svg
-      width="200"
-      height="200"
-      viewBox="0 0 200 200"
+      width={size}
+      height={size}
+      viewBox={`0 0 ${size} ${size}`}
       xmlns="http://www.w3.org/2000/svg"
+      role="img"
+      aria-label={`Đồng hồ chỉ ${safeGio} giờ ${safePhut} phút ${amPm}`}
     >
-      {/* Vietnamese clock is 12-hour with am/pm */}
-      <circle cx="100" cy="100" r="90" fill="#fff3e0" stroke="#e65100" stroke-width="5"/>
-      {/* Hour ticks (12 positions) */}
-      {Array.from({ length: 12 }, (_, i) => {
-        const angle = (i * 30) * Math.PI / 180;
-        const x1 = 100 + 60 * Math.cos(angle);
-        const y1 = 100 - 60 * Math.sin(angle);
-        const x2 = 100 + 70 * Math.cos(angle);
-        const y2 = 100 - 70 * Math.sin(angle);
-        const isMajor = i % 3 === 0;
-        return isMajor ? (
-          <g key={i}>
-            <line x1={x1} y1={y1} x2={x2} y2={y2} stroke="#e65100" stroke-width="3"/>
-            <text
-              x={x1}
-              y={y1 - 10}
-              text-anchor="middle"
-              font-size="11"
-              fill="#e65100"
-            >{i + 1}</text>
-          </g>
-        ) : (
-          <line
-            key={i}
-            x1={x1}
-            y1={y1}
-            x2={x2}
-            y2={y2}
-            stroke="#e5e7eb"
-            stroke-width="1"
-          />
-        );
-      })}
-      {/* Minute ticks (60 positions, subtle) */}
-      {Array.from({ length: 30 }, (_, i) => {
-        const angle = (i * 6 + 30) * Math.PI / 180; // start at 30° (6 tick), every 6°
-        const r = 65;
-        const x1 = 100 + r * Math.cos(angle);
-        const y1 = 100 - r * Math.sin(angle);
-        const x2 = 100 + (r + 5) * Math.cos(angle);
-        const y2 = 100 - (r + 5) * Math.sin(angle);
+      <circle cx={cx} cy={cy} r={r} fill="#fff8ec" stroke="#e65100" strokeWidth={Math.max(2, size * 0.03)} />
+
+      {/* Vạch phút (60 vạch) */}
+      {Array.from({ length: 60 }, (_, i) => {
+        const deg = i * 6;
+        const isHour = deg % 30 === 0;
+        const p1 = polar(cx, cy, isHour ? r * 0.86 : r * 0.92, deg);
+        const p2 = polar(cx, cy, r * 0.97, deg);
         return (
           <line
-            key={i}
-            x1={x1}
-            y1={y1}
-            x2={x2}
-            y2={y2}
-            stroke="#e5e7eb"
-            stroke-width="1"
+            key={`tick-${i}`}
+            x1={p1.x}
+            y1={p1.y}
+            x2={p2.x}
+            y2={p2.y}
+            stroke={isHour ? '#e65100' : '#d7c6ab'}
+            strokeWidth={isHour ? Math.max(1.5, size * 0.012) : Math.max(0.6, size * 0.005)}
           />
         );
       })}
-      {/* Hour hand */}
+
+      {/* 12 số đúng vị trí */}
+      {Array.from({ length: 12 }, (_, i) => {
+        const num = i + 1;
+        const p = polar(cx, cy, r * 0.72, num * 30);
+        return (
+          <text
+            key={`num-${num}`}
+            x={p.x}
+            y={p.y}
+            textAnchor="middle"
+            dominantBaseline="central"
+            fontSize={Math.max(10, size * 0.1)}
+            fontWeight="700"
+            fill="#b34700"
+          >
+            {num}
+          </text>
+        );
+      })}
+
+      {/* Kim ngắn (giờ) */}
       <line
-        x1={100}
-        y1={100}
-        x2={100 + 50 * Math.cos(hourAngle * Math.PI / 180)}
-        y2={100 - 50 * Math.sin(hourAngle * Math.PI / 180)}
+        x1={cx}
+        y1={cy}
+        x2={hourTip.x}
+        y2={hourTip.y}
         stroke="#e65100"
-        stroke-width="6"
-        stroke-linecap="round"
+        strokeWidth={Math.max(3, size * 0.035)}
+        strokeLinecap="round"
       />
-      {/* Minute hand */}
+      {/* Kim dài (phút) */}
       <line
-        x1={100}
-        y1={100}
-        x2={100 + 70 * Math.cos(minuteAngle * Math.PI / 180)}
-        y2={100 - 70 * Math.sin(minuteAngle * Math.PI / 180)}
-        stroke="#e65100"
-        stroke-width="4"
-        stroke-linecap="round"
+        x1={cx}
+        y1={cy}
+        x2={minuteTip.x}
+        y2={minuteTip.y}
+        stroke="#8d5524"
+        strokeWidth={Math.max(2, size * 0.022)}
+        strokeLinecap="round"
       />
-      {/* Center dot */}
-      <circle cx="100" cy="100" r="4" fill="#e65100"/>
-      {/* AM/PM label */}
+      <circle cx={cx} cy={cy} r={Math.max(3, size * 0.03)} fill="#8d5524" />
+
       <text
-        x="100"
-        y="185"
-        text-anchor="middle"
-        font-size="11"
-        fill="#667085"
-      >{amPm}</text>
+        x={cx}
+        y={size - Math.max(2, size * 0.03)}
+        textAnchor="middle"
+        fontSize={Math.max(10, size * 0.075)}
+        fontWeight="700"
+        fill="#7a6a52"
+      >
+        {amPm}
+      </text>
     </svg>
   );
 };
