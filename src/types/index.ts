@@ -19,6 +19,14 @@ export type QuestionType =
   | 'true-false'
   | 'classify';
 
+/** SVG visual components a question may reference (T11A, T11B). */
+export type VisualKind =
+  | 'TenFrame'
+  | 'NumberLine'
+  | 'PlaceValueBlocks'
+  | 'Ruler'
+  | 'ClockFace';
+
 export interface Question {
    id: string;
    subject: SubjectType;
@@ -38,9 +46,15 @@ export interface Question {
    hint?: string;
    explanation?: string;
    visual?: {
-     kind: 'TenFrame' | 'NumberLine' | 'PlaceValueBlocks' | 'Ruler' | 'ClockFace';
+     kind: VisualKind;
      props?: Record<string, unknown>;
    };
+   /**
+    * Machine-checkable arithmetic payload (CONTENT_GUIDE §3, T11A/T11B).
+    * A test recomputes `a op b` and compares it with `Number(correctAnswer)`,
+    * so a hand-written arithmetic answer can never silently drift.
+    */
+   calc?: { a: number; op: '+' | '-'; b: number };
 }
 
 export interface Lesson {

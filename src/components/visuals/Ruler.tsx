@@ -1,60 +1,104 @@
 import React from 'react';
 
 export interface RulerProps {
-  /** Độ dài trong cm (mặc định 100) */
+  /** Chiều dài thước (cm), 1–100. */
   length: number;
-  /** Số lượng đánh nhãn (mặc định 10) */
-  ticks?: number;
+  /** Số cm được tô màu (độ dài đồ vật đo được). */
+  objectLength?: number;
+  /** Chiều rộng tối đa (px) — mặc định vừa màn hình 375px. */
+  width?: number;
+  /** Nhãn đơn vị, mặc định "cm". */
+  unit?: string;
 }
 
-export const Ruler: React.FC<RulerProps> = ({ length = 100, ticks = 10 }) => {
-  const tickLength = length / ticks;
-  const screenWidth = 300;
+/**
+ * T11B — thước đo cm (SVG) cho môn đo độ dài.
+ *
+ * Vạch chia mỗi 1cm, ghi số mỗi 5cm; khi có `objectLength` thì phần thước
+ * tương ứng được tô màu để bé đọc được số đo ngay trên hình.
+ */
+export const Ruler: React.FC<RulerProps> = ({
+  length,
+  objectLength,
+  width = 320,
+  unit = 'cm',
+}) => {
+  const safeLength = Math.min(100, Math.max(1, Math.round(Number(length) || 1)));
+  const ratio = width / safeLength;
+  const height = 78;
+
+  const highlighted = Math.min(
+    safeLength,
+    Math.max(0, Math.round(Number(objectLength ?? 0)))
+  );
+
+  const labels = Array.from({ length: Math.floor(safeLength / 5) + 1 }, (_, i) => i * 5);
 
   return (
     <svg
-      width={screenWidth}
-      height="80"
-      viewBox="0 0 {screenWidth} 80"
+      width={width}
+      height={height}
+      viewBox={`0 0 ${width} ${height}`}
       xmlns="http://www.w3.org/2000/svg"
+      role="img"
+      aria-label={
+        highlighted > 0
+          ? `Thước ${safeLength} ${unit}, đồ vật dài ${highlighted} ${unit}`
+          : `Thước dài ${safeLength} ${unit}`
+      }
     >
-      {/* Đường thước chính */}
-      <line x1="0" y1="40" x2={screenWidth} y2="40" stroke="#e5e7eb" stroke-width="3"/>
-      {/* Các đánh cạch */}
-      {Array.from({ length: ticks }, (_, i) => {
-        const x = (i * screenWidth) / ticks;
+      {/* Thân thước */}
+      <rect x="0" y="34" width={width} height="26" rx="6" fill="#fff3d6" stroke="#e65100" strokeWidth="2" />
+
+      {/* Phần được tô màu = độ dài đồ vật */}
+      {highlighted > 0 && (
+        <rect
+          x="0"
+          y="34"
+          width={highlighted * ratio}
+          height="26"
+          rx="6"
+          fill="#ffcc80"
+          stroke="#e65100"
+          strokeWidth="2"
+        />
+      )}
+
+      {/* Vạch chia mỗi cm */}
+      {Array.from({ length: safeLength + 1 }, (_, i) => {
+        const x = i * ratio;
         const isMajor = i % 5 === 0;
-        return isMajor ? (
-          <g key={i}>
-            <line x1={x} y1="35" x2={x} y2="45" stroke="#e65100" stroke-width="2"/>
-            <text
-              x={x}
-              y="25"
-              text-anchor="middle"
-              font-size="11"
-              fill="#e65100"
-            >{i}</text>
-          </g>
-        ) : (
+        return (
           <line
-            key={i}
+            key={`cm-${i}`}
             x1={x}
-            y1="38"
+            y1="34"
             x2={x}
-            y2="42"
-            stroke="#e5e7eb"
-            stroke-width="1"
+            y2={isMajor ? 58 : 48}
+            stroke="#e65100"
+            strokeWidth={isMajor ? 2 : 1}
           />
         );
       })}
-      {/* Ghi đơn vị */}
-      <text
-        x={screenWidth / 2}
-        y="65"
-        text-anchor="middle"
-        font-size="11"
-        fill="#667085"
-      >'cm'</text>
+
+      {/* Số ghi trên thước */}
+      {labels.map((value) => (
+        <text
+          key={`label-${value}`}
+          x={value * ratio}
+          y="26"
+          textAnchor="middle"
+          fontSize="12"
+          fontWeight="700"
+          fill="#b34700"
+        >
+          {value}
+        </text>
+      ))}
+
+      <text x={width / 2} y="72" textAnchor="middle" fontSize="12" fill="#7a6a52">
+        {unit}
+      </text>
     </svg>
   );
 };
