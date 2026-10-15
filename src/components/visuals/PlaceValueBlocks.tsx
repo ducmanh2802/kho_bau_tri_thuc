@@ -5,13 +5,25 @@ export interface PlaceValueBlocksProps {
   chuc: number;
   /** Đơn vị (0–9). */
   donVi: number;
+  /** T11C — màu nền cho chục (tùy chọn, mặc định cam). */
+  chucColor?: string;
+  /** T11C — màu nền cho đơn vị (tùy chọn, mặc định vàng). */
+  donViColor?: string;
 }
 
 /**
  * T11A/T11B — khối chục – đơn vị: mỗi thanh dài là một chục (chia làm 10 ô
  * nhỏ), mỗi ô vuông là một đơn vị. Bé đếm được số bằng cách nhóm và đếm mười.
+ *
+ * T11C — chấp nhận thêm `chucColor`/`donViColor` (màu tùy chọn cho hai cột);
+ * màu tùy chọn đổi màu tô của thanh chục / ô đơn vị nhưng không đổi bố cục.
  */
-export const PlaceValueBlocks: React.FC<PlaceValueBlocksProps> = ({ chuc, donVi }) => {
+export const PlaceValueBlocks: React.FC<PlaceValueBlocksProps> = ({
+  chuc,
+  donVi,
+  chucColor = '#f08c00',
+  donViColor = '#ffd166',
+}) => {
   const safeChuc = Math.min(9, Math.max(0, Math.round(Number(chuc) || 0)));
   const safeDonVi = Math.min(9, Math.max(0, Math.round(Number(donVi) || 0)));
 
@@ -41,7 +53,7 @@ export const PlaceValueBlocks: React.FC<PlaceValueBlocksProps> = ({ chuc, donVi 
             width={rodWidth}
             height={rodHeight}
             rx="2"
-            fill="#f08c00"
+            fill={chucColor}
             stroke="#e65100"
             strokeWidth="1"
           />
@@ -68,7 +80,7 @@ export const PlaceValueBlocks: React.FC<PlaceValueBlocksProps> = ({ chuc, donVi 
           width={unit}
           height={unit}
           rx="2"
-          fill="#ffd166"
+          fill={donViColor}
           stroke="#e65100"
           strokeWidth="1"
         />

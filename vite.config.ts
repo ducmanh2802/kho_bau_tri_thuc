@@ -49,6 +49,9 @@ export default defineConfig(() => {
           // T11B — the Toán lesson bank (413 questions across 20 topics) lives
           // in its own `math-bank` chunk: the entry chunk stays ~550 kB while
           // the whole subject ships in one extra chunk.
+          // T11C — the Toán lesson bank (0–100 content in `src/data/math/`
+          // + `src/data/mathCurriculum`) lives in its own `math-bank` chunk
+          // so the entry chunk stays within budget after wiring the new units.
           // (Rolldown only accepts the function form of manualChunks.)
           manualChunks: (id: string) => {
             if (id.includes('node_modules/react-dom') || id.includes('node_modules/react/')) {

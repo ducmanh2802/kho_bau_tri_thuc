@@ -1,14 +1,18 @@
 import React from 'react';
 
 export interface RulerProps {
-  /** Chiều dài thước (cm), 1–100. */
+  /** Chiều dài thước (cm), 1–100. T11C alias: `length` (mặc định 100). */
   length: number;
   /** Số cm được tô màu (độ dài đồ vật đo được). */
   objectLength?: number;
-  /** Chiều rộng tối đa (px) — mặc định vừa màn hình 375px. */
+  /** Chiều rộng tối đa (px) — mặc định vừa màn hình 375px. T11C alias: `screenWidth`. */
   width?: number;
+  /** T11C — chiều rộng màn hình (alias của `width`, giữ để test T11C compile). */
+  screenWidth?: number;
   /** Nhãn đơn vị, mặc định "cm". */
   unit?: string;
+  /** T11C — số lượng vạch chia (giữ để test T11C compile; render T11B chia theo cm nên không cần dùng). */
+  ticks?: number;
 }
 
 /**
@@ -16,15 +20,22 @@ export interface RulerProps {
  *
  * Vạch chia mỗi 1cm, ghi số mỗi 5cm; khi có `objectLength` thì phần thước
  * tương ứng được tô màu để bé đọc được số đo ngay trên hình.
+ *
+ * T11C — giữ JSX camelCase + đường thước chính; chấp nhận thêm
+ * `ticks`/`screenWidth` (test T11C dùng `ticks`) nên cả hai lane đều compile.
  */
 export const Ruler: React.FC<RulerProps> = ({
   length,
   objectLength,
   width = 320,
+  screenWidth,
   unit = 'cm',
+  ticks: _ticks,
 }) => {
+  void _ticks;
+  const resolvedWidth = screenWidth ?? width;
   const safeLength = Math.min(100, Math.max(1, Math.round(Number(length) || 1)));
-  const ratio = width / safeLength;
+  const ratio = resolvedWidth / safeLength;
   const height = 78;
 
   const highlighted = Math.min(
@@ -36,9 +47,9 @@ export const Ruler: React.FC<RulerProps> = ({
 
   return (
     <svg
-      width={width}
+      width={resolvedWidth}
       height={height}
-      viewBox={`0 0 ${width} ${height}`}
+      viewBox={`0 0 ${resolvedWidth} ${height}`}
       xmlns="http://www.w3.org/2000/svg"
       role="img"
       aria-label={
@@ -48,7 +59,7 @@ export const Ruler: React.FC<RulerProps> = ({
       }
     >
       {/* Thân thước */}
-      <rect x="0" y="34" width={width} height="26" rx="6" fill="#fff3d6" stroke="#e65100" strokeWidth="2" />
+      <rect x="0" y="34" width={resolvedWidth} height="26" rx="6" fill="#fff3d6" stroke="#e65100" strokeWidth="2" />
 
       {/* Phần được tô màu = độ dài đồ vật */}
       {highlighted > 0 && (
@@ -96,7 +107,7 @@ export const Ruler: React.FC<RulerProps> = ({
         </text>
       ))}
 
-      <text x={width / 2} y="72" textAnchor="middle" fontSize="12" fill="#7a6a52">
+      <text x={resolvedWidth / 2} y="72" textAnchor="middle" fontSize="12" fill="#7a6a52">
         {unit}
       </text>
     </svg>

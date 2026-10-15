@@ -1,7 +1,18 @@
-import { Topic } from '../types';
+import { Lesson, Question, Topic } from '../types';
 import { balanceTopics } from './optionBalance';
+import { MATH_LES1_EXTRA, MATH_LES2_EXTRA, MATH_LES13 } from './math/numbers-0-10';
+import { MATH_LES4_EXTRA, MATH_LES5_EXTRA, MATH_LES14, MATH_LES15 } from './math/add-sub-10';
+import {
+  MATH_LES8_EXTRA,
+  MATH_LES9_EXTRA,
+  MATH_LES16,
+  MATH_LES17,
+  TOPIC_SO_21_100,
+} from './math/numbers-11-100';
+import { MATH_LES18, MATH_LES19, MATH_LES20, TOPIC_CONG_TRU_100 } from './math/add-sub-100';
+import { MATH_LES10_EXTRA, MATH_LES21 } from './math/word-problems-100';
 
-export const MATH_TOPICS_RAW: Topic[] = [
+const MATH_TOPICS_BASE: Topic[] = [
   {
     id: 'math-dem-0-10',
     subject: 'toan',
@@ -168,8 +179,7 @@ export const MATH_TOPICS_RAW: Topic[] = [
             explanation: 'ChĂ­nh xĂ¡c! 8 quáº£ tĂ¡o.',
           },
         ],
-      },
-    ],
+      },    ],
   },
   {
     id: 'math-so-sanh',
@@ -300,8 +310,9 @@ export const MATH_TOPICS_RAW: Topic[] = [
             mediaEmoji: 'đŸ“ đŸ“ đŸ“ + đŸ“ đŸ“',
             options: ['5', '4', '6', '7'],
             correctAnswer: '5',
-            hint: 'Äáº¿m tiáº¿p tá»« 3: 4, 5!',
-            explanation: 'Ráº¥t giá»i! 3 + 2 = 5.',
+            hint: 'Đếm tiếp từ 3: 4, 5!',
+            explanation: 'Rất giỏi! 3 + 2 = 5.',
+            calc: { a: 3, op: '+', b: 2 },
           },
           {
             id: 'math-q4-2',
@@ -315,8 +326,9 @@ export const MATH_TOPICS_RAW: Topic[] = [
             mediaEmoji: 'â½',
             options: ['8', '7', '9', '6'],
             correctAnswer: '8',
-            hint: '4 ngĂ³n tay cá»™ng thĂªm 4 ngĂ³n tay.',
-            explanation: 'ChĂ­nh xĂ¡c! 4 + 4 = 8.',
+            hint: '4 ngón tay cộng thêm 4 ngón tay.',
+            explanation: 'Chính xác! 4 + 4 = 8.',
+            calc: { a: 4, op: '+', b: 4 },
           },
           {
             id: 'math-q4-3',
@@ -330,8 +342,9 @@ export const MATH_TOPICS_RAW: Topic[] = [
             mediaEmoji: 'â­',
             options: ['3', '2', '4', '1'],
             correctAnswer: '3',
-            hint: 'CĂ³ 7 ngĂ´i sao, cáº§n thĂªm máº¥y sao ná»¯a Ä‘á»ƒ Ä‘á»§ 10?',
-            explanation: 'Tuyá»‡t cĂº mĂ¨o! 7 + 3 = 10.',
+            hint: 'Có 7 ngôi sao, cần thêm mấy sao nữa để đủ 10?',
+            explanation: 'Tuyệt cú mèo! 7 + 3 = 10.',
+            calc: { a: 7, op: '+', b: 3 },
           },
           {
             id: 'math-q4-4',
@@ -345,8 +358,9 @@ export const MATH_TOPICS_RAW: Topic[] = [
             mediaEmoji: 'â•',
             options: ['5 + 3', '6 + 3', '4 + 4', '7 + 1'],
             correctAnswer: '6 + 3',
-            hint: 'TĂ­nh tá»«ng phĂ©p cá»™ng nhĂ©: 5+3=8, 6+3=9...',
-            explanation: 'ÄĂºng rá»“i! 6 + 3 = 9.',
+            hint: 'Tính từng phép cộng nhé: 5+3=8, 6+3=9...',
+            explanation: 'Đúng rồi! 6 + 3 = 9.',
+            calc: { a: 6, op: '+', b: 3 },
           },
           {
             id: 'math-q4-5',
@@ -360,12 +374,12 @@ export const MATH_TOPICS_RAW: Topic[] = [
             mediaEmoji: 'đŸ”¢',
             options: ['5 + 5', '4 + 6', '6 + 4', '7 + 3'],
             correctAnswer: '5 + 5',
-            hint: 'Hai sá»‘ trong cáº·p pháº£i báº±ng nhau vĂ  tá»•ng báº±ng 10.',
-            explanation: 'ChĂ­nh xĂ¡c! 5 + 5 = 10 vĂ  hai sá»‘ báº±ng nhau.',
+            hint: 'Hai số trong cặp phải bằng nhau và tổng bằng 10.',
+            explanation: 'Chính xác! 5 + 5 = 10 và hai số bằng nhau.',
+            calc: { a: 5, op: '+', b: 5 },
           },
         ],
-      },
-    ],
+      },    ],
   },
   {
     id: 'math-tru-10',
@@ -398,8 +412,9 @@ export const MATH_TOPICS_RAW: Topic[] = [
             mediaEmoji: 'đŸˆđŸˆđŸˆđŸˆđŸˆđŸˆ â” đŸ’¥đŸ’¥',
             options: ['4', '3', '5', '2'],
             correctAnswer: '4',
-            hint: 'Äáº¿m lĂ¹i tá»« 6: 5, 4!',
-            explanation: 'ÄĂºng rá»“i! 6 - 2 = 4.',
+            hint: 'Đếm lùi từ 6: 5, 4!',
+            explanation: 'Đúng rồi! 6 - 2 = 4.',
+            calc: { a: 6, op: '-', b: 2 },
           },
           {
             id: 'math-q5-2',
@@ -413,8 +428,9 @@ export const MATH_TOPICS_RAW: Topic[] = [
             mediaEmoji: 'đŸ¬',
             options: ['4', '5', '3', '6'],
             correctAnswer: '4',
-            hint: '9 cĂ¡i káº¹o Äƒn máº¥t 5 cĂ¡i cĂ²n láº¡i 4.',
-            explanation: 'Ráº¥t giá»i! 9 - 5 = 4.',
+            hint: '9 cái kẹo ăn mất 5 cái còn lại 4.',
+            explanation: 'Rất giỏi! 9 - 5 = 4.',
+            calc: { a: 9, op: '-', b: 5 },
           },
           {
             id: 'math-q5-3',
@@ -428,8 +444,9 @@ export const MATH_TOPICS_RAW: Topic[] = [
             mediaEmoji: 'đŸ”¢',
             options: ['6', '5', '7', '8'],
             correctAnswer: '6',
-            hint: 'MÆ°á»i bá»›t bá»‘n.',
-            explanation: 'ChĂ­nh xĂ¡c! 10 - 4 = 6.',
+            hint: 'Mười bớt bốn.',
+            explanation: 'Chính xác! 10 - 4 = 6.',
+            calc: { a: 10, op: '-', b: 4 },
           },
           {
             id: 'math-q5-4',
@@ -443,8 +460,9 @@ export const MATH_TOPICS_RAW: Topic[] = [
             mediaEmoji: 'â–',
             options: ['10 - 4', '9 - 4', '8 - 2', '7 - 1'],
             correctAnswer: '9 - 4',
-            hint: 'TĂ­nh tá»«ng phĂ©p trá»« Ä‘á»ƒ tĂ¬m káº¿t quáº£ báº±ng 5.',
-            explanation: 'ÄĂºng! 9 - 4 = 5.',
+            hint: 'Tính từng phép trừ để tìm kết quả bằng 5.',
+            explanation: 'Đúng! 9 - 4 = 5.',
+            calc: { a: 9, op: '-', b: 4 },
           },
           {
             id: 'math-q5-5',
@@ -458,12 +476,12 @@ export const MATH_TOPICS_RAW: Topic[] = [
             mediaEmoji: 'đŸ”¢',
             options: ['10', '9', '8', '11'],
             correctAnswer: '10',
-            hint: 'Cá»™ng ngÆ°á»£c: 7 + 3 = máº¥y?',
-            explanation: 'ChĂ­nh xĂ¡c! 10 - 3 = 7.',
+            hint: 'Cộng ngược: 7 + 3 = mấy?',
+            explanation: 'Chính xác! 10 - 3 = 7.',
+            calc: { a: 10, op: '-', b: 3 },
           },
         ],
-      },
-    ],
+      },    ],
   },
   {
     id: 'math-hinh-hoc',
@@ -669,8 +687,9 @@ export const MATH_TOPICS_RAW: Topic[] = [
             mediaEmoji: 'đŸ§®',
             options: ['16', '15', '17', '18'],
             correctAnswer: '16',
-            hint: 'Láº¥y 2 + 4 = 6 rá»“i ghĂ©p vá»›i má»™t chá»¥c.',
-            explanation: 'Ráº¥t giá»i! 12 + 4 = 16.',
+            hint: 'Lấy 2 + 4 = 6 rồi ghép với một chục.',
+            explanation: 'Rất giỏi! 12 + 4 = 16.',
+            calc: { a: 12, op: '+', b: 4 },
           },
           {
             id: 'math-q9-2',
@@ -684,8 +703,9 @@ export const MATH_TOPICS_RAW: Topic[] = [
             mediaEmoji: 'đŸŒŸ',
             options: ['13', '12', '14', '15'],
             correctAnswer: '13',
-            hint: 'Láº¥y 8 - 5 = 3 rá»“i ghĂ©p vá»›i má»™t chá»¥c.',
-            explanation: 'ChĂ­nh xĂ¡c! 18 - 5 = 13.',
+            hint: 'Lấy 8 - 5 = 3 rồi ghép với một chục.',
+            explanation: 'Chính xác! 18 - 5 = 13.',
+            calc: { a: 18, op: '-', b: 5 },
           },
         ],
       },
@@ -717,13 +737,14 @@ export const MATH_TOPICS_RAW: Topic[] = [
             skillId: 'math_word_problems',
             difficulty: 2,
             type: 'multiple-choice',
-            prompt: 'Lan cĂ³ 5 quáº£ tĂ¡o đŸ. Máº¹ cho thĂªm Lan 3 quáº£ tĂ¡o ná»¯a. Há»i Lan cĂ³ táº¥t cáº£ bao nhiĂªu quáº£ tĂ¡o?',
-            audioPrompt: 'Lan cĂ³ nÄƒm quáº£ tĂ¡o. Máº¹ cho thĂªm ba quáº£ ná»¯a. Há»i Lan cĂ³ táº¥t cáº£ bao nhiĂªu quáº£ tĂ¡o?',
-            mediaEmoji: 'đŸ',
-            options: ['8 quáº£ tĂ¡o', '7 quáº£ tĂ¡o', '9 quáº£ tĂ¡o', '6 quáº£ tĂ¡o'],
-            correctAnswer: '8 quáº£ tĂ¡o',
-            hint: 'Máº¹ cho thĂªm ta lĂ m phĂ©p tĂ­nh 5 + 3.',
-            explanation: 'Tuyá»‡t cĂº mĂ¨o! 5 + 3 = 8 quáº£ tĂ¡o.',
+            prompt: 'Lan có 5 quả táo 🍎. Mẹ cho thêm Lan 3 quả táo nữa. Hỏi Lan có tất cả bao nhiêu quả táo?',
+            audioPrompt: 'Lan có năm quả táo. Mẹ cho thêm ba quả nữa. Hỏi Lan có tất cả bao nhiêu quả táo?',
+            mediaEmoji: '🍎',
+            options: ['8 quả táo', '7 quả táo', '9 quả táo', '6 quả táo'],
+            correctAnswer: '8 quả táo',
+            hint: 'Mẹ cho thêm ta làm phép tính 5 + 3.',
+            explanation: 'Tuyệt cú mèo! 5 + 3 = 8 quả táo.',
+            calc: { a: 5, op: '+', b: 3 },
           },
           {
             id: 'math-q10-2',
@@ -732,13 +753,14 @@ export const MATH_TOPICS_RAW: Topic[] = [
             skillId: 'math_word_problems',
             difficulty: 2,
             type: 'multiple-choice',
-            prompt: 'TrĂªn cĂ nh cĂ¢y cĂ³ 7 chĂº chim đŸ¦. Sau Ä‘Ă³ cĂ³ 2 chĂº chim bay Ä‘i. Há»i trĂªn cĂ nh cĂ²n láº¡i bao nhiĂªu chĂº chim?',
-            audioPrompt: 'TrĂªn cĂ nh cĂ³ báº£y chĂº chim. Bay Ä‘i hai chĂº. CĂ²n láº¡i bao nhiĂªu chĂº chim?',
-            mediaEmoji: 'đŸ¦',
-            options: ['5 chĂº chim', '6 chĂº chim', '4 chĂº chim', '9 chĂº chim'],
-            correctAnswer: '5 chĂº chim',
-            hint: 'Bay Ä‘i bá»›t Ä‘i, ta lĂ m phĂ©p tĂ­nh 7 - 2.',
-            explanation: 'ChĂ­nh xĂ¡c! 7 - 2 = 5 chĂº chim.',
+            prompt: 'Trên cành cây có 7 chú chim 🐦. Sau đó có 2 chú chim bay đi. Hỏi trên cành còn lại bao nhiêu chú chim?',
+            audioPrompt: 'Trên cành có bảy chú chim. Bay đi hai chú. Còn lại bao nhiêu chú chim?',
+            mediaEmoji: '🐦',
+            options: ['5 chú chim', '6 chú chim', '4 chú chim', '9 chú chim'],
+            correctAnswer: '5 chú chim',
+            hint: 'Bay đi bớt đi, ta làm phép tính 7 - 2.',
+            explanation: 'Chính xác! 7 - 2 = 5 chú chim.',
+            calc: { a: 7, op: '-', b: 2 },
           },
           {
             id: 'math-q10-3',
@@ -747,13 +769,14 @@ export const MATH_TOPICS_RAW: Topic[] = [
             skillId: 'math_word_problems',
             difficulty: 3,
             type: 'multiple-choice',
-            prompt: 'Lá»›p 1A cĂ³ 14 báº¡n trai vĂ  9 báº¡n gĂ¡i. Cáº£ lá»›p cĂ³ bao nhiĂªu báº¡n?',
-            audioPrompt: 'Lá»›p 1A cĂ³ 14 báº¡n trai vĂ  9 báº¡n gĂ¡i. Cáº£ lá»›p cĂ³ bao nhiĂªu báº¡n?',
-            mediaEmoji: 'đŸ‘«',
-            options: ['23 báº¡n', '22 báº¡n', '24 báº¡n', '21 báº¡n'],
-            correctAnswer: '23 báº¡n',
-            hint: 'Gá»™p láº¡i dĂ¹ng phĂ©p cá»™ng 14 + 9.',
-            explanation: 'Giá»i! 14 + 9 = 23 báº¡n.',
+            prompt: 'Lớp 1A có 14 bạn trai và 5 bạn gái. Cả lớp có bao nhiêu bạn?',
+            audioPrompt: 'Lớp 1A có 14 bạn trai và 5 bạn gái. Cả lớp có bao nhiêu bạn?',
+            mediaEmoji: '👫',
+            options: ['19 bạn', '18 bạn', '20 bạn', '21 bạn'],
+            correctAnswer: '19 bạn',
+            hint: 'Gộp lại dùng phép cộng 14 + 5.',
+            explanation: 'Giỏi! 14 + 5 = 19 bạn.',
+            calc: { a: 14, op: '+', b: 5 },
           },
           {
             id: 'math-q10-4',
@@ -762,17 +785,17 @@ export const MATH_TOPICS_RAW: Topic[] = [
             skillId: 'math_word_problems',
             difficulty: 3,
             type: 'multiple-choice',
-            prompt: 'Máº¹ Ä‘i chá»£ vá»›i 50 nghĂ¬n, mua rau háº¿t 18 nghĂ¬n. Máº¹ cĂ²n bao nhiĂªu?',
-            audioPrompt: 'Máº¹ Ä‘i chá»£ vá»›i 50 nghĂ¬n, mua rau háº¿t 18 nghĂ¬n. Máº¹ cĂ²n bao nhiĂªu?',
-            mediaEmoji: 'đŸ¥¬',
-            options: ['32 nghĂ¬n', '68 nghĂ¬n', '42 nghĂ¬n', '22 nghĂ¬n'],
-            correctAnswer: '32 nghĂ¬n',
-            hint: 'DĂ¹ng tiá»n bá»›t Ä‘i: 50 - 18.',
-            explanation: 'Xuáº¥t sáº¯c! 50 - 18 = 32 nghĂ¬n.',
+            prompt: 'Mẹ đi chợ với 50 nghìn, mua rau hết 20 nghìn. Mẹ còn bao nhiêu?',
+            audioPrompt: 'Mẹ đi chợ với 50 nghìn, mua rau hết 20 nghìn. Mẹ còn bao nhiêu?',
+            mediaEmoji: '🥬',
+            options: ['30 nghìn', '68 nghìn', '42 nghìn', '22 nghìn'],
+            correctAnswer: '30 nghìn',
+            hint: 'Dùng tiền bớt đi: 50 - 20.',
+            explanation: 'Xuất sắc! 50 - 20 = 30 nghìn.',
+            calc: { a: 50, op: '-', b: 20 },
           },
         ],
-      },
-    ],
+      },    ],
   },
   {
     id: 'math-do-luong-gio-tien',
@@ -1225,8 +1248,53 @@ export const MATH_TOPICS_RAW: Topic[] = [
         ],
       },
     ],
-  },
-];
+  },];
+
+/**
+ * T11C — wire the split-out Grade-1 units (`src/data/math/*.ts`, spec T11 §1–5)
+ * into the bank. Legacy inline entries above are untouched (ids kept); each
+ * EXTRA array only APPENDS questions to its lesson, and each new Lesson/Topic
+ * is appended to its parent. Every arithmetic item carries
+ * `calc: { a, op, b }` so tests recompute answers by machine (no-carry,
+ * result 0–100). Number/place-value/number-line items carry `visual`.
+ */
+const T11C_LESSON_EXTRAS: Record<string, Question[]> = {
+  'math-les-1': MATH_LES1_EXTRA,
+  'math-les-2': MATH_LES2_EXTRA,
+  'math-les-4': MATH_LES4_EXTRA,
+  'math-les-5': MATH_LES5_EXTRA,
+  'math-les-8': MATH_LES8_EXTRA,
+  'math-les-9': MATH_LES9_EXTRA,
+  'math-les-10': MATH_LES10_EXTRA,
+};
+
+const T11C_TOPIC_EXTRA_LESSONS: Record<string, Lesson[]> = {
+  'math-dem-0-10': [MATH_LES13],
+  'math-cong-10': [MATH_LES14],
+  'math-tru-10': [MATH_LES15],
+  'math-loi-van': [MATH_LES21],
+};
+
+const T11C_NEW_TOPICS: Topic[] = [TOPIC_SO_21_100, TOPIC_CONG_TRU_100];
+
+function applyT11CUnits(base: Topic[]): Topic[] {
+  return [
+    ...base.map((topic) => ({
+      ...topic,
+      lessons: [
+        ...topic.lessons.map((lesson) => {
+          const extra = T11C_LESSON_EXTRAS[lesson.id];
+          return extra ? { ...lesson, questions: [...lesson.questions, ...extra] } : lesson;
+        }),
+        ...(T11C_TOPIC_EXTRA_LESSONS[topic.id] ?? []),
+      ],
+    })),
+    ...T11C_NEW_TOPICS,
+  ];
+}
+
+/** Full raw bank: legacy inline lessons + T11C units (spec T11 §1–5). Ids kept. */
+export const MATH_TOPICS_RAW: Topic[] = applyT11CUnits(MATH_TOPICS_BASE);
 
 /** Balanced copy â€” correct answers distributed across option positions (P41 Â§5). */
 export const MATH_TOPICS: Topic[] = balanceTopics(MATH_TOPICS_RAW);
