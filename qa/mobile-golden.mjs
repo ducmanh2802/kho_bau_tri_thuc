@@ -28,7 +28,7 @@ export default async function run(page, ui) {
   // LESSON -> QUESTION -> ANSWER
   await page.getByRole('button', { name: /Tiếng Việt/ }).first().click(CLICK);
   await page.waitForSelector('text=Vương Quốc Tiếng Việt', { timeout: 20000 });
-  await page.getByRole('button', { name: /Vào học/ }).first().click(CLICK);
+  await page.locator('[data-testid^="lesson-button-"]').first().click(CLICK); await page.getByRole('button', { name: /Bắt đầu/ }).click(CLICK);
   await page.waitForSelector('[role=dialog]', { timeout: 20000 });
   await page.waitForTimeout(800);
   const q = page.locator('[role=dialog] [data-testid=answer-option]').first();

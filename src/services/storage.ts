@@ -18,7 +18,7 @@ import {
   SkillMastery,
   SubjectType,
 } from '../types';
-import { getAllSkills } from '../data/curriculum';
+import { getAllSkills, getTopicsBySubject } from '../data/curriculum';
 import { localDateKey, diffDateKeys } from './dateUtils';
 import { LearningOS, LEARNING_OS_POLICY } from './learningOS';
 // T02C — storage (first-load chunk) must NOT import CompetitionEngine,
@@ -341,6 +341,11 @@ const DEFAULT_CHILD_PROFILE: ChildProfile = {
   unlockedItems: ['hat_cap', 'glasses_nerd', 'bag_dino'],
   completedLessons: [],
   completedWeeklyChallenges: [],
+  dailyChestClaimedDate: undefined,
+  lessonStars: {},
+  chestState: {},
+  unlockAllLessons: false,
+  isDemoData: false,
 };
 
 const DEFAULT_PARENT_SETTINGS: ParentSettings = {
@@ -863,6 +868,21 @@ export class StorageService {
               ? raw.completedWeeklyChallenges
               : [],
             dailyChestClaimedDate: raw.dailyChestClaimedDate,
+            lessonStars: raw.lessonStars && typeof raw.lessonStars === 'object' && !Array.isArray(raw.lessonStars)
+              ? Object.fromEntries(
+                  Object.entries(raw.lessonStars as Record<string, unknown>)
+                    .filter(([, v]) => typeof v === 'number' && Number.isFinite(v) && v >= 1 && v <= 3)
+                    .map(([k, v]) => [k, Math.round(v as number)])
+                )
+              : {},
+            chestState: raw.chestState && typeof raw.chestState === 'object' && !Array.isArray(raw.chestState)
+              ? Object.fromEntries(
+                  Object.entries(raw.chestState as Record<string, unknown>)
+                    .filter(([, v]) => v === true)
+                    .map(([k]) => [k, true])
+                )
+              : {},
+            unlockAllLessons: raw.unlockAllLessons === true,
             isDemoData: raw.isDemoData === true,
           };
 
@@ -893,6 +913,9 @@ export class StorageService {
       unlockedItems: [...DEFAULT_CHILD_PROFILE.unlockedItems],
       completedLessons: [],
       completedWeeklyChallenges: [],
+      lessonStars: {},
+      chestState: {},
+      unlockAllLessons: false,
       lastActiveDate: getTodayString(),
       isDemoData: false,
     };
@@ -1195,6 +1218,8 @@ public static getParentSettings(): ParentSettings {
       profile.xp += xp;
       profile.stars += stars;
       profile.tickets += 1; // Earn 1 arcade ticket per new lesson!
+      // Record stars earned for this lesson (1–3)
+      profile.lessonStars[lessonId] = Math.min(Math.max(Math.round(stars), 1), 3);
     } else {
       // Retaking an already completed lesson grants practice review XP (+5 XP)
       // but does NOT duplicate stars/tickets (anti-farming reward integrity)
@@ -1225,6 +1250,35 @@ public static getParentSettings(): ParentSettings {
 
     // Check achievements
     StorageService.checkAchievements();
+  }
+
+  /**
+   * Claim the treasure chest reward for completing all lessons in a topic.
+   * Returns the stars awarded (0 if already claimed or topic not complete).
+   */
+  public static claimTopicChest(topicId: string, subject: SubjectType, starReward: number): number {
+    const profile = StorageService.getChildProfile();
+    if (profile.chestState[topicId]) return 0; // Already claimed
+
+    // Verify all lessons in this topic are completed
+    const topics = getTopicsBySubject(subject);
+    const topic = topics.find((t) => t.id === topicId);
+    if (!topic) return 0;
+
+    const allLessonsDone = topic.lessons.every((l) => profile.completedLessons.includes(l.id));
+    if (!allLessonsDone) return 0;
+
+    // Award stars and mark chest as claimed
+    const safeStars = Math.min(Math.max(Math.round(starReward), 1), 3);
+    profile.stars += safeStars;
+    profile.chestState[topicId] = true;
+    StorageService.saveChildProfile(profile);
+
+    const analytics = StorageService.getAnalytics();
+    StorageService.saveAnalytics(analytics);
+
+    StorageService.checkAchievements();
+    return safeStars;
   }
 
   // --- Game level progression -------------------------------------------

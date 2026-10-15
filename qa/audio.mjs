@@ -63,7 +63,7 @@ async function body(page, ui, out) {
   // ---- 1) Lesson question audio button ----
   await page.getByRole('button', { name: /Tiếng Việt/ }).first().click(CLICK);
   await page.waitForSelector('text=Vương Quốc Tiếng Việt', { timeout: 20000 });
-  await page.getByRole('button', { name: /Vào học/ }).first().click(CLICK);
+  await page.locator('[data-testid^="lesson-button-"]').first().click(CLICK); await page.getByRole('button', { name: /Bắt đầu/ }).click(CLICK);
   await page.waitForSelector('[role=dialog]', { timeout: 20000 });
   await page.waitForTimeout(1500); // let the (default-ON) autoplay settle
 
@@ -118,7 +118,7 @@ async function body(page, ui, out) {
   });
   await page.getByRole('button', { name: /Tiếng Việt/ }).first().click(CLICK);
   await page.waitForSelector('text=Vương Quốc Tiếng Việt', { timeout: 20000 });
-  await page.getByRole('button', { name: /Vào học/ }).first().click(CLICK);
+  await page.locator('[data-testid^="lesson-button-"]').first().click(CLICK); await page.getByRole('button', { name: /Bắt đầu/ }).click(CLICK);
   await page.waitForSelector('[role=dialog]', { timeout: 20000 });
   // The old code auto-spoke 300ms after every question; with the setting off
   // the synthesiser must stay untouched well past that window.
@@ -184,7 +184,7 @@ async function body(page, ui, out) {
 
   await page.getByRole('button', { name: /Tiếng Việt/ }).first().click(CLICK);
   await page.waitForSelector('text=Vương Quốc Tiếng Việt', { timeout: 20000 });
-  await page.getByRole('button', { name: /Vào học/ }).first().click(CLICK);
+  await page.locator('[data-testid^="lesson-button-"]').first().click(CLICK); await page.getByRole('button', { name: /Bắt đầu/ }).click(CLICK);
   await page.waitForSelector('[role=dialog]', { timeout: 20000 });
   await page.waitForTimeout(1200); // past the autoplay window — must stay silent
 
