@@ -48,6 +48,20 @@ const UpdateBanner = lazy(() =>
   import('./components/system/UpdateBanner').then((m) => ({ default: m.UpdateBanner }))
 );
 
+/** T18B — Motivation UI screens (lazy loaded). */
+const StickerAlbumScreen = lazy(() =>
+  import('./components/motivation/StickerAlbumScreen').then((m) => ({ default: m.StickerAlbumScreen }))
+);
+const GachaMachineScreen = lazy(() =>
+  import('./components/motivation/GachaMachineScreen').then((m) => ({ default: m.GachaMachineScreen }))
+);
+const StreakCalendarScreen = lazy(() =>
+  import('./components/motivation/StreakCalendarScreen').then((m) => ({ default: m.StreakCalendarScreen }))
+);
+const LevelUpCelebrationModal = lazy(() =>
+  import('./components/motivation/LevelUpCelebrationModal').then((m) => ({ default: m.LevelUpCelebrationModal }))
+);
+
 /** Accessible loading state for lazily loaded screens. */
 const ScreenFallback: React.FC<{ label: string }> = ({ label }) => (
   <div
@@ -109,6 +123,34 @@ export default function App() {
 
     return () => clearInterval(timer);
   }, [isScreenTimeAlertOpen]);
+
+  // T18B — Level up celebration modal state
+  const [levelUpModal, setLevelUpModal] = useState<{
+    isOpen: boolean;
+    result: import('./services/storage').LevelClaimResult;
+    currentLevel: number;
+    levelTitle: string;
+  }>({ isOpen: false, result: { claimed: [], stars: 0, tickets: 0, stickerIds: [] }, currentLevel: 1, levelTitle: '' });
+
+  // Check for pending level rewards on profile change
+  useEffect(() => {
+    const motivation = StorageService.getMotivationState();
+    const pending = StorageService.getLevelInfo().pending;
+    if (pending.length > 0) {
+      const levelInfo = StorageService.getLevelInfo();
+      const rng = () => Math.random();
+      const result = StorageService.claimLevelRewards(rng);
+      if (result.claimed.length > 0) {
+        setLevelUpModal({
+          isOpen: true,
+          result,
+          currentLevel: levelInfo.level,
+          levelTitle: levelInfo.title,
+        });
+        refreshProfile();
+      }
+    }
+  }, [profile.xp]);
 
   const refreshProfile = () => {
     setProfile(StorageService.getChildProfile());
@@ -244,6 +286,36 @@ export default function App() {
             />
           </Suspense>
         )}
+
+        {currentScreen === 'sticker_album' && (
+          <Suspense fallback={<ScreenFallback label="Album Sticker" />}>
+            <StickerAlbumScreen
+              profile={profile}
+              onBack={() => setCurrentScreen('home')}
+              onProfileUpdate={refreshProfile}
+            />
+          </Suspense>
+        )}
+
+        {currentScreen === 'gacha_machine' && (
+          <Suspense fallback={<ScreenFallback label="Máy Gắp Sticker" />}>
+            <GachaMachineScreen
+              profile={profile}
+              onBack={() => setCurrentScreen('home')}
+              onProfileUpdate={refreshProfile}
+            />
+          </Suspense>
+        )}
+
+        {currentScreen === 'streak_calendar' && (
+          <Suspense fallback={<ScreenFallback label="Lịch Chuỗi Ngày" />}>
+            <StreakCalendarScreen
+              profile={profile}
+              onBack={() => setCurrentScreen('home')}
+              onProfileUpdate={refreshProfile}
+            />
+          </Suspense>
+        )}
       </main>
 
       {/*
@@ -316,6 +388,17 @@ export default function App() {
               dailyLimitMinutes: settings.dailyLimitMinutes + 10,
             });
           }}
+        />
+      </Suspense>
+
+      {/* T18B — Level Up Celebration Modal */}
+      <Suspense fallback={null}>
+        <LevelUpCelebrationModal
+          isOpen={levelUpModal.isOpen}
+          onClose={() => setLevelUpModal((prev) => ({ ...prev, isOpen: false }))}
+          result={levelUpModal.result}
+          currentLevel={levelUpModal.currentLevel}
+          levelTitle={levelUpModal.levelTitle}
         />
       </Suspense>
     </div>
