@@ -762,8 +762,11 @@ export function runContentValidation(): ValidationReport {
   }
 
   // Curriculum difficulty spread per subject
+  // T14C: guard the lookup so a future/new subject can never crash the gate
+  // with `undefined.add(...)` — unknown subjects get their own bucket.
   const subjectDifficulty: Record<string, Set<number>> = { 'tieng-viet': new Set(), toan: new Set(), english: new Set(), 'cuoc-song': new Set() };
   for (const q of curriculumQuestions) {
+    if (!subjectDifficulty[q.subject]) subjectDifficulty[q.subject] = new Set();
     subjectDifficulty[q.subject].add(q.difficulty);
   }
   for (const [subject, diffs] of Object.entries(subjectDifficulty)) {
