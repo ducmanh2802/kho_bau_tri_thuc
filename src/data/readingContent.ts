@@ -3,6 +3,7 @@ import {
   ReadingPassage,
   ReadingSkillId,
   ReadingStage,
+  ReadingTheme,
 } from '../types/reading';
 
 // T02C — skill taxonomy lives in `./readingTaxonomy` (no question payload)
@@ -10,13 +11,20 @@ import {
 import { READING_SKILLS, getReadingSkillById } from './readingTaxonomy';
 export { READING_SKILLS, getReadingSkillById } from './readingTaxonomy';
 
+// T13 — 24 truyện mới sống trong `./reading/` (lazy chunk), gộp vào đây.
+import { T13_PASSAGES, T13_QUESTIONS } from './reading/t13-index';
+export { T13_PASSAGES, T13_QUESTIONS, T13_PASSAGE_IDS, T13_QUESTION_IDS, T13_THEMES, isT13PassageUnlockedByLevel } from './reading/t13-index';
+
 /**
  * ORIGINAL READING PASSAGES written for this application.
  *
  * These are NOT copied from any official exam paper. They are short, original
  * Grade-1 texts with a picture bank so pre-readers can decode meaning first.
+ *
+ * T13 — 12 truyện gốc giữ nguyên tại đây; 24 truyện mới nằm trong
+ * `./reading/t13-*.ts` và được gộp vào `READING_PASSAGES` bên dưới.
  */
-export const READING_PASSAGES: ReadingPassage[] = [
+const LEGACY_READING_PASSAGES: ReadingPassage[] = [
   {
     id: 'rp-sun-morning',
     title: 'Buổi Sáng Của Bé',
@@ -268,6 +276,9 @@ export const READING_PASSAGES: ReadingPassage[] = [
   },
 ];
 
+/** T13 — toàn bộ ngân hàng = 12 truyện gốc + 24 truyện mới. */
+export const READING_PASSAGES: ReadingPassage[] = [...LEGACY_READING_PASSAGES, ...T13_PASSAGES];
+
 export function getReadingPassageById(id: string): ReadingPassage | undefined {
   return READING_PASSAGES.find((p) => p.id === id);
 }
@@ -276,12 +287,20 @@ export function getPassagesByLevel(level: 1 | 2 | 3): ReadingPassage[] {
   return READING_PASSAGES.filter((p) => p.level === level);
 }
 
+/** T13 — truyện theo chủ đề (truyện cũ không có theme nên không xuất hiện). */
+export function getPassagesByTheme(theme: ReadingTheme): ReadingPassage[] {
+  return READING_PASSAGES.filter((p) => p.theme === theme);
+}
+
 /**
  * READING ITEMS — one per passage per stage, mixing word/accuracy work,
  * fluency work, comprehension (who/what/where/when/why/how), keyword finding
  * and question-understanding items.
+ *
+ * T13 — 48 câu gốc giữ nguyên tại đây; 144 câu mới nằm trong
+ * `./reading/t13-*.ts` và được gộp vào `READING_QUESTIONS` bên dưới.
  */
-export const READING_QUESTIONS: ReadingQuestion[] = [
+const LEGACY_READING_QUESTIONS: ReadingQuestion[] = [
   // ---------- rp-sun-morning (level 1) ----------
   {
     id: 'rq-01-1',
@@ -775,10 +794,12 @@ export const READING_QUESTIONS: ReadingQuestion[] = [
   },
 ];
 
+/** T13 — toàn bộ câu hỏi = 48 câu gốc + 144 câu mới. */
+export const READING_QUESTIONS: ReadingQuestion[] = [...LEGACY_READING_QUESTIONS, ...T13_QUESTIONS];
+
 export function getReadingQuestionById(id: string): ReadingQuestion | undefined {
   return READING_QUESTIONS.find((q) => q.id === id);
 }
-
 export function getQuestionsByPassage(passageId: string): ReadingQuestion[] {
   return READING_QUESTIONS.filter((q) => q.passageId === passageId);
 }
