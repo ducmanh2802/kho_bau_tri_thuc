@@ -49,6 +49,9 @@ export default defineConfig(() => {
           // T11B — the Toán lesson bank (413 questions across 20 topics) lives
           // in its own `math-bank` chunk: the entry chunk stays ~550 kB while
           // the whole subject ships in one extra chunk.
+          // T12B — the English lesson bank (Kid's Box-style units 1–12 in
+          // `src/data/english/` + `englishCurriculum.ts`) gets the same
+          // treatment so the entry chunk stays inside the 600 kB budget.
           // T11C — the Toán lesson bank (0–100 content in `src/data/math/`
           // + `src/data/mathCurriculum`) lives in its own `math-bank` chunk
           // so the entry chunk stays within budget after wiring the new units.
@@ -59,6 +62,9 @@ export default defineConfig(() => {
             }
             if (id.includes('/src/data/math/') || id.includes('/src/data/mathCurriculum')) {
               return 'math-bank';
+            }
+            if (id.includes('/src/data/english/') || id.includes('/src/data/englishCurriculum')) {
+              return 'english-bank';
             }
             return undefined;
           },

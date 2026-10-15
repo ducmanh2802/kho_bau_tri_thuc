@@ -1,5 +1,6 @@
 import { Topic } from '../types';
 import { balanceTopics } from './optionBalance';
+import { ENGLISH_UNIT_TOPICS } from './english';
 
 export const ENGLISH_TOPICS_RAW: Topic[] = [
   {
@@ -1119,6 +1120,8 @@ export const ENGLISH_TOPICS_RAW: Topic[] = [
       },
     ],
   },
+  // T12A/T12B — Kid's Box-style units 1–12 live in ./english (see ./english/index.ts).
+  ...ENGLISH_UNIT_TOPICS,
 ];
 
 /** Balanced copy — correct answers distributed across option positions (P41 §5). */

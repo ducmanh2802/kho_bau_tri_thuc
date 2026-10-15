@@ -13,8 +13,10 @@ import { TOURNAMENT_QUESTIONS } from './competitionBankTournament';
  * Grade-1 misalignment, wrong accepted answer).
  * v5 (Tournament): +72 Trạng Nguyên 4-vòng items (30 TV + 30 Toán + 12 Anh),
  * cấu trúc 30 câu / 20 phút, đố vui dân gian, đọc hiểu, toán lời văn.
+ * v6 (T12B): +40 English items (phonics, sentences, words) spread across the
+ * 7 English taxonomy skills; no true/false added (Đúng share stays in band).
  */
-export const COMPETITION_BANK_VERSION = 5;
+export const COMPETITION_BANK_VERSION = 6;
 
 export const COMPETITION_QUESTIONS: CompetitionQuestion[] = [
   ...EXAM_FORMAT_QUESTIONS,
