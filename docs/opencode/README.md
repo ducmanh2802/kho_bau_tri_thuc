@@ -12,7 +12,7 @@ Audit 1: [`P42_AUDIT.md`](P42_AUDIT.md) · Audit 2 (sau T01–T02): [`P42_AUDIT_
 - Sau lần chạy đầu, runner **tự bật cùng Windows** (thu nhỏ dưới thanh tác vụ).
 - **Theo dõi:** `TRANG_THAI.md` · log: `logs/` · báo cáo: `reports/`.
 - **Dừng sau task đang làm:** `DUNG_LAI.bat` · **Tắt hẳn** (kể cả tự bật cùng Windows): `TAT_TU_DONG.bat` · **Bật lại:** `CHAY_TU_DONG.bat`.
-- **Đổi model:** ghi `provider/model` vào `state/model.txt`.
+- **Đổi model:** ghi `provider/model` vào `state/model.txt`. Có thể ghi **nhiều dòng** (dòng đầu = ưu tiên, các dòng sau = dự phòng): nếu quá 25 phút OpenCode không in gì và không file nào thay đổi (rate limit, lỗi 504/503 lặp lại), hết giờ, hoặc kết thúc mà không làm gì, runner cho model đó nghỉ 60 phút và tự chuyển sang model kế tiếp.
 - Task bị lỗi → hàng đợi dừng ở đó; sửa file task hoặc tạo `state/<ID>.retry` để chạy lại.
 
 ### Hai luồng song song (runner v3)
