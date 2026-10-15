@@ -317,6 +317,9 @@ const DEFAULT_PARENT_SETTINGS: ParentSettings = {
   reviewIntensity: 'standard',
   optionalBreaks: true,
   nightMode: false,
+  maxGachaPerDay: 5,
+  rewardsEnabled: true,
+  rewardHistory: [],
 };
 
 function getTodayString(): string {
