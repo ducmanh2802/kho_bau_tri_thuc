@@ -42,6 +42,21 @@ describe('T02/B1 stars from real performance', () => {
 describe('T02/B2 replay pays only the delta + 20% XP', () => {
   beforeEach(() => {
     localStorage.clear();
+    // T18A — quest ngày xoay vòng theo ngày nên test kinh tế replay phải ghim
+    // quest về dạng legacy (quest_game target 1) để số học là tất định.
+    // Mọi assertion bên dưới giữ nguyên, chỉ cố định ambient state.
+    StorageService.saveDailyQuests([
+      {
+        id: 'quest_game',
+        title: 'Thử sức 1 trò chơi thông minh',
+        targetCount: 1,
+        currentCount: 0,
+        rewardStars: 2,
+        rewardXp: 20,
+        completed: false,
+        type: 'play_game',
+      },
+    ]);
   });
 
   it('first clear grants full stars + full XP', () => {

@@ -12,7 +12,11 @@ import {
   LearningEvidence,
   LearningOSStore,
   MasteryStatus,
+  MotivationDaily,
+  MotivationState,
+  MotivationStats,
   ParentSettings,
+  QuestEvent,
   SessionFatigueState,
   SessionProfileKind,
   SkillMastery,
@@ -20,6 +24,17 @@ import {
 } from '../types';
 import { getAllSkills, getTopicsBySubject } from '../data/curriculum';
 import { GAMES_CATALOG } from '../data/gamesCatalog';
+import { SHOP_MAP } from '../data/shopCatalog';
+import { ACHIEVEMENT_CATALOG } from '../data/achievementCatalog';
+import { QUEST_MAP } from '../data/questPool';
+import { STICKER_MAP } from '../data/stickers';
+import { xpToLevel, pendingLevels, rewardForLevel, levelProgress, levelTitle } from './levelEngine';
+import { drawSticker, completedSetsCount, ownedStickersCount } from './stickerEngine';
+import type { RandomFn } from './stickerEngine';
+import { selectDailyQuests, applyQuestEvent } from './questEngine';
+import { weekKeyOf } from './streakEngine';
+import { evaluateNewAchievements, xpForUnlocks } from './achievementEngine';
+import { canBuyShopItem } from './shopEngine';
 import { localDateKey, diffDateKeys, parseDateKey } from './dateUtils';
 import { LearningOS, LEARNING_OS_POLICY } from './learningOS';
 // T02C — storage (first-load chunk) must NOT import CompetitionEngine,
@@ -59,6 +74,9 @@ const STORAGE_KEYS = {
   // T01B/10 — ngày tưới cây gần nhất (YYYY-MM-DD giờ máy). Key mới hoàn toàn
   // nên không cần migration; giá trị lạ được sanitizer loại bỏ, tiến độ cũ giữ nguyên.
   TREE_WATER: 'kho_bau_tree_water',
+  // T18A — kho động lực (sticker, khiên, số liệu ngày...). Key mới hoàn toàn
+  // nên payload cũ không cần migration; sanitizer dựng lại từ mặc định.
+  MOTIVATION: 'kho_bau_motivation',
 };
 
 /**
@@ -76,7 +94,7 @@ const STORAGE_KEYS = {
  *    counters, misconception map, retention evidence). Missing fields on older
  *    payloads are backfilled by the sanitizer, so no learning history is reset.
  */
-export const STORAGE_SCHEMA_VERSION = 'P42-v1';
+export const STORAGE_SCHEMA_VERSION = 'P42-v2';
 
 /** Schema version for the game-progress store (separate key from the Learning OS). */
 export const GAME_PROGRESS_SCHEMA_VERSION = 1;
@@ -110,10 +128,13 @@ const MIGRATIONS: Record<string, (raw: Record<string, unknown>) => Record<string
   }),
   // T03A — Night mode setting in ParentSettings. Default false.
   'P42-v1': (raw) => ({ ...raw }),
+  // T18A — kho động lực nằm ở key riêng nên Learning OS store không đổi;
+  // migration chỉ ghi nhận phiên bản (mặc định do sanitizer dựng lại).
+  'P42-v2': (raw) => ({ ...raw }),
 };
 
 /** Every schema version the app has ever written, oldest first. */
-const SCHEMA_HISTORY = ['P28-v1', 'P29-v2', 'P30-v1', 'P41-v1', 'P42-v1'] as const;
+const SCHEMA_HISTORY = ['P28-v1', 'P29-v2', 'P30-v1', 'P41-v1', 'P42-v1', 'P42-v2'] as const;
 
 const SESSION_PROFILE_KINDS: SessionProfileKind[] = ['QUICK', 'STANDARD', 'DEEP', 'EXTENDED'];
 
@@ -243,87 +264,20 @@ function migrateToCurrentSchema(raw: Record<string, unknown>): Record<string, un
   return payload;
 }
 
-export const AVATAR_SHOP_ITEMS: AvatarItem[] = [
-  { id: 'hat_cap', name: 'Mũ Lưỡi Trai Năng Động', type: 'hat', emoji: '🧢', priceStars: 5, unlocked: true },
-  { id: 'hat_crown', name: 'Vương Miện Trạng Nguyên', type: 'hat', emoji: '👑', priceStars: 20, unlocked: false },
-  { id: 'hat_party', name: 'Mũ Sinh Nhật Vui Vẻ', type: 'hat', emoji: '🥳', priceStars: 10, unlocked: false },
-  { id: 'hat_scholar', name: 'Mũ Tiến Sĩ Nhí', type: 'hat', emoji: '🎓', priceStars: 25, unlocked: false },
-  { id: 'glasses_cool', name: 'Kính Râm Siêu Ngầu', type: 'glasses', emoji: '🕶️', priceStars: 10, unlocked: false },
-  { id: 'glasses_nerd', name: 'Kính Tròn Tri Thức', type: 'glasses', emoji: '👓', priceStars: 8, unlocked: true },
-  { id: 'shirt_super', name: 'Áo Choàng Siêu Nhân', type: 'shirt', emoji: '🦸', priceStars: 15, unlocked: false },
-  { id: 'shirt_space', name: 'Bộ Đồ Phi Hành Gia', type: 'shirt', emoji: '🧑‍🚀', priceStars: 30, unlocked: false },
-  { id: 'bag_dino', name: 'Balo Khủng Long Xanh', type: 'backpack', emoji: '🎒', priceStars: 12, unlocked: true },
-  { id: 'pet_cat', name: 'Mèo Miu Miu Đồng Hành', type: 'pet', emoji: '🐱', priceStars: 25, unlocked: false },
-  { id: 'pet_puppy', name: 'Cún Con Thông Minh', type: 'pet', emoji: '🐶', priceStars: 25, unlocked: false },
-  { id: 'pet_dragon', name: 'Rồng Con May Mắn', type: 'pet', emoji: '🐲', priceStars: 50, unlocked: false },
-];
+/**
+ * T18A — Shop 43 món (catalog ở `src/data/shopCatalog.ts`).
+ * 12 món đầu giữ nguyên id/giá/trạng thái như trước P42 nên đồ bé đã mở
+ * không bao giờ mất; chỉ thêm `minLevel` (món cũ mở bán ngay từ level 1–20).
+ */
+export const AVATAR_SHOP_ITEMS: AvatarItem[] = [...SHOP_MAP.values()].map((i) => ({ ...i }));
 
-export const INITIAL_ACHIEVEMENTS: Achievement[] = [
-  {
-    id: 'ach_first_lesson',
-    title: 'Bước Chân Đầu Tiên',
-    description: 'Hoàn thành bài học đầu tiên trên hành trình',
-    icon: '🌟',
-    unlocked: false,
-    xpReward: 50,
-  },
-  {
-    id: 'ach_viet_master',
-    title: 'Bé Giỏi Tiếng Việt',
-    description: 'Hoàn thành 3 bài học Tiếng Việt',
-    icon: '📚',
-    unlocked: false,
-    xpReward: 80,
-  },
-  {
-    id: 'ach_math_hero',
-    title: 'Thần Đồng Toán Học',
-    description: 'Hoàn thành 3 bài học Toán vui vẻ',
-    icon: '🔢',
-    unlocked: false,
-    xpReward: 80,
-  },
-  {
-    id: 'ach_english_star',
-    title: 'English Explorer',
-    description: 'Hoàn thành 3 bài học Tiếng Anh',
-    icon: '🇬🇧',
-    unlocked: false,
-    xpReward: 80,
-  },
-  {
-    id: 'ach_gamer_fun',
-    title: 'Nhà Vô Địch Trò Chơi',
-    description: 'Chơi và vượt qua 3 mini-game giáo dục',
-    icon: '🎮',
-    unlocked: false,
-    xpReward: 60,
-  },
-  {
-    id: 'ach_streak_3',
-    title: 'Ngọn Lửa Chăm Chỉ',
-    description: 'Duy trì chuỗi học 3 ngày liên tiếp',
-    icon: '🔥',
-    unlocked: false,
-    xpReward: 100,
-  },
-  {
-    id: 'ach_review_pro',
-    title: 'Trí Nhớ Siêu Phàm',
-    description: 'Hoàn thành Ôn Tập Thông Minh 5 ngày khác nhau',
-    icon: '💡',
-    unlocked: false,
-    xpReward: 75,
-  },
-  {
-    id: 'ach_weekly_hero',
-    title: 'Chiến Binh Tuần',
-    description: 'Vượt qua bài Thử Thách Tuần Lớp 1',
-    icon: '🏆',
-    unlocked: false,
-    xpReward: 120,
-  },
-];
+/**
+ * T18A — 35 thành tựu (catalog ở `src/data/achievementCatalog.ts`).
+ * 8 thành tựu đầu giữ nguyên id/tiêu đề/thưởng như trước P42.
+ */
+export const INITIAL_ACHIEVEMENTS: Achievement[] = ACHIEVEMENT_CATALOG.map(
+  ({ rule, ...rest }) => ({ ...rest })
+);
 
 const DEFAULT_CHILD_PROFILE: ChildProfile = {
   id: 'child_1',
@@ -380,59 +334,44 @@ function isRealDateKey(value: unknown): value is string {
   return parsed !== null && localDateKey(parsed) === value;
 }
 
-function createDefaultQuests(): DailyQuest[] {
-  return [
-    {
-      id: 'quest_viet',
-      title: 'Học 1 bài Tiếng Việt xinh',
-      targetCount: 1,
-      currentCount: 0,
-      rewardStars: 3,
-      rewardXp: 30,
-      completed: false,
-      type: 'lesson_viet',
-    },
-    {
-      id: 'quest_math',
-      title: 'Làm quen 1 bài Toán kỳ thú',
-      targetCount: 1,
-      currentCount: 0,
-      rewardStars: 3,
-      rewardXp: 30,
-      completed: false,
-      type: 'lesson_math',
-    },
-    {
-      id: 'quest_english',
-      title: 'Khám phá 1 bài English vui nhộn',
-      targetCount: 1,
-      currentCount: 0,
-      rewardStars: 3,
-      rewardXp: 30,
-      completed: false,
-      type: 'lesson_english',
-    },
-    {
-      id: 'quest_game',
-      title: 'Thử sức 1 trò chơi thông minh',
-      targetCount: 1,
-      currentCount: 0,
-      rewardStars: 2,
-      rewardXp: 20,
-      completed: false,
-      type: 'play_game',
-    },
-    {
-      id: 'quest_review',
-      title: 'Hoàn thành Ôn tập hôm nay',
-      targetCount: 1,
-      currentCount: 0,
-      rewardStars: 4,
-      rewardXp: 40,
-      completed: false,
-      type: 'daily_review',
-    },
-  ];
+/**
+ * T18A — Môn bé còn yếu nhất xếp trước (độ chính xác thấp nhất trong
+ * skillMastery), môn chưa học bao giờ xếp sau, môn giỏi xếp cuối.
+ * Engine dùng thứ tự này để "chữa yếu" bằng nhiệm vụ đầu ngày.
+ */
+function weakestSubjectsForQuests(): SubjectType[] {
+  try {
+    const analytics = StorageService.getAnalytics();
+    const subjects: SubjectType[] = ['tieng-viet', 'toan', 'english', 'cuoc-song'];
+    const scored = subjects.map((s) => {
+      let attempts = 0;
+      let correct = 0;
+      for (const m of Object.values(analytics.skillMastery)) {
+        if (m.subject === s && m.attempts > 0) {
+          attempts += m.attempts;
+          correct += m.correctCount;
+        }
+      }
+      return { subject: s, accuracy: attempts > 0 ? correct / attempts : null };
+    });
+    const weak = scored
+      .filter((x) => x.accuracy !== null)
+      .sort((a, b) => (a.accuracy as number) - (b.accuracy as number))
+      .map((x) => x.subject);
+    const untried = scored.filter((x) => x.accuracy === null).map((x) => x.subject);
+    return [...weak, ...untried];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * T18A — Bộ nhiệm vụ mới mỗi ngày: 3 nhiệm vụ học (ưu tiên môn yếu,
+ * tất định theo ngày) + 1 nhiệm vụ vui. 5 id cũ vẫn nằm trong pool
+ * nên tiến trình đã lưu của bé không bao giờ mất.
+ */
+function createDefaultQuests(dateKey: string = getTodayString()): DailyQuest[] {
+  return selectDailyQuests(dateKey, weakestSubjectsForQuests());
 }
 
 export interface TierRewardReceipt {
@@ -571,15 +510,22 @@ export class StorageService {
   /** Idempotently records one reading session's metrics. */
   public static saveReadingMetrics(metrics: ReadingMetrics) {
     const raw = readJSONObject(STORAGE_KEYS.READING_STORE);
-    const existing = StorageService.getReadingMetricsHistory().filter(
-      (m) => m.sessionId !== metrics.sessionId
-    );
+    const history = StorageService.getReadingMetricsHistory();
+    const isNew = !history.some((m) => m.sessionId === metrics.sessionId);
+    const existing = history.filter((m) => m.sessionId !== metrics.sessionId);
     existing.unshift(metrics);
     writeJSON(STORAGE_KEYS.READING_STORE, {
       ...(raw ?? {}),
       schemaVersion: STORAGE_SCHEMA_VERSION,
       metrics: existing.slice(0, READING_POLICY.MAX_RECENT_SESSIONS),
     });
+    // T18A — mỗi buổi đọc mới tính 1 truyện + quest đọc qua engine chung.
+    if (isNew) {
+      const motivation = StorageService.getMotivationState();
+      motivation.storiesReadTotal += 1;
+      StorageService.saveMotivationState(motivation);
+      StorageService.recordQuestEvent({ kind: 'read' });
+    }
   }
 
   /**
@@ -964,16 +910,53 @@ export class StorageService {
 
           // Verify streak progression (T01/B8: local calendar days; old UTC
           // keys are still YYYY-MM-DD so they keep working).
+          // T18A: nghỉ đúng 1 ngày mà còn khiên → khiên vỡ thay bé, chuỗi
+          // giữ nguyên (trẻ con không bị phạt vì bố mẹ bận); lịch chuỗi
+          // ngày + kỷ lục chuỗi lưu ở kho động lực (key riêng, không mất).
           const today = getTodayString();
           if (sanitized.lastActiveDate !== today) {
             const diffDays = diffDateKeys(sanitized.lastActiveDate, today);
             if (diffDays === 1) {
               sanitized.streak += 1;
-            } else if (diffDays === null || diffDays > 1) {
+            } else if (diffDays === 2) {
+              const motivation = StorageService.getMotivationState(today);
+              if (motivation.shields > 0) {
+                motivation.shields -= 1;
+                motivation.shieldsUsedTotal += 1;
+                sanitized.streak += 1;
+                // Lấp ngày nghỉ (hôm qua) để lịch chuỗi liền mạch.
+                const yesterday = parseDateKey(today);
+                if (yesterday) {
+                  yesterday.setDate(yesterday.getDate() - 1);
+                  const missing = localDateKey(yesterday);
+                  if (!motivation.shieldedDays.includes(missing)) {
+                    motivation.shieldedDays = [...motivation.shieldedDays, missing].sort().slice(-400);
+                  }
+                }
+                if (!motivation.streakDays.includes(today)) {
+                  motivation.streakDays = [...motivation.streakDays, today].sort().slice(-400);
+                }
+                motivation.streakBest = Math.max(motivation.streakBest, sanitized.streak);
+                StorageService.saveMotivationState(motivation);
+              } else {
+                sanitized.streak = 1;
+              }
+            } else if (diffDays === null || diffDays > 2 || diffDays < 0) {
               sanitized.streak = 1;
             }
             sanitized.lastActiveDate = today;
             StorageService.saveChildProfile(sanitized);
+          }
+          // Ghi ngày học vào lịch chuỗi (kể cả mở app nhiều lần trong ngày).
+          try {
+            const motivation = StorageService.getMotivationState(today);
+            if (!motivation.streakDays.includes(today)) {
+              motivation.streakDays = [...motivation.streakDays, today].sort().slice(-400);
+              motivation.streakBest = Math.max(motivation.streakBest, sanitized.streak);
+              StorageService.saveMotivationState(motivation);
+            }
+          } catch {
+            // Lịch chuỗi chỉ để khoe ở T18B — không bao giờ chặn bé học.
           }
           return sanitized;
         }
@@ -1113,21 +1096,51 @@ public static getParentSettings(): ParentSettings {
     }
   }
 
+  /**
+   * T18A — Nhiệm vụ đã lưu trong ngày được giữ nguyên (kể cả tiến trình),
+   * chỉ loại quest lạ (không có trong pool) — đề không "nhảy" giữa ngày.
+   */
+  private static sanitizeStoredQuests(raw: unknown): DailyQuest[] | null {
+    if (!Array.isArray(raw) || raw.length === 0) return null;
+    const out: DailyQuest[] = [];
+    for (const q of raw) {
+      if (!q || typeof q !== 'object') continue;
+      const quest = q as Partial<DailyQuest>;
+      const def = typeof quest.id === 'string' ? QUEST_MAP.get(quest.id) : undefined;
+      if (!def) continue;
+      out.push({
+        id: def.id,
+        title: def.title,
+        targetCount: def.targetCount,
+        currentCount:
+          typeof quest.currentCount === 'number' && Number.isFinite(quest.currentCount)
+            ? Math.min(Math.max(Math.round(quest.currentCount), 0), def.targetCount)
+            : 0,
+        rewardStars: def.rewardStars,
+        rewardXp: def.rewardXp,
+        completed: quest.completed === true,
+        type: def.type,
+      });
+    }
+    return out.length > 0 ? out : null;
+  }
+
   public static getDailyQuests(): DailyQuest[] {
     const today = getTodayString();
     try {
       const raw = localStorage.getItem(STORAGE_KEYS.DAILY_QUESTS);
       if (raw) {
         const parsed = JSON.parse(raw);
-        if (parsed.date === today && Array.isArray(parsed.quests)) {
-          return parsed.quests;
+        if (parsed && parsed.date === today && Array.isArray(parsed.quests)) {
+          const kept = StorageService.sanitizeStoredQuests(parsed.quests);
+          if (kept) return kept;
         }
       }
     } catch {
       // Ignore
     }
 
-    const newQuests = createDefaultQuests();
+    const newQuests = createDefaultQuests(today);
     StorageService.saveDailyQuests(newQuests);
     return newQuests;
   }
@@ -1141,14 +1154,38 @@ public static getParentSettings(): ParentSettings {
     }
   }
 
+  /**
+   * T18A — Danh sách thành tựu luôn đủ 35 mục: trạng thái đã mở của bé
+   * được giữ lại theo id, thành tựu mới tự thêm ở dạng khoá.
+   */
   public static getAchievements(): Achievement[] {
+    const unlockedById = new Map<string, Achievement>();
     try {
       const data = localStorage.getItem(STORAGE_KEYS.ACHIEVEMENTS);
-      if (data) return JSON.parse(data);
+      if (data) {
+        const parsed = JSON.parse(data);
+        if (Array.isArray(parsed)) {
+          for (const a of parsed) {
+            if (a && typeof a === 'object' && typeof a.id === 'string') {
+              unlockedById.set(a.id, a as Achievement);
+            }
+          }
+        }
+      }
     } catch {
-      // Ignore
+      // Ignore — dùng catalog mặc định
     }
-    return INITIAL_ACHIEVEMENTS;
+    return INITIAL_ACHIEVEMENTS.map((def) => {
+      const stored = unlockedById.get(def.id);
+      if (stored && stored.unlocked === true) {
+        return {
+          ...def,
+          unlocked: true,
+          unlockedAt: typeof stored.unlockedAt === 'string' ? stored.unlockedAt : new Date().toISOString(),
+        };
+      }
+      return { ...def };
+    });
   }
 
   public static saveAchievements(achs: Achievement[]) {
@@ -1157,6 +1194,229 @@ public static getParentSettings(): ParentSettings {
     } catch {
       // Ignore
     }
+  }
+
+  // ==========================================================
+  // T18A — Kho động lực (sticker, khiên, số liệu ngày)
+  // Key riêng nên payload cũ không cần migration; mọi giá trị lạ
+  // đều được sanitizer dựng lại từ mặc định, không bao giờ crash.
+  // ==========================================================
+
+  private static createDefaultMotivationDaily(date: string): MotivationDaily {
+    return {
+      date,
+      comboBest: 0,
+      comboNow: 0,
+      reviewQuestions: 0,
+      gachaDraws: 0,
+      correctBySubject: { 'tieng-viet': 0, toan: 0, english: 0, 'cuoc-song': 0 },
+    };
+  }
+
+  private static createDefaultMotivation(date: string): MotivationState {
+    return {
+      schemaVersion: STORAGE_SCHEMA_VERSION,
+      stickers: {},
+      claimedLevelRewards: [],
+      shields: 1,
+      lastShieldWeek: null,
+      streakDays: [],
+      shieldedDays: [],
+      shieldsUsedTotal: 0,
+      gachaDrawsTotal: 0,
+      questsCompletedTotal: 0,
+      shopBoughtTotal: 0,
+      comboBestAll: 0,
+      starsEarnedTotal: 0,
+      storiesReadTotal: 0,
+      chestsOpenedTotal: 0,
+      streakBest: 1,
+      daily: StorageService.createDefaultMotivationDaily(date),
+    };
+  }
+
+  private static sanitizeMotivation(raw: Record<string, unknown>, today: string): MotivationState {
+    const base = StorageService.createDefaultMotivation(today);
+    const count = (n: unknown) =>
+      typeof n === 'number' && Number.isFinite(n) && n > 0 ? Math.floor(n) : 0;
+
+    const stickers: Record<string, number> = {};
+    if (raw.stickers && typeof raw.stickers === 'object' && !Array.isArray(raw.stickers)) {
+      for (const [id, n] of Object.entries(raw.stickers as Record<string, unknown>)) {
+        if (typeof id === 'string' && STICKER_MAP.has(id) && typeof n === 'number' && n > 0) {
+          stickers[id] = Math.min(Math.floor(n), 999);
+        }
+      }
+    }
+
+    const streakDays = Array.isArray(raw.streakDays)
+      ? [...new Set((raw.streakDays as unknown[]).filter((d): d is string => isRealDateKey(d)))].sort().slice(-400)
+      : [];
+    const shieldedDays = Array.isArray(raw.shieldedDays)
+      ? [...new Set((raw.shieldedDays as unknown[]).filter((d): d is string => isRealDateKey(d)))].sort().slice(-400)
+      : [];
+
+    const dailyRaw = raw.daily && typeof raw.daily === 'object' && !Array.isArray(raw.daily)
+      ? (raw.daily as Record<string, unknown>)
+      : null;
+    const daily =
+      dailyRaw && dailyRaw.date === today
+        ? {
+            date: today,
+            comboBest: count(dailyRaw.comboBest),
+            comboNow: count(dailyRaw.comboNow),
+            reviewQuestions: count(dailyRaw.reviewQuestions),
+            gachaDraws: count(dailyRaw.gachaDraws),
+            correctBySubject: {
+              'tieng-viet': count((dailyRaw.correctBySubject as Record<string, unknown> | undefined)?.['tieng-viet']),
+              toan: count((dailyRaw.correctBySubject as Record<string, unknown> | undefined)?.toan),
+              english: count((dailyRaw.correctBySubject as Record<string, unknown> | undefined)?.english),
+              'cuoc-song': count((dailyRaw.correctBySubject as Record<string, unknown> | undefined)?.['cuoc-song']),
+            },
+          }
+        : StorageService.createDefaultMotivationDaily(today);
+
+    return {
+      ...base,
+      shieldedDays,
+      stickers,
+      claimedLevelRewards: Array.isArray(raw.claimedLevelRewards)
+        ? [...new Set(
+            (raw.claimedLevelRewards as unknown[])
+              .filter((l): l is number => typeof l === 'number' && Number.isFinite(l))
+              .map((l) => Math.round(l))
+              .filter((l) => l >= 2 && l <= 50)
+          )].sort((a, b) => a - b)
+        : [],
+      shields: typeof raw.shields === 'number' && Number.isFinite(raw.shields)
+        ? Math.min(Math.max(Math.round(raw.shields), 0), 2)
+        : 1,
+      lastShieldWeek: typeof raw.lastShieldWeek === 'string' ? raw.lastShieldWeek : null,
+      streakDays,
+      shieldsUsedTotal: count(raw.shieldsUsedTotal),
+      gachaDrawsTotal: count(raw.gachaDrawsTotal),
+      shopBoughtTotal: count(raw.shopBoughtTotal),
+      comboBestAll: count(raw.comboBestAll),
+      starsEarnedTotal: count(raw.starsEarnedTotal),
+      storiesReadTotal: count(raw.storiesReadTotal),
+      chestsOpenedTotal: count(raw.chestsOpenedTotal),
+      streakBest: Math.max(1, count(raw.streakBest)),
+      daily,
+    };
+  }
+
+  public static getMotivationState(today: string = getTodayString()): MotivationState {
+    const raw = readJSONObject(STORAGE_KEYS.MOTIVATION);
+    const state = raw
+      ? StorageService.sanitizeMotivation(raw, today)
+      : StorageService.createDefaultMotivation(today);
+    // Phát khiên tuần tự động (1 khiên/tuần, tối đa 2) ngay khi đọc.
+    const week = weekKeyOf(today);
+    if (week && state.lastShieldWeek !== week) {
+      state.shields = Math.min(state.shields + 1, 2);
+      state.lastShieldWeek = week;
+      StorageService.saveMotivationState(state);
+    }
+    return state;
+  }
+
+  public static saveMotivationState(state: MotivationState): void {
+    writeJSON(STORAGE_KEYS.MOTIVATION, { ...state, schemaVersion: STORAGE_SCHEMA_VERSION });
+  }
+
+  /**
+   * T18A — Ghi 1 sự kiện tiến trình vào quest hôm nay + số liệu ngày.
+   * Quest nào vừa xong thì trao sao/XP ngay cho bé (không trao trùng).
+   * Trả về id các quest vừa hoàn thành (để UI ăn mừng ở T18B).
+   */
+  public static recordQuestEvent(event: QuestEvent): string[] {
+    if (!event || typeof event.kind !== 'string') return [];
+    const today = getTodayString();
+    const motivation = StorageService.getMotivationState(today);
+
+    // Cập nhật số liệu ngày trước để quest combo/correct/review đọc đúng.
+    if (event.kind === 'answer') {
+      if (event.correct) {
+        motivation.daily.comboNow += 1;
+        motivation.daily.comboBest = Math.max(motivation.daily.comboBest, motivation.daily.comboNow);
+        motivation.comboBestAll = Math.max(motivation.comboBestAll, motivation.daily.comboBest);
+        if (event.subject) {
+          motivation.daily.correctBySubject[event.subject] =
+            (motivation.daily.correctBySubject[event.subject] ?? 0) + 1;
+        }
+      } else {
+        motivation.daily.comboNow = 0;
+      }
+    } else if (event.kind === 'review_question') {
+      motivation.daily.reviewQuestions += 1;
+    } else if (event.kind === 'gacha') {
+      motivation.daily.gachaDraws += 1;
+      motivation.gachaDrawsTotal += 1;
+    }
+
+    const quests = StorageService.getDailyQuests();
+    const { quests: next, newlyCompleted } = applyQuestEvent(quests, event, motivation.daily);
+
+    if (next !== quests) StorageService.saveDailyQuests(next);
+    if (newlyCompleted.length > 0) {
+      const profile = StorageService.getChildProfile();
+      for (const q of newlyCompleted) {
+        profile.stars += q.rewardStars;
+        profile.xp += q.rewardXp;
+        motivation.starsEarnedTotal += q.rewardStars;
+      }
+      motivation.questsCompletedTotal += newlyCompleted.length;
+      StorageService.saveChildProfile(profile);
+      StorageService.saveMotivationState(motivation);
+    } else {
+      StorageService.saveMotivationState(motivation);
+    }
+
+    StorageService.checkAchievements();
+    return newlyCompleted.map((q) => q.id);
+  }
+
+  /** T18A — Bé mặc/tháo đồ cho Gấu (UI T18B gọi để xong quest vui). */
+  public static recordDressUp(): string[] {
+    return StorageService.recordQuestEvent({ kind: 'dressup' });
+  }
+
+  /**
+   * T18A — Ảnh chụp số liệu để chấm rule thành tựu.
+   * Nguồn duy nhất: profile + analytics + reviewDays + kho động lực
+   * (không đọc Learning OS để tránh vòng lặp import).
+   */
+  public static buildMotivationStats(): MotivationStats {
+    const profile = StorageService.getChildProfile();
+    const analytics = StorageService.getAnalytics();
+    const reviewDays = StorageService.getReviewCompletedDays();
+    const motivation = StorageService.getMotivationState();
+    const byPrefix = (prefix: string) =>
+      profile.completedLessons.filter((l) => l.startsWith(prefix)).length;
+    const lessons3Star = Object.values(profile.lessonStars).filter((s) => s === 3).length;
+    return {
+      lessonsTotal: profile.completedLessons.length,
+      lessonsViet: byPrefix('vn-'),
+      lessonsMath: byPrefix('math-'),
+      lessonsEnglish: byPrefix('eng-'),
+      lessonsLife: byPrefix('life-'),
+      lessons3Star,
+      gamesPlayed: analytics.gamesPlayedCount,
+      reviewDays: reviewDays.length,
+      weeklyChallenges: profile.completedWeeklyChallenges.length,
+      streak: profile.streak,
+      streakBest: Math.max(motivation.streakBest, profile.streak),
+      level: xpToLevel(profile.xp),
+      starsEarnedTotal: Math.max(motivation.starsEarnedTotal, profile.stars),
+      stickersOwned: ownedStickersCount(motivation.stickers),
+      stickerSetsCompleted: completedSetsCount(motivation.stickers),
+      shopOwned: motivation.shopBoughtTotal,
+      gachaDraws: motivation.gachaDrawsTotal,
+      questsCompleted: motivation.questsCompletedTotal,
+      chestsOpened: Math.max(motivation.chestsOpenedTotal, Object.keys(profile.chestState).length),
+      comboBest: motivation.comboBestAll,
+      storiesRead: motivation.storiesReadTotal,
+    };
   }
 
   /**
@@ -1175,10 +1435,19 @@ public static getParentSettings(): ParentSettings {
 
   public static setTreeWateredDate(dateKey: string): void {
     if (!isRealDateKey(dateKey)) return;
+    const firstToday = StorageService.getTreeWateredDate() !== dateKey;
     try {
       localStorage.setItem(STORAGE_KEYS.TREE_WATER, dateKey);
     } catch {
       // Ignore
+    }
+    // T18A — quest vui "tưới cây" (chỉ tính lần đầu trong ngày).
+    if (firstToday) {
+      try {
+        StorageService.recordQuestEvent({ kind: 'water' });
+      } catch {
+        // Tưới cây không bao giờ chặn bé học.
+      }
     }
   }
 
@@ -1274,6 +1543,9 @@ public static getParentSettings(): ParentSettings {
     }
 
     StorageService.saveAnalytics(analytics);
+
+    // T18A — quest combo/correct theo môn qua engine chung.
+    StorageService.recordQuestEvent({ kind: 'answer', subject, correct: isCorrect });
   }
 
   // Increment screen time
@@ -1307,25 +1579,16 @@ public static getParentSettings(): ParentSettings {
     analytics.lessonsCompletedCount += 1;
     StorageService.saveAnalytics(analytics);
 
-    // Update daily quests
-    const quests = StorageService.getDailyQuests();
-    const questType =
-      subject === 'tieng-viet' ? 'lesson_viet' : subject === 'toan' ? 'lesson_math' : 'lesson_english';
-    quests.forEach((q) => {
-      if (q.type === questType && !q.completed) {
-        q.currentCount += 1;
-        if (q.currentCount >= q.targetCount) {
-          q.completed = true;
-          profile.stars += q.rewardStars;
-          profile.xp += q.rewardXp;
-          StorageService.saveChildProfile(profile);
-        }
-      }
-    });
-    StorageService.saveDailyQuests(quests);
+    // T18A — sao kiếm được trong bài (kể cả trước khi tiêu ở Shop).
+    if (isFirstTime) {
+      const motivation = StorageService.getMotivationState();
+      motivation.starsEarnedTotal += Math.min(Math.max(Math.round(stars), 1), 3);
+      StorageService.saveMotivationState(motivation);
+    }
 
-    // Check achievements
-    StorageService.checkAchievements();
+    // T18A — tiến trình quest qua engine chung (lesson_any/lesson_life/star_3...).
+    // recordQuestEvent tự trao thưởng quest + chấm thành tựu nên không cần thêm.
+    StorageService.recordQuestEvent({ kind: 'lesson', subject, stars });
   }
 
   /**
@@ -1353,8 +1616,33 @@ public static getParentSettings(): ParentSettings {
     const analytics = StorageService.getAnalytics();
     StorageService.saveAnalytics(analytics);
 
-    StorageService.checkAchievements();
+    // T18A — đếm rương + quest vui "mở rương" (kể cả trước khi tiêu sao).
+    const motivation = StorageService.getMotivationState();
+    motivation.starsEarnedTotal += safeStars;
+    motivation.chestsOpenedTotal += 1;
+    StorageService.saveMotivationState(motivation);
+    StorageService.recordQuestEvent({ kind: 'chest' });
     return safeStars;
+  }
+
+  /**
+   * T18A — Rương kho báu mỗi ngày trên Home (giữ logic thưởng cũ:
+   * +10 sao, +50 XP) và cộng thêm đếm rương + quest vui cho bé.
+   */
+  public static claimDailyChest(stars = 10, xp = 50): boolean {
+    const today = getTodayString();
+    const profile = StorageService.getChildProfile();
+    if (profile.dailyChestClaimedDate === today) return false;
+    profile.stars += stars;
+    profile.xp += xp;
+    profile.dailyChestClaimedDate = today;
+    StorageService.saveChildProfile(profile);
+    const motivation = StorageService.getMotivationState();
+    motivation.starsEarnedTotal += stars;
+    motivation.chestsOpenedTotal += 1;
+    StorageService.saveMotivationState(motivation);
+    StorageService.recordQuestEvent({ kind: 'chest' });
+    return true;
   }
 
   // --- Game level progression -------------------------------------------
@@ -1631,51 +1919,30 @@ public static getParentSettings(): ParentSettings {
     analytics.gamesPlayedCount += 1;
     StorageService.saveAnalytics(analytics);
 
-    const quests = StorageService.getDailyQuests();
-    quests.forEach((q) => {
-      if (q.type === 'play_game' && !q.completed) {
-        q.currentCount += 1;
-        if (q.currentCount >= q.targetCount) {
-          q.completed = true;
-          profile.stars += q.rewardStars;
-          profile.xp += q.rewardXp;
-          StorageService.saveChildProfile(profile);
-        }
-      }
-    });
-    StorageService.saveDailyQuests(quests);
-
-    StorageService.checkAchievements();
+    // T18A — quest game (kể cả game Tiếng Anh) qua engine chung.
+    const game = GAMES_CATALOG.find((g) => g.id === gameId);
+    StorageService.recordQuestEvent({ kind: 'game', englishGame: game?.category === 'english' });
     return { starsAwarded, xpAwarded, isFirstClear, isNewBest };
   }
 
   // Record played mini game
-  public static recordGamePlayed(xpReward: number = 15, starReward: number = 1) {
+  public static recordGamePlayed(xpReward: number = 15, starReward: number = 1, gameId?: string) {
     const profile = StorageService.getChildProfile();
     profile.xp += xpReward;
     profile.stars += starReward;
     StorageService.saveChildProfile(profile);
 
+    const motivation = StorageService.getMotivationState();
+    motivation.starsEarnedTotal += Math.max(0, Math.round(starReward));
+    StorageService.saveMotivationState(motivation);
+
     const analytics = StorageService.getAnalytics();
     analytics.gamesPlayedCount += 1;
     StorageService.saveAnalytics(analytics);
 
-    // Update quest
-    const quests = StorageService.getDailyQuests();
-    quests.forEach((q) => {
-      if (q.type === 'play_game' && !q.completed) {
-        q.currentCount += 1;
-        if (q.currentCount >= q.targetCount) {
-          q.completed = true;
-          profile.stars += q.rewardStars;
-          profile.xp += q.rewardXp;
-          StorageService.saveChildProfile(profile);
-        }
-      }
-    });
-    StorageService.saveDailyQuests(quests);
-
-    StorageService.checkAchievements();
+    // T18A — quest game qua engine chung (biết game Tiếng Anh khi có gameId).
+    const game = typeof gameId === 'string' ? GAMES_CATALOG.find((g) => g.id === gameId) : undefined;
+    StorageService.recordQuestEvent({ kind: 'game', englishGame: game?.category === 'english' });
   }
 
   /** Distinct local-day keys on which the child finished a daily review. */
@@ -1712,8 +1979,43 @@ public static getParentSettings(): ParentSettings {
       days.push(dateKey);
       StorageService.saveReviewCompletedDays(days);
     }
-    StorageService.checkAchievements();
+    // T18A — quest "Ôn tập hôm nay" qua engine chung.
+    StorageService.recordQuestEvent({ kind: 'review' });
     return days;
+  }
+
+  /**
+   * T18A — Ghi số câu vừa ôn xong (DailyReview gọi 1 lần khi bé làm xong
+   * bộ ôn tập) để quest "Ôn 5/10 câu" có tiến trình thật.
+   */
+  public static recordReviewQuestions(count: number): string[] {
+    const safe = typeof count === 'number' && Number.isFinite(count)
+      ? Math.min(Math.max(Math.round(count), 0), 60)
+      : 0;
+    if (safe <= 0) return [];
+    const motivation = StorageService.getMotivationState();
+    motivation.daily.reviewQuestions += safe;
+    StorageService.saveMotivationState(motivation);
+    const quests = StorageService.getDailyQuests();
+    const { quests: next, newlyCompleted } = applyQuestEvent(
+      quests,
+      { kind: 'review_question' },
+      motivation.daily
+    );
+    if (next !== quests) StorageService.saveDailyQuests(next);
+    if (newlyCompleted.length > 0) {
+      const profile = StorageService.getChildProfile();
+      for (const q of newlyCompleted) {
+        profile.stars += q.rewardStars;
+        profile.xp += q.rewardXp;
+        motivation.starsEarnedTotal += q.rewardStars;
+      }
+      motivation.questsCompletedTotal += newlyCompleted.length;
+      StorageService.saveChildProfile(profile);
+      StorageService.saveMotivationState(motivation);
+    }
+    StorageService.checkAchievements();
+    return newlyCompleted.map((q) => q.id);
   }
 
   /**
@@ -1726,45 +2028,35 @@ public static getParentSettings(): ParentSettings {
       profile.completedWeeklyChallenges = [...profile.completedWeeklyChallenges, challengeId];
       StorageService.saveChildProfile(profile);
     }
-    StorageService.checkAchievements();
+    // T18A — quest "Thử Thách Tuần" qua engine chung.
+    StorageService.recordQuestEvent({ kind: 'weekly' });
   }
 
+  /**
+   * T18A — Chấm toàn bộ 35 rule thành tựu trên ảnh chụp số liệu thật.
+   * 8 rule cũ cho kết quả y hệt trước đây (test T01 vẫn xanh).
+   */
   public static checkAchievements() {
     const profile = StorageService.getChildProfile();
-    const analytics = StorageService.getAnalytics();
     const achs = StorageService.getAchievements();
-    const reviewDays = StorageService.getReviewCompletedDays();
-    let updated = false;
+    const stats = StorageService.buildMotivationStats();
+    const newlyUnlocked = evaluateNewAchievements(
+      stats,
+      achs.filter((a) => a.unlocked).map((a) => a.id)
+    );
+    if (newlyUnlocked.length === 0) return;
 
+    const now = new Date().toISOString();
+    const unlockedSet = new Set(newlyUnlocked);
     for (const a of achs) {
-      if (a.unlocked) continue;
-
-      let shouldUnlock = false;
-      if (a.id === 'ach_first_lesson' && profile.completedLessons.length >= 1) shouldUnlock = true;
-      if (a.id === 'ach_viet_master' && profile.completedLessons.filter((l) => l.startsWith('vn-')).length >= 3)
-        shouldUnlock = true;
-      if (a.id === 'ach_math_hero' && profile.completedLessons.filter((l) => l.startsWith('math-')).length >= 3)
-        shouldUnlock = true;
-      if (a.id === 'ach_english_star' && profile.completedLessons.filter((l) => l.startsWith('eng-')).length >= 3)
-        shouldUnlock = true;
-      if (a.id === 'ach_gamer_fun' && analytics.gamesPlayedCount >= 3) shouldUnlock = true;
-      if (a.id === 'ach_streak_3' && profile.streak >= 3) shouldUnlock = true;
-      // T01/B10 — previously these two achievements had no unlock rule.
-      if (a.id === 'ach_review_pro' && reviewDays.length >= 5) shouldUnlock = true;
-      if (a.id === 'ach_weekly_hero' && profile.completedWeeklyChallenges.length >= 1) shouldUnlock = true;
-
-      if (shouldUnlock) {
+      if (unlockedSet.has(a.id)) {
         a.unlocked = true;
-        a.unlockedAt = new Date().toISOString();
-        profile.xp += a.xpReward;
-        updated = true;
+        a.unlockedAt = now;
       }
     }
-
-    if (updated) {
-      StorageService.saveAchievements(achs);
-      StorageService.saveChildProfile(profile);
-    }
+    profile.xp += xpForUnlocks(newlyUnlocked);
+    StorageService.saveAchievements(achs);
+    StorageService.saveChildProfile(profile);
   }
 
   public static getCompetitionHistory(): CompetitionHistoryStore {
@@ -1870,6 +2162,104 @@ public static getParentSettings(): ParentSettings {
     StorageService.checkAchievements();
   }
 
+  // ==========================================================
+  // T18A — Máy gắp sticker, quà level, mua đồ Shop (UI ở T18B/T18C)
+  // ==========================================================
+
+  /** Giới hạn lượt gắp/ngày (phụ huynh chỉnh chi tiết ở T18C). */
+  public static readonly MAX_GACHA_PER_DAY = 5;
+
+  /** Level + danh hiệu + thanh XP của bé từ tổng XP (đọc nhanh cho Header T18B). */
+  public static getLevelInfo() {
+    const profile = StorageService.getChildProfile();
+    const p = levelProgress(profile.xp);
+    return {
+      ...p,
+      title: levelTitle(p.level),
+      pending: pendingLevels(profile.xp, StorageService.getMotivationState().claimedLevelRewards),
+    };
+  }
+
+  /**
+   * Quay máy gắp sticker: tốn 1 vé, tối đa 5 lượt/ngày, không trùng
+   * tới khi đủ 60 sticker. Trùng thì cứ 5 sticker trùng +2 sao an ủi.
+   */
+  public static drawGacha(rng?: RandomFn): GachaResult {
+    const profile = StorageService.getChildProfile();
+    const motivation = StorageService.getMotivationState();
+    if (profile.tickets < 1) return { ok: false, reason: 'no-ticket' };
+    if (motivation.daily.gachaDraws >= StorageService.MAX_GACHA_PER_DAY) {
+      return { ok: false, reason: 'daily-limit' };
+    }
+    const { stickerId, isNew } = drawSticker(motivation.stickers, rng);
+    profile.tickets -= 1;
+    motivation.stickers[stickerId] = (motivation.stickers[stickerId] ?? 0) + 1;
+    let consolationStars = 0;
+    if (!isNew) {
+      const dupes = Object.values(motivation.stickers).reduce((a, n) => a + Math.max(0, n - 1), 0);
+      if (dupes % 5 === 0) {
+        consolationStars = 2;
+        profile.stars += 2;
+        motivation.starsEarnedTotal += 2;
+      }
+    }
+    StorageService.saveChildProfile(profile);
+    StorageService.saveMotivationState(motivation);
+    StorageService.recordQuestEvent({ kind: 'gacha' });
+    return { ok: true, reason: 'ok', stickerId, isNew, consolationStars };
+  }
+
+  /**
+   * Nhận quà các level đã đạt (mỗi level 1 lần): sao + vé vào túi bé,
+   * lượt gắp sticker thưởng tự quay vào Album. Trả về để UI ăn mừng (T18B).
+   */
+  public static claimLevelRewards(rng?: RandomFn): LevelClaimResult {
+    const profile = StorageService.getChildProfile();
+    const motivation = StorageService.getMotivationState();
+    const pending = pendingLevels(profile.xp, motivation.claimedLevelRewards);
+    const result: LevelClaimResult = { claimed: [], stars: 0, tickets: 0, stickerIds: [] };
+    for (const level of pending) {
+      const reward = rewardForLevel(level);
+      result.claimed.push(level);
+      result.stars += reward.stars;
+      result.tickets += reward.tickets;
+      for (let i = 0; i < reward.stickerDraws; i += 1) {
+        const { stickerId } = drawSticker(motivation.stickers, rng);
+        motivation.stickers[stickerId] = (motivation.stickers[stickerId] ?? 0) + 1;
+        result.stickerIds.push(stickerId);
+      }
+    }
+    if (result.claimed.length === 0) return result;
+    profile.stars += result.stars;
+    profile.tickets += result.tickets;
+    motivation.claimedLevelRewards = [...motivation.claimedLevelRewards, ...result.claimed].sort((a, b) => a - b);
+    motivation.starsEarnedTotal += result.stars;
+    StorageService.saveChildProfile(profile);
+    StorageService.saveMotivationState(motivation);
+    StorageService.checkAchievements();
+    return result;
+  }
+
+  /**
+   * Mua 1 món Shop bằng sao (đủ level mới mua được, mỗi món 1 lần).
+   * Mặc đồ cho Gấu do UI gọi recordDressUp để xong quest vui.
+   */
+  public static buyShopItem(itemId: string): ShopBuyResult {
+    const profile = StorageService.getChildProfile();
+    const check = canBuyShopItem(itemId, profile.unlockedItems, profile.stars, xpToLevel(profile.xp));
+    if (!check.ok) return { ...check };
+    const item = SHOP_MAP.get(itemId);
+    if (!item) return { ok: false, reason: 'unknown-item' };
+    profile.stars -= item.priceStars;
+    profile.unlockedItems = [...profile.unlockedItems, itemId];
+    StorageService.saveChildProfile(profile);
+    const motivation = StorageService.getMotivationState();
+    motivation.shopBoughtTotal += 1;
+    StorageService.saveMotivationState(motivation);
+    StorageService.checkAchievements();
+    return { ok: true, reason: 'ok' };
+  }
+
   public static resetProgress() {
     try {
       localStorage.removeItem(STORAGE_KEYS.CHILD_PROFILE);
@@ -1884,9 +2274,36 @@ public static getParentSettings(): ParentSettings {
       // play-nonce store so a fresh start really starts fresh.
       localStorage.removeItem(STORAGE_KEYS.GAME_PROGRESS);
       localStorage.removeItem(STORAGE_KEYS.GAME_NONCE);
+      // T18A — kho động lực cũng về trắng (sticker, khiên, số liệu ngày).
+      localStorage.removeItem(STORAGE_KEYS.MOTIVATION);
     } catch {
       // Storage unavailable: nothing to clear.
     }
   }
 
+}
+
+// T18A — kết quả trả về của API động lực (đặt ngoài class vì
+// TypeScript không cho khai báo interface trong class body).
+export interface GachaResult {
+  ok: boolean;
+  reason: 'no-ticket' | 'daily-limit' | 'ok';
+  stickerId?: string;
+  isNew?: boolean;
+  /** Sao an ủi khi gắp trùng (mỗi 5 sticker trùng +2 sao). */
+  consolationStars?: number;
+}
+
+export interface LevelClaimResult {
+  claimed: number[];
+  stars: number;
+  tickets: number;
+  stickerIds: string[];
+}
+
+export interface ShopBuyResult {
+  ok: boolean;
+  reason: 'unknown-item' | 'already-owned' | 'level-locked' | 'not-enough-stars' | 'ok';
+  missingLevels?: number;
+  missingStars?: number;
 }

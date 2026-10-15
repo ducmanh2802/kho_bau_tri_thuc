@@ -139,16 +139,10 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
 
   const handleClaimChest = useCallback(() => {
     if (!canClaimChest) return;
+    // T18A — rương ngày qua storage chung (+10 sao, +50 XP, đếm rương + quest vui).
+    if (!StorageService.claimDailyChest()) return;
     sound.playLevelUp();
     fireCelebrationConfetti();
-    const freshProfile = StorageService.getChildProfile();
-    const updated = {
-      ...freshProfile,
-      stars: freshProfile.stars + 10,
-      xp: freshProfile.xp + 50,
-      dailyChestClaimedDate: localDateKey(),
-    };
-    StorageService.saveChildProfile(updated);
     setChestClaimed(true);
     onProfileUpdate();
     sound.speak('Bé đã mở rương kho báu thành công! Nhận thêm mười sao vàng!');

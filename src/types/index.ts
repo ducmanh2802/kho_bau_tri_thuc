@@ -1,3 +1,5 @@
+import type { DailyQuestType, ShopItemType } from './motivation';
+
 export type SubjectType = 'tieng-viet' | 'toan' | 'english' | 'cuoc-song';
 
 export type MasteryStatus = 'NOT_STARTED' | 'LEARNING' | 'PRACTICING' | 'MASTERED' | 'NEEDS_REVIEW';
@@ -79,7 +81,7 @@ export interface DailyQuest {
   rewardStars: number;
   rewardXp: number;
   completed: boolean;
-  type: 'lesson_viet' | 'lesson_math' | 'lesson_english' | 'play_game' | 'daily_review';
+  type: DailyQuestType;
 }
 
 export interface Achievement {
@@ -95,10 +97,12 @@ export interface Achievement {
 export interface AvatarItem {
   id: string;
   name: string;
-  type: 'hat' | 'glasses' | 'shirt' | 'backpack' | 'pet';
+  type: ShopItemType;
   emoji: string;
   priceStars: number;
   unlocked: boolean;
+  /** Level bé tối thiểu để mở bán (mặc định 1 = bán ngay). */
+  minLevel?: number;
 }
 
 export interface ChildProfile {
@@ -112,6 +116,8 @@ export interface ChildProfile {
     shirt?: string;
     backpack?: string;
     pet?: string;
+    background?: string;
+    frame?: string;
   };
   xp: number;
   stars: number;
@@ -222,3 +228,4 @@ export * from './competition';
 export * from './reading';
 export * from './learningOS';
 export * from './decisionEngine';
+export * from './motivation';

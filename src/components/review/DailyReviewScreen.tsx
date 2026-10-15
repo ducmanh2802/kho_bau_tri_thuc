@@ -177,25 +177,8 @@ export const DailyReviewScreen: React.FC<DailyReviewScreenProps> = ({
           onComplete={() => {
             // T01/B10 — a finished review counts toward ach_review_pro (5 days).
             StorageService.recordDailyReviewCompleted();
-            // Also progresses the daily-review quest like other completions.
-            try {
-              const quests = StorageService.getDailyQuests();
-              const profile = StorageService.getChildProfile();
-              quests.forEach((q) => {
-                if (q.type === 'daily_review' && !q.completed) {
-                  q.currentCount += 1;
-                  if (q.currentCount >= q.targetCount) {
-                    q.completed = true;
-                    profile.stars += q.rewardStars;
-                    profile.xp += q.rewardXp;
-                    StorageService.saveChildProfile(profile);
-                  }
-                }
-              });
-              StorageService.saveDailyQuests(quests);
-            } catch {
-              // Quest progress is best-effort
-            }
+            // T18A — quest ôn tập + số câu đã ôn qua engine chung (không đếm trùng).
+            StorageService.recordReviewQuestions(reviewSet.questions.length);
             onProfileUpdate();
           }}
         />
