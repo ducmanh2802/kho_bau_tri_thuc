@@ -564,7 +564,7 @@ export interface CurriculumPositionReport {
  * subject under CURRICULUM_POLICY.MAX_ANSWER_POSITION_SHARE.
  */
 export function buildCurriculumAnswerPositionReport(): CurriculumPositionReport {
-  const subjects = ['tieng-viet', 'toan', 'english'];
+  const subjects = ['tieng-viet', 'toan', 'english', 'cuoc-song'];
   const bySubject: Record<string, CurriculumPositionStat> = {};
   const overall: Record<number, number> = {};
   let overallTotal = 0;
@@ -762,7 +762,7 @@ export function runContentValidation(): ValidationReport {
   }
 
   // Curriculum difficulty spread per subject
-  const subjectDifficulty: Record<string, Set<number>> = { 'tieng-viet': new Set(), toan: new Set(), english: new Set() };
+  const subjectDifficulty: Record<string, Set<number>> = { 'tieng-viet': new Set(), toan: new Set(), english: new Set(), 'cuoc-song': new Set() };
   for (const q of curriculumQuestions) {
     subjectDifficulty[q.subject].add(q.difficulty);
   }

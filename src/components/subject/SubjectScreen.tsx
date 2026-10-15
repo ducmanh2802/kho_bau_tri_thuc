@@ -76,6 +76,15 @@ export const SubjectScreen: React.FC<SubjectScreenProps> = ({
       welcome: 'Welcome to English Island! Let us learn English together!',
       variant: 'subject-english' as const,
     },
+    'cuoc-song': {
+      title: 'Làng Cuộc Sống Lớp 1',
+      subtitle: 'Cảm xúc · An toàn · Kỹ năng sống · Quan sát',
+      mascotEmoji: '🐻',
+      mascotName: 'Gấu Bút Chì',
+      color: 'from-purple-500 to-violet-500',
+      welcome: 'Chào bé đến với Làng Cuộc Sống! Học cách sống vui và an toàn nhé!',
+      variant: 'subject-viet' as const,
+    },
   }[subject];
 
   // Build path points for all lessons across all topics

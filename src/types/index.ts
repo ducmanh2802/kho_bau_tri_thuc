@@ -1,4 +1,4 @@
-export type SubjectType = 'tieng-viet' | 'toan' | 'english';
+export type SubjectType = 'tieng-viet' | 'toan' | 'english' | 'cuoc-song';
 
 export type MasteryStatus = 'NOT_STARTED' | 'LEARNING' | 'PRACTICING' | 'MASTERED' | 'NEEDS_REVIEW';
 
