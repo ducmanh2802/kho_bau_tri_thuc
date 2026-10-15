@@ -4,6 +4,7 @@
  * -> COMPETITION -> TIMED TEST -> RESULT -> REVIEW -> PARENT MODE -> RELOAD -> PERSISTENCE
  */
 
+import { openFirstLesson, describeBlocker, dismissLevelUpCelebration, openCompetitionHub } from './lib.mjs';
 const state = { steps: [], errors: [] };
 
 function log(name, detail) {
@@ -88,7 +89,7 @@ async function body(page, ui) {
     localStorage.setItem('__sentinel', 'alive');
   });
   await page.reload();
-  await page.waitForSelector('text=Xin chào', { timeout: 20000 });
+  await page.waitForSelector('[data-testid="nav-home"]:visible', { timeout: 20000 });
 
   const homeText = await page.evaluate(() => document.body.innerText);
   const nextBestAction = /Hôm Nay Bé Nên Học Gì|Bé Nên Làm Gì Tiếp Theo/.test(homeText);
@@ -113,7 +114,7 @@ async function body(page, ui) {
   log('vietnameseSubject', { lessonCount: lessonButtons });
   if (lessonButtons === 0) fail('no lessons listed for Vietnamese');
 
-  await page.locator('[data-testid^="lesson-button-"]').first().click(CLICK); await page.getByRole('button', { name: /Bắt đầu/ }).click(CLICK);
+  await openFirstLesson(page);
   await page.waitForSelector('text=Câu hỏi 1', { timeout: 20000 });
   log('lessonOpened', { ok: true });
 
@@ -148,11 +149,40 @@ async function body(page, ui) {
   if (!osAfterLesson || osAfterLesson.skillCount === 0)
     fail('Learning OS evidence was not persisted after the lesson');
 
-  await page.getByRole('button', { name: 'Về bản đồ' }).click(CLICK);
+  // T20A / B-03 (fixed in T20A): the lesson's own completion screen (rewards +
+  // "Về bản đồ") must stay on screen so the child sees what they earned.
+  // A claimed level stacks the celebration on top of it — dismiss it first.
+  const celebrated = await dismissLevelUpCelebration(page);
+  if (celebrated) log('levelUpCelebrationDismissed', { ok: true });
+  const backToMap = page.getByRole('button', { name: 'Về bản đồ' });
+  if (await backToMap.count()) {
+    try {
+      await backToMap.click(CLICK);
+    } catch (e) {
+      const blocker = await describeBlocker(page, '[role="dialog"] button');
+      log('backToMapBlocked', { blocker });
+      fail(`"Về bản đồ" click failed: ${e.message.split('\n')[0]}`);
+      throw e;
+    }
+  } else {
+    fail('lesson result screen skipped (B-03) — no "Về bản đồ" button after the last question');
+    const lessonClose = page.locator('[data-testid="lesson-close"]');
+    if (await lessonClose.count()) await lessonClose.first().click(CLICK).catch(() => {});
+  }
   await page.waitForTimeout(300);
 
   // ---------- 3. READING FLUENCY ----------
-  await page.getByRole('navigation', { name: 'Điều hướng nhanh' }).getByRole('button', { name: 'Luyện Đọc', exact: true }).click(CLICK);
+  const readingNav = '[data-testid="nav-reading_fluency"]:visible';
+  try {
+    await page.locator(readingNav).first().click(CLICK);
+  } catch (e) {
+    // T20A — a click that times out is itself a finding: record WHAT covers the
+    // navigation so the bug report can name the overlay.
+    const blocker = await describeBlocker(page, '[data-testid="nav-reading_fluency"]');
+    log('navigationBlocked', { selector: 'nav-reading_fluency', blocker });
+    fail(`nav-reading_fluency click failed: ${e.message.split('\n')[0]}`);
+    throw e;
+  }
   await page.waitForSelector('text=Thang Luyện Đọc Của Bé', { timeout: 20000 });
 
   const ladderText = await page.evaluate(() => document.body.innerText);
@@ -217,15 +247,11 @@ async function body(page, ui) {
   await snap(page, 'afterReading', state.steps);
 
   // ---------- 4. COMPETITION ----------
-  // T06: Competition no longer in main nav; access from Home via World Map or direct navigation
-  await page.goto(APP_ORIGIN + '/');
-  await page.waitForSelector('text=Xin chào', { timeout: 20000 });
-  // Navigate to World Map first (in main nav), then to Competition
-  await page.getByRole('navigation', { name: 'Điều hướng nhanh' }).getByRole('button', { name: 'Bản Đồ', exact: true }).click(CLICK);
-  await page.waitForSelector('text=Bản Đồ Học Tập', { timeout: 20000 });
-  // From World Map, find and click Competition entry
-  await page.getByRole('button', { name: /Đấu Trường|Thi Thử/ }).first().click(CLICK);
-  await page.waitForSelector('text=Kho Báu Đấu Trường Tri Thức', { timeout: 20000 });
+  // T20A / B-04: no child-facing route leads to the arena — the world map only
+  // has the 4 subjects + games + review, and the main nav has no "Đấu Trường"
+  // item. The only entry left is the Parent Dashboard, so the probe reaches the
+  // hub the same way a grown-up does (see openCompetitionHub in qa/lib.mjs).
+  await openCompetitionHub(page);
   log('competitionHub', { ok: true });
 
   await page.getByRole('button', { name: /Vào Thi Thử/ }).first().click(CLICK);
@@ -280,7 +306,14 @@ async function body(page, ui) {
   });
   if (!resultText.includes('bảng phân tích điểm')) fail('decomposed scoring panel missing');
 
-  await page.getByRole('button', { name: 'Hoàn Tất' }).click(CLICK);
+  try {
+    await dismissLevelUpCelebration(page);
+      await page.getByRole('button', { name: 'Hoàn Tất' }).click(CLICK);
+  } catch (e) {
+    log('hoanTatBlocked', await describeBlocker(page, 'button'));
+    fail(`"Hoàn Tất" click failed: ${e.message.split('\n')[0]}`);
+    throw e;
+  }
   await page.waitForTimeout(400);
 
   // ---------- 4b. WRONG-ANSWER PASS: prove error analysis + remediation render ----------
@@ -323,7 +356,8 @@ async function body(page, ui) {
       if (!wrongText.includes('việc nên làm tiếp'))
         fail('error analysis did not render remediation for wrong answers');
 
-      await page.getByRole('button', { name: 'Hoàn Tất' }).click(CLICK);
+      await dismissLevelUpCelebration(page);
+    await page.getByRole('button', { name: 'Hoàn Tất' }).click(CLICK);
       await page.waitForTimeout(400);
     } else {
       log('errorAnalysisRendered', { skipped: 'no second exam button' });
@@ -389,7 +423,7 @@ async function body(page, ui) {
   await snap(page, 'afterParent', state.steps);
   const before = await read();
   await page.reload();
-  await page.waitForSelector('text=Xin chào', { timeout: 20000 });
+  await page.waitForSelector('[data-testid="nav-home"]:visible', { timeout: 20000 });
   const after = await read();
 
   const persisted =
@@ -418,7 +452,7 @@ async function body(page, ui) {
   log('persistenceAfterReload', { before, after, persisted });
 
   await page.reload();
-  await page.waitForSelector('text=Xin chào', { timeout: 20000 });
+  await page.waitForSelector('[data-testid="nav-home"]:visible', { timeout: 20000 });
   const afterSecond = await read();
   log('noDuplicateRewards', { xpBefore: after.xp, xpAfter: afterSecond.xp });
   if (afterSecond.xp !== after.xp) fail('XP changed on reload');

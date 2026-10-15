@@ -385,7 +385,9 @@ export const LessonPlayerModal: React.FC<LessonPlayerModalProps> = ({
               {lesson.subject === 'tieng-viet' ? '🐻' : lesson.subject === 'toan' ? '🦊' : '🐰'}
             </span>
             <div>
-              <h3 className="text-sm md:text-base font-black text-amber-900 truncate max-w-[220px] md:max-w-xs font-display">
+              {/* T20A / B-10 — 220px of title + score pill + close button did
+                  not fit a 360px phone (25px of sideways scroll). */}
+              <h3 className="text-sm md:text-base font-black text-amber-900 truncate max-w-[38vw] md:max-w-xs font-display">
                 {lesson.title}
               </h3>
               <p className="text-[11px] text-amber-700 font-bold">

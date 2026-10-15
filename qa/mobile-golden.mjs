@@ -7,6 +7,7 @@
  * paints in isolation.
  */
 
+import { openFirstLesson, openCompetitionHub } from './lib.mjs';
 const CLICK = { timeout: 12000 };
 
 export default async function run(page, ui) {
@@ -22,13 +23,13 @@ export default async function run(page, ui) {
   out.viewport = `${vp.width}x${vp.height}`;
   await page.evaluate(() => localStorage.clear());
   await page.goto(APP_ORIGIN);
-  await page.waitForSelector('text=Xin chào', { timeout: 20000 });
+  await page.waitForSelector('[data-testid="nav-home"]:visible', { timeout: 20000 });
   leg('home', { ok: true });
 
   // LESSON -> QUESTION -> ANSWER
   await page.getByRole('button', { name: /Tiếng Việt/ }).first().click(CLICK);
   await page.waitForSelector('text=Vương Quốc Tiếng Việt', { timeout: 20000 });
-  await page.locator('[data-testid^="lesson-button-"]').first().click(CLICK); await page.getByRole('button', { name: /Bắt đầu/ }).click(CLICK);
+  await openFirstLesson(page);
   await page.waitForSelector('[role=dialog]', { timeout: 20000 });
   await page.waitForTimeout(800);
   const q = page.locator('[role=dialog] [data-testid=answer-option]').first();
@@ -63,11 +64,8 @@ export default async function run(page, ui) {
 
   // GAME (mount one, verify interactive, exit)
   await page.goto(APP_ORIGIN);
-  await page.waitForSelector('text=Xin chào', { timeout: 20000 });
-  await page
-    .getByRole('navigation', { name: 'Điều hướng nhanh' })
-    .getByRole('button', { name: 'Trò Chơi', exact: true })
-    .click(CLICK);
+  await page.waitForSelector('[data-testid="nav-home"]:visible', { timeout: 20000 });
+  await page.locator('[data-testid="nav-games"]:visible').first().click(CLICK);
   await page.waitForSelector('text=Đấu Trường Trò Chơi Trí Tuệ', { timeout: 20000 });
   await page.getByRole('button', { name: /Chơi ngay/ }).first().click(CLICK);
   await page.waitForTimeout(1500);
@@ -85,15 +83,9 @@ export default async function run(page, ui) {
 
   // COMPETITION -> RESULT
   await page.goto(APP_ORIGIN);
-  await page.waitForSelector('text=Xin chào', { timeout: 20000 });
-  // T06: Competition no longer in main nav; access from World Map
-  await page
-    .getByRole('navigation', { name: 'Điều hướng nhanh' })
-    .getByRole('button', { name: 'Bản Đồ', exact: true })
-    .click(CLICK);
-  await page.waitForSelector('text=Bản Đồ Học Tập', { timeout: 20000 });
-  await page.getByRole('button', { name: /Đấu Trường|Thi Thử/ }).first().click(CLICK);
-  await page.waitForSelector('text=Kho Báu Đấu Trường Tri Thức', { timeout: 20000 });
+  await page.waitForSelector('[data-testid="nav-home"]:visible', { timeout: 20000 });
+  // T20A / B-04: no world-map entry for the arena — reach it like a parent does.
+  await openCompetitionHub(page);
   await page.getByRole('button', { name: /Vào Thi Thử/ }).first().click(CLICK);
   await page.waitForSelector('role=dialog', { timeout: 20000 });
   await page.waitForTimeout(800);
@@ -127,7 +119,7 @@ export default async function run(page, ui) {
 
   // PARENT MODE -> gate -> modal
   await page.goto(APP_ORIGIN);
-  await page.waitForSelector('text=Xin chào', { timeout: 20000 });
+  await page.waitForSelector('[data-testid="nav-home"]:visible', { timeout: 20000 });
   await page.getByRole('button', { name: 'Khu vực dành cho Ba Mẹ' }).click(CLICK);
   await page.waitForSelector('text=Cổng Xác Nhận Phụ Huynh', { timeout: 20000 });
   await page.waitForTimeout(400);
@@ -150,7 +142,7 @@ export default async function run(page, ui) {
     xp: JSON.parse(localStorage.getItem('kho_bau_child_profile') || '{}').xp || 0,
   }));
   await page.reload();
-  await page.waitForSelector('text=Xin chào', { timeout: 20000 });
+  await page.waitForSelector('[data-testid="nav-home"]:visible', { timeout: 20000 });
   const after = await page.evaluate(() => ({
     xp: JSON.parse(localStorage.getItem('kho_bau_child_profile') || '{}').xp || 0,
   }));

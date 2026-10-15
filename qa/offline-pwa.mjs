@@ -1,3 +1,4 @@
+import { openFirstLesson } from './lib.mjs';
 /**
  * OFFLINE / PWA QA (§25)
  *
@@ -15,7 +16,7 @@ export default async function run(page, ui) {
 
   // 1) Load once online so the worker installs and caches the shell.
   await page.goto(APP_ORIGIN);
-  await page.waitForSelector('text=Xin chào', { timeout: 30000 });
+  await page.waitForSelector('[data-testid="nav-home"]:visible', { timeout: 30000 });
 
   await page.waitForFunction(
     async () => {
@@ -86,7 +87,7 @@ export default async function run(page, ui) {
 
   // 2) Reload once more so every hashed bundle passes through the worker.
   await page.reload();
-  await page.waitForSelector('text=Xin chào', { timeout: 30000 });
+  await page.waitForSelector('[data-testid="nav-home"]:visible', { timeout: 30000 });
   await page.waitForTimeout(2500);
 
   const cached = await page.evaluate(async () => {
@@ -116,7 +117,7 @@ export default async function run(page, ui) {
   await page.reload();
   let offlineRendered = false;
   try {
-    await page.waitForSelector('text=Xin chào', { timeout: 20000 });
+    await page.waitForSelector('[data-testid="nav-home"]:visible', { timeout: 20000 });
     offlineRendered = true;
   } catch (e) {
     out.errors.push('app did not render while offline');
@@ -126,7 +127,7 @@ export default async function run(page, ui) {
   if (offlineRendered) {
     const offlineText = await page.evaluate(() => document.body.innerText);
     step('offlineContent', {
-      hasGreeting: offlineText.includes('Xin chào'),
+      hasGreeting: /Chào|Xin chào/.test(offlineText),
       hasReadingCard: offlineText.includes('Luyện Đọc'),
       hasCompetitionCard: offlineText.includes('Đấu Trường'),
       hasNextBestAction: /Hôm Nay Bé Nên Học Gì|Bé Nên Làm Gì Tiếp Theo/.test(offlineText),
@@ -135,7 +136,7 @@ export default async function run(page, ui) {
     // Core learning must still work offline: complete a question's feedback loop.
     await page.getByRole('button', { name: /Tiếng Việt/ }).first().click({ timeout: 12000 });
     await page.waitForSelector('text=Vương Quốc Tiếng Việt', { timeout: 20000 });
-    await page.locator('[data-testid^="lesson-button-"]').first().click({ timeout: 12000 }); await page.getByRole('button', { name: /Bắt đầu/ }).click({ timeout: 12000 });
+    await openFirstLesson(page, { timeout: 12000 });
     await page.waitForSelector('text=Câu hỏi 1', { timeout: 20000 });
     const opt = page.locator('[data-testid=answer-option]').first();
     if (await opt.count()) await opt.click({ timeout: 12000 });
@@ -154,8 +155,8 @@ export default async function run(page, ui) {
   // 4) Back online — network-first must recover cleanly.
   await page.context().setOffline(false);
   await page.reload();
-  await page.waitForSelector('text=Xin chào', { timeout: 30000 });
-  const onlineAgain = await page.evaluate(() => document.body.innerText.includes('Xin chào'));
+  await page.waitForSelector('[data-testid="nav-home"]:visible', { timeout: 30000 });
+  const onlineAgain = await page.evaluate(() => /Chào|Xin chào/.test(document.body.innerText));
   step('backOnline', { rendered: onlineAgain });
   if (!onlineAgain) out.errors.push('app failed to recover after going back online');
 
@@ -176,7 +177,7 @@ export default async function run(page, ui) {
   });
   await page.waitForTimeout(1500);
   await page.reload();
-  await page.waitForSelector('text=Xin chào', { timeout: 30000 });
+  await page.waitForSelector('[data-testid="nav-home"]:visible', { timeout: 30000 });
   const survived = await page.evaluate(() => {
     let xp = -1;
     try {

@@ -17,7 +17,7 @@ export default async function run(page, ui) {
 
   await page.evaluate(() => localStorage.clear());
   await page.reload();
-  await page.waitForSelector('text=Xin chào', { timeout: 20000 });
+  await page.waitForSelector('[data-testid="nav-home"]:visible', { timeout: 20000 });
 
   // --- Responsive: horizontal overflow + touch target size ---
   for (const vp of VIEWPORTS) {
@@ -36,11 +36,31 @@ export default async function run(page, ui) {
         if (r.right > doc.clientWidth + 2) {
           offenders.push({
             tag: el.tagName.toLowerCase(),
-            cls: (el.className || '').toString().slice(0, 60),
+            cls: (el.className || '').toString().slice(0, 80),
+            text: (el.getAttribute('aria-label') || el.textContent || '').trim().slice(0, 40),
             right: Math.round(r.right),
           });
         }
         if (offenders.length >= 5) break;
+      }
+
+      // Who actually WIDENS the page: an element whose own content is wider
+      // than its box and that does not clip/scroll it. Without this the
+      // offender list only shows whoever happens to sit at the right edge.
+      const wideSources = [];
+      for (const el of Array.from(document.querySelectorAll('body *'))) {
+        const cs = getComputedStyle(el);
+        if (cs.overflowX !== 'visible' || cs.position === 'absolute' || cs.position === 'fixed') continue;
+        if (el.scrollWidth > el.clientWidth + 2 && el.clientWidth > 0) {
+          wideSources.push({
+            tag: el.tagName.toLowerCase(),
+            cls: (el.className || '').toString().slice(0, 80),
+            text: (el.getAttribute('aria-label') || el.textContent || '').trim().slice(0, 40),
+            clientWidth: el.clientWidth,
+            scrollWidth: el.scrollWidth,
+          });
+        }
+        if (wideSources.length >= 6) break;
       }
 
       // Interactive targets below 44px on small screens (§23).
@@ -57,7 +77,7 @@ export default async function run(page, ui) {
         }
         if (smallTargets.length >= 8) break;
       }
-      return { overflow, offenders, smallTargets };
+      return { overflow, offenders, smallTargets, wideSources };
     });
 
     out.viewports.push({
@@ -66,6 +86,11 @@ export default async function run(page, ui) {
       overflowingElements: metrics.offenders.length,
       touchTargetsUnder44px: metrics.smallTargets.length,
       examples: metrics.smallTargets.slice(0, 4),
+      // T20A — the offending elements themselves, so a bug report can name the
+      // component that has to be fixed instead of only "some overflow".
+      offenders: metrics.offenders,
+      // T20A — and the box whose content is too wide (the real root cause).
+      wideSources: metrics.wideSources,
     });
   }
 
@@ -101,7 +126,7 @@ export default async function run(page, ui) {
   // --- Reduced motion (§24) ---
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.reload();
-  await page.waitForSelector('text=Xin chào', { timeout: 20000 });
+  await page.waitForSelector('[data-testid="nav-home"]:visible', { timeout: 20000 });
   await page.waitForTimeout(500);
   out.reducedMotion = await page.evaluate(() => {
     const el = document.querySelector('.animate-float') || document.querySelector('main *');

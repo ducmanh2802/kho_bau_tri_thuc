@@ -194,7 +194,9 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             onClick={handleBearClick}
             aria-label="Phản ứng từ Linh thú Gấu"
-            className="absolute top-2 right-2 w-10 h-10 rounded-full bg-amber-100 border border-amber-200 flex items-center justify-center text-amber-600 text-xs font-bold transition-transform hover:bg-amber-200 active:scale-90"
+            // T20A / B-07 — 00_RULES §7 requires every tappable target to be at
+            // least 44px; this mascot paw was 40×40 on every screen size.
+            className="absolute top-2 right-2 w-11 h-11 rounded-full bg-amber-100 border border-amber-200 flex items-center justify-center text-amber-600 text-xs font-bold transition-transform hover:bg-amber-200 active:scale-90"
           >
             🐾
           </button>
@@ -288,7 +290,10 @@ export const Header: React.FC<HeaderProps> = ({
             className="min-h-[44px] min-w-[44px] px-3"
             onClick={() => {
               sound.playClick();
-              onOpenParent;
+              // T20A / B-05 — this used to read `onOpenParent;` (a no-op), so the
+              // "Ba Mẹ" button opened nothing and the whole parent area was
+              // unreachable from the header.
+              onOpenParent();
             }}
             aria-label="Khu vực dành cho Ba Mẹ"
             leftIcon={<Shield className="w-3.5 h-3.5 text-amber-400" aria-hidden="true" />}

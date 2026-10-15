@@ -43,10 +43,21 @@ export const Pill: React.FC<PillProps> = ({
   removable = false,
   onRemove,
 }) => {
+  // T20A / bug B-06 — a display utility passed through `className` must win
+  // over the base `inline-flex`. Tailwind emits `.hidden` BEFORE
+  // `.inline-flex`, so `<Pill className="hidden md:flex">` never hid and the
+  // header's stat pills stayed on screen at 360px, pushing the whole header
+  // 179px past the viewport (horizontal scrolling on every phone).
+  const hasDisplayUtility =
+    /(?:^|\s)(?:hidden|block|inline|inline-block|inline-flex|flex|grid|table|contents)(?:\s|$)/.test(className);
+  const baseClasses = hasDisplayUtility
+    ? 'items-center font-black rounded-full border'
+    : 'inline-flex items-center font-black rounded-full border';
+
   return (
     <span
       className={`
-        inline-flex items-center font-black rounded-full border
+        ${baseClasses}
         ${variantClasses[variant]}
         ${sizeClasses[size]}
         ${className}

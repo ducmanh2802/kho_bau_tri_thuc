@@ -165,8 +165,13 @@ export const SubjectScreen: React.FC<SubjectScreenProps> = ({
   };
 
   const handleLessonComplete = () => {
+    // T20A / B-03 — this used to also unmount the lesson, so the player's own
+    // "CHÚC MỪNG BÉ HOÀN THÀNH!" screen (sao/XP/vé + "Về bản đồ") never showed:
+    // the child finished a lesson and was dropped straight back on the map
+    // without ever seeing what they earned. Rewards are already recorded by
+    // LessonPlayerModal (StorageService.completeLesson), so here we only
+    // refresh the profile and let the child tap "Về bản đồ" to leave.
     onProfileUpdate();
-    setActiveLesson(null);
   };
 
   const handleClaimChest = (topic: Topic) => {
@@ -212,8 +217,11 @@ export const SubjectScreen: React.FC<SubjectScreenProps> = ({
           Quay Lại
         </KidButton>
 
+        {/* T20A / B-10 — the pill is `whitespace-nowrap`, so the long
+            "Chương trình Chuẩn Lớp 1 · N Chủ Điểm" label pushed this row
+            ~59px past a 360px phone. Shorter wording keeps it on one line. */}
         <Pill variant="default" size="sm" className="bg-amber-100/80 text-amber-900 border-amber-300">
-          Chương trình Chuẩn Lớp 1 · {topics.length} Chủ Điểm
+          Chuẩn Lớp 1 · {topics.length} Chủ Điểm
         </Pill>
       </div>
 
@@ -508,7 +516,10 @@ export const SubjectScreen: React.FC<SubjectScreenProps> = ({
       {activeLesson && (
         <LessonPlayerModal
           lesson={activeLesson}
-          onClose={() => setActiveLesson(null)}
+          onClose={() => {
+            onProfileUpdate();
+            setActiveLesson(null);
+          }}
           onComplete={handleLessonComplete}
         />
       )}
