@@ -19,10 +19,10 @@ function swPrecachePlugin() {
   let injected = false;
   return {
     name: 't02c-sw-precache',
-    apply: 'build' as const,
-    writeBundle(options) {
+    apply: undefined,
+    writeBundle(_options: any) {
       if (injected) return;
-      const outDir = path.resolve(options?.dir ?? 'dist');
+      const outDir = path.resolve(_options?.dir ?? 'dist');
       const urls = collectPrecacheUrls(outDir);
       injectPrecacheManifest(path.join(outDir, 'sw.js'), urls);
       injected = true;
