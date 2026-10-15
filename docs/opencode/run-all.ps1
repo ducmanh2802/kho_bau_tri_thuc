@@ -613,8 +613,17 @@ function Prompt-Implement([string]$Id, [string]$File, [string]$B, [bool]$Continu
   $p += '3) Git: you are already on branch ' + $B + '. Do not create, switch, merge, rebase, stash or push branches; just commit your work on this branch. '
   $p += '4) Before finishing, npm run typecheck, npm test and npm run build must all pass; fix every failure. '
   $p += '5) Write docs/opencode/reports/' + $Id + '_REPORT.md as the rules require and commit everything. '
-  $p += '6) If part of the task is impossible, do the closest safe alternative and explain it in the report instead of stopping. '
+  $p += '6) The main deliverable of the task (the content, lessons, questions, games or features it asks for) is never optional: if an edit fails (for example a whitespace mismatch), rewrite the whole file with the write tool or put the new content in new files and import them. Only a genuinely impossible part may be replaced by the closest safe alternative, explained in the report - infrastructure alone with the content left for later is a failed task. '
   $p += 'Never edit docs/opencode/queue, docs/opencode/state, docs/opencode/logs or docs/opencode/TRANG_THAI.md.'
+  return $p
+}
+
+function Prompt-Finish([string]$Id, [string]$File, [string]$B) {
+  $p = 'You are running UNATTENDED inside the Kho Bau auto-runner on Windows: nobody will answer questions. '
+  $p += 'Task ' + $Id + ' (docs/opencode/queue/' + $File + ') was worked on in the current branch ' + $B + ', but its report docs/opencode/reports/' + $Id + '_REPORT.md says part of the work is not done. '
+  $p += 'Read the task file, the original spec it names, the report and git diff main, then DO the missing work of THIS task now - above all its main deliverable (content, lessons, questions, games, features). Items the report says belong to other tasks are not yours: leave them. '
+  $p += 'If an edit fails (for example a whitespace mismatch), rewrite the whole file with the write tool or put the new content in new files and import them. Add tests for what you add. '
+  $p += 'Stay on branch ' + $B + ': do not create, switch, merge, stash or push branches. Run npm run typecheck, npm test and npm run build until all pass, commit, and update the report so it lists what is now done (keep a "not done" note only for something truly impossible, with the reason).'
   return $p
 }
 
@@ -800,6 +809,21 @@ function Process-Task($T) {
   if ((-not (Test-Path $report)) -and ((Ahead $b) -eq 0)) {
     Set-Result $id ('LOI: OpenCode khong tao ra thay doi nao - xem logs/' + $id + '_run*.err.log')
     return $false
+  }
+
+  # 1b) a report that admits the main work is not done gets one extra round to finish it
+  if (Test-Path $report) {
+    $rtxt = ''
+    try { $rtxt = [IO.File]::ReadAllText($report) } catch {}
+    if ($rtxt -match '(?i)(ch\u01b0a (th\u1ef1c hi\u1ec7n|ho\u00e0n th\u00e0nh|ho\u00e0n t\u1ea5t)|kh\u00f4ng th\u1ec3 (th\u00eam|t\u1ea1o|s\u1eeda|ho\u00e0n)|not (implemented|done|completed)|left for later)') {
+      Log ($id + ': bao cao ghi con viec chua lam - giao OpenCode lam not')
+      Set-Result $id ('dang lam not phan con thieu (' + $script:ModelId + ')')
+      $before = Work-State
+      $code = @(Run-OpenCode (Prompt-Finish $id $file $b) ('Auto ' + $id + ' lam not') (Join-Path $LogDir ($id + '_finish')) $TaskTimeoutMin)[-1]
+      if ((Cur-Branch) -ne $b) { [void](Ensure-Branch $b) }
+      Judge-Run $code $before
+      Commit-All ('chore(' + $id + '): lam not phan con thieu (auto-runner)')
+    }
   }
 
   # 2) verify + automatic fix rounds
