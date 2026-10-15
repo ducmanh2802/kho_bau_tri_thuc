@@ -190,6 +190,22 @@ export interface ParentSettings {
   optionalBreaks: boolean;
   /** Night mode (eye-friendly dark theme). */
   nightMode: boolean;
+
+  // T18C — Hệ thống động lực
+  /** Giới hạn số lượt quay máy gắp sticker mỗi ngày (0 = không giới hạn). */
+  maxGachaPerDay: number;
+  /** Bật/tắt toàn bộ phần thưởng (sao, XP, vé, sticker, đồ Shop). */
+  rewardsEnabled: boolean;
+  /** Lịch sử phần thưởng gần đây (tối đa 50 mục). */
+  rewardHistory: RewardHistoryEntry[];
+}
+
+export interface RewardHistoryEntry {
+  date: string; // YYYY-MM-DD
+  type: 'stars' | 'xp' | 'tickets' | 'sticker' | 'shop_item' | 'level_reward' | 'quest' | 'chest' | 'gacha';
+  amount: number;
+  description: string;
+  itemId?: string; // stickerId, shopItemId, level, questId
 }
 
 /**

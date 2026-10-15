@@ -28,6 +28,9 @@ import {
   Languages,
   Target,
   TrendingUp,
+  History,
+  Gift,
+  RotateCcw,
 } from 'lucide-react';
 import { KidBoxParentPanel } from './KidBoxParentPanel';
 
@@ -163,6 +166,20 @@ const [activeTab, setActiveTab] = useState<
 
   const handleToggleOptionalBreaks = () => {
     const next = { ...settings, optionalBreaks: !settings.optionalBreaks };
+    setSettings(next);
+    StorageService.saveParentSettings(next);
+    sound.playClick();
+  };
+
+  const handleUpdateMaxGachaPerDay = (value: number) => {
+    const next = { ...settings, maxGachaPerDay: Math.max(0, Math.round(value)) };
+    setSettings(next);
+    StorageService.saveParentSettings(next);
+    sound.playClick();
+  };
+
+  const handleToggleRewardsEnabled = () => {
+    const next = { ...settings, rewardsEnabled: !settings.rewardsEnabled };
     setSettings(next);
     StorageService.saveParentSettings(next);
     sound.playClick();
@@ -1148,6 +1165,89 @@ const [activeTab, setActiveTab] = useState<
                           {settings.optionalBreaks ? 'Bật' : 'Tắt'}
                         </button>
                       </div>
+                    </div>
+                  </div>
+
+                  {/* T18C — Hệ Thống Động Lực: Shop, Máy Gắp, Phần Thưởng */}
+                  <div className="p-5 bg-slate-50 border border-slate-200 rounded-2xl space-y-3">
+                    <h4 className="text-sm font-black text-slate-800 mb-2 flex items-center gap-2">
+                      <Gift className="w-5 h-5 text-amber-600" />
+                      Hệ Thống Động Lực
+                    </h4>
+                    <p className="text-xs text-slate-500 mb-3">
+                      Kiểm soát lượt quay máy gắp, bật/tắt phần thưởng và xem lịch sử nhận thưởng.
+                    </p>
+
+                    <div className="flex items-center justify-between py-2 border-b border-slate-200 text-xs">
+                      <div>
+                        <span className="font-bold text-slate-800 block">Giới hạn lượt máy gắp/ngày</span>
+                        <span className="text-slate-500">0 = không giới hạn (mặc định 5 lượt)</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => handleUpdateMaxGachaPerDay(Math.max(0, settings.maxGachaPerDay - 1))}
+                          disabled={settings.maxGachaPerDay <= 0}
+                          className="p-1.5 bg-white border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                          aria-label="Giảm giới hạn"
+                        >
+                          <span className="text-lg leading-none">−</span>
+                        </button>
+                        <span className="w-12 text-center font-bold text-slate-900">
+                          {settings.maxGachaPerDay === 0 ? '∞' : settings.maxGachaPerDay}
+                        </span>
+                        <button
+                          onClick={() => handleUpdateMaxGachaPerDay(settings.maxGachaPerDay + 1)}
+                          className="p-1.5 bg-white border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-100"
+                          aria-label="Tăng giới hạn"
+                        >
+                          <span className="text-lg leading-none">+</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between py-2 text-xs">
+                      <div>
+                        <span className="font-bold text-slate-800 block">Bật/Tắt Toàn Bộ Phần Thưởng</span>
+                        <span className="text-slate-500">Sao, XP, vé, sticker, đồ Shop, quà level, quà nhiệm vụ</span>
+                      </div>
+                      <button
+                        onClick={handleToggleRewardsEnabled}
+                        className={`px-3 py-1.5 rounded-lg font-bold text-xs ${
+                          settings.rewardsEnabled ? 'bg-emerald-600 text-white' : 'bg-slate-300 text-slate-700'
+                        }`}
+                      >
+                        {settings.rewardsEnabled ? 'Bật' : 'Tắt'}
+                      </button>
+                    </div>
+
+                    <div className="pt-2 border-t border-slate-200">
+                      <h5 className="text-xs font-bold text-slate-700 mb-2 flex items-center gap-1">
+                        <History className="w-3.5 h-3.5" /> Lịch Sử Phần Thưởng Gần Đây
+                      </h5>
+                      {settings.rewardHistory && settings.rewardHistory.length > 0 ? (
+                        <div className="space-y-1.5 max-h-40 overflow-y-auto">
+                          {settings.rewardHistory.slice(0, 20).map((entry, idx) => (
+                            <div
+                              key={`${entry.date}-${entry.type}-${idx}`}
+                              className="p-2 bg-white border border-slate-200 rounded-xl text-[10px] font-medium text-slate-700"
+                            >
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="font-bold text-slate-800">{entry.date}</span>
+                                <span className="text-slate-400">{entry.type}</span>
+                              </div>
+                              <div className="flex items-center justify-between gap-2 mt-0.5">
+                                <span>{entry.description}</span>
+                                <span className="text-amber-700 font-black">+{entry.amount}</span>
+                              </div>
+                              {entry.itemId && (
+                                <span className="text-[9px] text-slate-500">ID: {entry.itemId}</span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-xs text-slate-500 italic py-2 text-center">Chưa có lịch sử phần thưởng.</p>
+                      )}
                     </div>
                   </div>
 
