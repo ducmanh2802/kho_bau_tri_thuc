@@ -27,3 +27,19 @@
 
 ### 3. Phân Phối Chương Trình Tiếng Anh (10 Chủ Điểm)
 - Phonics ABC, Numbers 1–10, Colors, Animals, Family, School Things, My Body, Food & Fruits, Toys & Play, Greetings.
+
+### 4. Phân Phối Môn Em & Cuộc Sống (14 Chủ Đề, 26 Bài, 264 Câu — T14B)
+- **Cảm Xúc Của Bé**: Nhận biết vui, không vui và cách điều hoà (hít thở, nói với người lớn).
+- **An Toàn Khi Ra Đường**: Đèn tín hiệu, qua đường cùng người lớn, đội mũ bảo hiểm, đi bên phải.
+- **Gia Đình Em**: Thành viên gia đình, yêu thương và giúp đỡ người thân.
+- **Nhà Em An Toàn**: Đồ dùng trong nhà, vật sắc nhọn, ổ điện, lửa và nước nóng.
+- **Trường Học Của Em**: Đồ dùng học tập, chào thầy cô, giơ tay phát biểu, giúp bạn.
+- **Em Trong Cộng Đồng**: Nghề nghiệp (bác sĩ, cô giáo, người bán hàng), chợ, bệnh viện, bưu điện.
+- **Thực Vật Quanh Em**: Bộ phận cây (rễ, thân, lá, hoa, quả), cây ăn quả, rau xanh, hoa.
+- **Động Vật Quanh Em**: Nơi sống (ao hồ, tán cây, chuồng), con vật có ích (bò, gà, ong).
+- **Cơ Thể & Giác Quan**: Bảo vệ mắt, tai, răng; năm giác quan nhìn, nghe, ngửi, nếm, sờ.
+- **Vệ Sinh & Ăn Uống**: Rửa tay, đánh răng, che miệng khi ho; rau xanh, quả ngọt, nước lọc.
+- **Thời Tiết & Mùa**: Ngày và đêm, mặt trời, mặt trăng, cầu vồng; bốn mùa xuân, hạ, thu, đông.
+- **An Toàn Quanh Em**: Điện, lửa, nước; người lạ; số khẩn cấp 111/113/114/115 (nhận biết, nhờ người lớn gọi).
+- **Lễ Phép & Kỹ Năng**: Chào hỏi, cảm ơn, xin lỗi; thật thà, chia sẻ, chờ tới lượt.
+- **Khoa Học Vui**: Chìm/nổi, vật sống, nam châm hút sắt, bóng đổ.

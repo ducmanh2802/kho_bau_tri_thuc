@@ -125,6 +125,87 @@ export function buildOrderingAnswer(items: string[]): string {
 }
 
 /**
+ * T14B — lesson-player matching state machine (pure, tested).
+ *
+ * The player keeps one entry per question+left label: `"<qid>::<left>"`.
+ * A pending tap is stored as `"L:<label>"` / `"R:<label>"`; a finished pair
+ * as `"<left>=<right>"` — the exact canonical form `checkAnswer` expects.
+ *
+ * Gesture (matches the on-screen hint "chạm ô bên trái, rồi chạm ô bên phải",
+ * right-first order also works): tapping a label selects it (clearing any
+ * other pending tap); tapping the opposite side completes the pair; tapping
+ * the same pending label again cancels it. Completed pairs are never
+ * disturbed. Returns a NEW state object; never mutates the input.
+ */
+export function applyMatchingTap(
+  prev: Record<string, string>,
+  questionId: string,
+  side: 'left' | 'right',
+  value: string
+): Record<string, string> {
+  const state = { ...prev };
+  const prefix = `${questionId}::`;
+  const key = `${prefix}${value}`;
+  const pending = (v: string | undefined): boolean =>
+    typeof v === 'string' && (v.startsWith('L:') || v.startsWith('R:'));
+  if (state[key] === `${side === 'left' ? 'L' : 'R'}:${value}`) {
+    delete state[key];
+    return state;
+  }
+  const otherPending = Object.keys(state).find((k) => k.startsWith(prefix) && pending(state[k]));
+  if (otherPending !== undefined) {
+    const [otherSide, otherValue] = [state[otherPending][0], state[otherPending].slice(2)];
+    if (otherSide !== (side === 'left' ? 'L' : 'R')) {
+      // Opposite side pending: complete the pair under the LEFT label.
+      const left = side === 'left' ? value : otherValue;
+      const right = side === 'left' ? otherValue : value;
+      delete state[otherPending];
+      delete state[key];
+      state[`${prefix}${left}`] = `${left}=${right}`;
+      return state;
+    }
+  }
+  // Fresh pending tap: clear other pendings, keep completed pairs.
+  for (const k of Object.keys(state)) {
+    if (k.startsWith(prefix) && pending(state[k])) delete state[k];
+  }
+  state[key] = `${side === 'left' ? 'L' : 'R'}:${value}`;
+  return state;
+}
+
+/** True when every declared pair has a finished "<left>=<right>" entry. */
+export function isMatchingComplete(
+  pairs: { left: string; right: string }[],
+  state: Record<string, string>,
+  questionId: string
+): boolean {
+  return (
+    pairs.length > 0 &&
+    pairs.every((p) => {
+      const stored = state[`${questionId}::${p.left}`];
+      return typeof stored === 'string' && stored.includes('=');
+    })
+  );
+}
+
+/**
+ * Canonical user answer for a matching question: finished pairs joined by
+ * "|". Entries already hold the "<left>=<right>" form (no extra prefix).
+ */
+export function buildMatchingCanonical(
+  pairs: { left: string; right: string }[],
+  state: Record<string, string>,
+  questionId: string
+): string {
+  const partial = Object.entries(state)
+    .filter(([k, v]) => k.startsWith(`${questionId}::`) && v.includes('='))
+    .map(([, v]) => v)
+    .join('|');
+  if (!isMatchingComplete(pairs, state, questionId)) return partial;
+  return pairs.map((p) => state[`${questionId}::${p.left}`]).join('|');
+}
+
+/**
  * Get the expected answer format description for a question type.
  */
 export function getAnswerFormatDescription(type: QuestionType): string {
