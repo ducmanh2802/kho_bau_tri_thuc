@@ -613,7 +613,7 @@ function Prompt-Implement([string]$Id, [string]$File, [string]$B, [bool]$Continu
   $p += '3) Git: you are already on branch ' + $B + '. Do not create, switch, merge, rebase, stash or push branches; just commit your work on this branch. '
   $p += '4) Before finishing, npm run typecheck, npm test and npm run build must all pass; fix every failure. '
   $p += '5) Write docs/opencode/reports/' + $Id + '_REPORT.md as the rules require and commit everything. '
-  $p += '6) The main deliverable of the task (the content, lessons, questions, games or features it asks for) is never optional: if an edit fails (for example a whitespace mismatch), rewrite the whole file with the write tool or put the new content in new files and import them. Only a genuinely impossible part may be replaced by the closest safe alternative, explained in the report - infrastructure alone with the content left for later is a failed task. '
+  $p += '6) The main deliverable of the task (the content, lessons, questions, games or features it asks for) is never optional: if an edit fails (for example a whitespace mismatch), rewrite the whole file with the write tool or put the new content in new files and import them. Only a genuinely impossible part may be replaced by the closest safe alternative, explained in the report - infrastructure alone with the content left for later is a failed task. Keep every single file you write under about 300 lines: split big content into several files (one per unit/topic) and import them - very long outputs time out (504) on free models. '
   $p += 'Never edit docs/opencode/queue, docs/opencode/state, docs/opencode/logs or docs/opencode/TRANG_THAI.md.'
   return $p
 }
@@ -622,7 +622,7 @@ function Prompt-Finish([string]$Id, [string]$File, [string]$B) {
   $p = 'You are running UNATTENDED inside the Kho Bau auto-runner on Windows: nobody will answer questions. '
   $p += 'Task ' + $Id + ' (docs/opencode/queue/' + $File + ') was worked on in the current branch ' + $B + ', but its report docs/opencode/reports/' + $Id + '_REPORT.md says part of the work is not done. '
   $p += 'Read the task file, the original spec it names, the report and git diff main, then DO the missing work of THIS task now - above all its main deliverable (content, lessons, questions, games, features). Items the report says belong to other tasks are not yours: leave them. '
-  $p += 'If an edit fails (for example a whitespace mismatch), rewrite the whole file with the write tool or put the new content in new files and import them. Add tests for what you add. '
+  $p += 'If an edit fails (for example a whitespace mismatch), put the new content in new files (each under about 300 lines) and import them, or rewrite a small file with the write tool. Add tests for what you add. '
   $p += 'Stay on branch ' + $B + ': do not create, switch, merge, stash or push branches. Run npm run typecheck, npm test and npm run build until all pass, commit, and update the report so it lists what is now done (keep a "not done" note only for something truly impossible, with the reason).'
   return $p
 }
