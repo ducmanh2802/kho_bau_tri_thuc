@@ -40,7 +40,6 @@ function buildRoundsFromGameItems(items: GameItem[], tier: number, seed: number)
 export const ListenPickPhonicsGame: React.FC<{ onExit: () => void }> = ({ onExit }) => {
   const roundsPerTier = useMemo(() => defaultRoundsPerTier(), []);
   const stage = useGameStage({ gameId: 'listen_pick', roundsPerTier, advanceDelayMs: 1200 });
-  const { reportCorrect, reportWrong, showCorrectAnswer, correctAnswer } = useGameFeedback();
 
   const [gameItems, setGameItems] = useState<GameItem[]>([]);
   const [currentRound, setCurrentRound] = useState<ListenPickItem | null>(null);
@@ -64,30 +63,6 @@ export const ListenPickPhonicsGame: React.FC<{ onExit: () => void }> = ({ onExit
       }
     }
   }, [gameItems, stage.tier, stage.nonce, stage.roundIdx]);
-
-  const playVoice = () => {
-    if (currentRound) {
-      sound.speak(currentRound.spokenPrompt);
-    }
-  };
-
-  useEffect(() => {
-    const timer = setTimeout(() => playVoice(), 400);
-    return () => clearTimeout(timer);
-  }, [stage.tier, stage.roundIdx, currentRound]);
-
-  const handlePick = (card: PhonicsCard) => {
-    if (stage.locked || !currentRound) return;
-    if (card.word === currentRound.targetWord) {
-      sound.playCorrect();
-      reportCorrect(card.word);
-      stage.submitCorrect();
-    } else {
-      sound.playWrong();
-      reportWrong(card.word, currentRound.targetWord);
-      stage.submitWrong();
-    }
-  };
 
   return (
     <GameModalWrapper
@@ -115,6 +90,44 @@ export const ListenPickPhonicsGame: React.FC<{ onExit: () => void }> = ({ onExit
       audioInstruction="Hãy bấm vào chiếc loa để nghe và chọn hình đúng"
       praiseSubject="VIETNAMESE"
     >
+      {currentRound && <ListenPickStage stage={stage} currentRound={currentRound} />}
+    </GameModalWrapper>
+  );
+};
+
+/**
+ * Vòng chơi thật — nằm TRONG GameModalWrapper nên mới dùng được
+ * useGameFeedback (T15: sửa crash "must be used within GameModalWrapper").
+ */
+const ListenPickStage: React.FC<{
+  stage: ReturnType<typeof useGameStage>;
+  currentRound: ListenPickItem;
+}> = ({ stage, currentRound }) => {
+  const { reportCorrect, reportWrong, showCorrectAnswer, correctAnswer } = useGameFeedback();
+
+  const playVoice = () => {
+    sound.speak(currentRound.spokenPrompt);
+  };
+
+  useEffect(() => {
+    const timer = setTimeout(() => playVoice(), 400);
+    return () => clearTimeout(timer);
+  }, [stage.tier, stage.roundIdx, currentRound]);
+
+  const handlePick = (card: PhonicsCard) => {
+    if (stage.locked) return;
+    if (card.word === currentRound.targetWord) {
+      sound.playCorrect();
+      reportCorrect(card.word);
+      stage.submitCorrect();
+    } else {
+      sound.playWrong();
+      reportWrong(card.word, currentRound.targetWord);
+      stage.submitWrong();
+    }
+  };
+
+  return (
       <div className="w-full max-w-xl flex flex-col items-center justify-center p-4">
         {/* Giant Speaker Button */}
         <div className="flex flex-col items-center mb-6">
@@ -131,31 +144,28 @@ export const ListenPickPhonicsGame: React.FC<{ onExit: () => void }> = ({ onExit
         </div>
 
         {/* 4 Illustrated Cards */}
-        {currentRound && (
-          <div className="grid grid-cols-2 gap-4 w-full">
-            {currentRound.cards.map((c, idx) => (
-              <button
-                key={idx}
-                onClick={() => handlePick(c)}
-                disabled={stage.locked}
-                className={`p-4 bg-white hover:bg-amber-50 border-3 rounded-3xl shadow-lg flex flex-col items-center justify-center gap-2 transition-all hover:scale-105 active:scale-95 cursor-pointer ${
-                  showCorrectAnswer && c.word === correctAnswer
-                    ? 'border-4 border-emerald-500 ring-2 ring-emerald-500 animate-pulse'
-                    : 'border-amber-300 hover:border-amber-500'
-                }`}
-              >
-                <span className="text-5xl md:text-6xl">{c.emoji}</span>
-                <span className="text-base md:text-lg font-black text-slate-800 tracking-wide font-display">
-                  {c.word}
-                </span>
-                {showCorrectAnswer && c.word === correctAnswer && (
-                  <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-1 rounded-full">✓ Đúng</span>
-                )}
-              </button>
-            ))}
-          </div>
-        )}
+        <div className="grid grid-cols-2 gap-4 w-full">
+          {currentRound.cards.map((c, idx) => (
+            <button
+              key={idx}
+              onClick={() => handlePick(c)}
+              disabled={stage.locked}
+              className={`p-4 bg-white hover:bg-amber-50 border-3 rounded-3xl shadow-lg flex flex-col items-center justify-center gap-2 transition-all hover:scale-105 active:scale-95 cursor-pointer ${
+                showCorrectAnswer && c.word === correctAnswer
+                  ? 'border-4 border-emerald-500 ring-2 ring-emerald-500 animate-pulse'
+                  : 'border-amber-300 hover:border-amber-500'
+              }`}
+            >
+              <span className="text-5xl md:text-6xl">{c.emoji}</span>
+              <span className="text-base md:text-lg font-black text-slate-800 tracking-wide font-display">
+                {c.word}
+              </span>
+              {showCorrectAnswer && c.word === correctAnswer && (
+                <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-1 rounded-full">✓ Đúng</span>
+              )}
+            </button>
+          ))}
+        </div>
       </div>
-    </GameModalWrapper>
   );
 };

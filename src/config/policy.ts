@@ -266,6 +266,9 @@ export const LAUNCHABLE_GAME_IDS = [
   'sentence_scramble',
   'listen_pick',
   'spelling_duel',
+  'tone_paint',
+  'rhyme_train',
+  'read_and_do',
   'falling_numbers',
   'speed_racing',
   'number_tower',
@@ -276,6 +279,8 @@ export const LAUNCHABLE_GAME_IDS = [
   'animal_safari',
   'color_balloon',
   'phonics_pop',
+  'simon_says',
+  'word_builder_train',
   'memory_cards',
   'coloring_canvas',
 ] as const;

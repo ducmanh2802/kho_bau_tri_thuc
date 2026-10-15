@@ -169,10 +169,11 @@ describe('§32 — persona simulations', () => {
   });
 
   it('CHILD F (fast but poor comprehension) is NOT given high mastery', () => {
-    // 4 s/item (fast) but only 40% accuracy.
+    // 4 s/item (fast) but only 25% accuracy (1/4 per session — genuinely poor;
+    // T13 grew the ACCURACY pool past 4 items, so 40% would round to 2/4 = 50%).
     const profile = simulateReading([
-      { stage: 'ACCURACY', accuracy: 40, seconds: 4 },
-      { stage: 'FLUENCY', accuracy: 40, seconds: 4 },
+      { stage: 'ACCURACY', accuracy: 25, seconds: 4 },
+      { stage: 'FLUENCY', accuracy: 25, seconds: 4 },
     ]);
 
     expect(profile.accuracyIndex).toBeLessThan(50);

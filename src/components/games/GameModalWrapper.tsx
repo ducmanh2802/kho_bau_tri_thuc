@@ -81,7 +81,7 @@ function getRandomReaction(type: keyof typeof MASCOT_REACTIONS): string {
 
 function getPraiseSubjectFromGameId(gameId?: string): PraiseSubject {
   if (!gameId) return 'VIETNAMESE';
-  const englishGames = ['color_balloon', 'phonics_pop', 'animal_safari'];
+  const englishGames = ['color_balloon', 'phonics_pop', 'animal_safari', 'simon_says', 'word_builder_train'];
   const mathGames = ['falling_numbers', 'speed_racing', 'number_tower', 'ocean_fishing', 'shape_sorting', 'clock_money'];
   if (englishGames.includes(gameId)) return 'ENGLISH';
   if (mathGames.includes(gameId)) return 'MATH';

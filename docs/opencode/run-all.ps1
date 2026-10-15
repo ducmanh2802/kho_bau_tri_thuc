@@ -56,25 +56,30 @@ $ErrorActionPreference = 'Continue'
 $ProgressPreference = 'SilentlyContinue'
 
 # Lane settings can live in state\lane.txt (key=value per line) so a restart or the Windows
-# autostart keeps the same lane; command-line parameters win over the file.
+# autostart keeps the same lane; command-line parameters win over the file. Only/Skip/After are
+# read again before every task, so the work can be re-split between lanes without a restart.
 $LaneCfg = Join-Path $PSScriptRoot 'state\lane.txt'
-if (Test-Path $LaneCfg) {
+$BoundKeys = @($PSBoundParameters.Keys)
+function Read-LaneConfig {
+  if (-not (Test-Path $LaneCfg)) { return }
+  foreach ($k in @('Only', 'Skip', 'After')) { if ($BoundKeys -notcontains $k) { Set-Variable -Name $k -Value '' -Scope Script } }
   foreach ($l in @(Get-Content -Path $LaneCfg -ErrorAction SilentlyContinue)) {
     if ($l -notmatch '^\s*([A-Za-z]+)\s*=\s*(.*)$') { continue }
     $k = $Matches[1]; $v = $Matches[2].Trim()
-    if ($PSBoundParameters.ContainsKey($k)) { continue }
+    if ($BoundKeys -contains $k) { continue }
     switch ($k) {
-      'Lane'       { $Lane = $v }
-      'Only'       { $Only = $v }
-      'Skip'       { $Skip = $v }
-      'After'      { $After = $v }
-      'PeerState'  { $PeerState = $v }
-      'StatusFile' { $StatusFile = $v }
-      'Model'      { $Model = $v }
-      'NoWait'     { if ($v -match '^(1|true|yes)$') { $NoWait = [switch]$true } }
+      'Lane'       { $script:Lane = $v }
+      'Only'       { $script:Only = $v }
+      'Skip'       { $script:Skip = $v }
+      'After'      { $script:After = $v }
+      'PeerState'  { $script:PeerState = $v }
+      'StatusFile' { $script:StatusFile = $v }
+      'Model'      { $script:Model = $v }
+      'NoWait'     { if ($v -match '^(1|true|yes)$') { $script:NoWait = [switch]$true } }
     }
   }
 }
+Read-LaneConfig
 
 $OcDir    = $PSScriptRoot
 $Root     = Split-Path -Parent (Split-Path -Parent $OcDir)
@@ -92,12 +97,15 @@ if ($Lane) { $LaneTag = ' [luong ' + $Lane + ']' }
 function Split-Ids([string]$S) {
   return @($S -split '[,; ]+' | Where-Object { $_ } | ForEach-Object { $_.Trim().ToUpper() })
 }
-$OnlyIds = @(Split-Ids $Only)
-$SkipIds = @(Split-Ids $Skip)
-$AfterMap = @{}
-foreach ($pair in ($After -split ';')) {
-  if ($pair -match '^\s*([A-Za-z0-9]+)\s*=\s*(.+)$') { $AfterMap[$Matches[1].Trim().ToUpper()] = @(Split-Ids $Matches[2]) }
+function Apply-LaneIds {
+  $script:OnlyIds = @(Split-Ids $Only)
+  $script:SkipIds = @(Split-Ids $Skip)
+  $script:AfterMap = @{}
+  foreach ($pair in ($After -split ';')) {
+    if ($pair -match '^\s*([A-Za-z0-9]+)\s*=\s*(.+)$') { $script:AfterMap[$Matches[1].Trim().ToUpper()] = @(Split-Ids $Matches[2]) }
+  }
 }
+Apply-LaneIds
 $LockFile = Join-Path $StateDir 'runner.lock'
 $BeatFile = Join-Path $StateDir 'heartbeat.txt'
 $EmptyIn  = Join-Path $StateDir 'empty-stdin.txt'
@@ -857,6 +865,10 @@ try {
     }
     while ($true) {
       if (Test-Path $StopFile) { $script:Phase = 'DA DUNG THEO YEU CAU'; break }
+      $prevCfg = $Only + '|' + $Skip + '|' + $After
+      Read-LaneConfig
+      Apply-LaneIds
+      if (($Only + '|' + $Skip + '|' + $After) -ne $prevCfg) { Log ('Doi phan cong luong: chi lam: ' + $Only + ' | bo qua: ' + $Skip + ' | cho: ' + $After) }
       Load-Queue
       $t = Next-Task
       if (-not $t) {

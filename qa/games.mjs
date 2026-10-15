@@ -13,6 +13,9 @@ const GAME_TITLES = [
   'Đoàn Tàu Xếp Câu',
   'Đôi Tai Thính — Nghe & Chọn',
   'Đấu Trường Chính Tả',
+  'Tô Dấu Thanh',
+  'Đoàn Tàu Ghép Vần',
+  'Đọc Câu Làm Theo',
   'Hứng Số Rơi Rộn Ràng',
   'Đường Đua Thần Tốc',
   'Xây Tháp Số Lên Mây',
@@ -23,6 +26,8 @@ const GAME_TITLES = [
   'Safari Tiếng Anh — Animals',
   'Pop The Color Balloons!',
   'Phonics Pop — Bắn Âm',
+  'Simon Says — Gấu Ra Lệnh',
+  'Word Train — Tàu Chữ Tiếng Anh',
   'Lật Thẻ Trí Nhớ Vàng',
   'Bé Tập Vẽ & Tô Màu Diệu Kỳ',
 ];
