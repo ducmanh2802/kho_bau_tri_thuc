@@ -270,7 +270,7 @@ export function assessActivityAvailability(action: LearningAction): {
       return { availability: 'AVAILABLE', route: 'competition' };
     }
     case 'GAME': {
-      if (action.gameId && !(LAUNCHABLE_GAME_IDS as readonly string[]).includes(action.gameId)) {
+      if (action.gameId && action.gameId !== 'kidbox_word_safari' && !(LAUNCHABLE_GAME_IDS as readonly string[]).includes(action.gameId)) {
         return { availability: 'UNAVAILABLE', route: null };
       }
       return { availability: 'AVAILABLE', route: 'games' };

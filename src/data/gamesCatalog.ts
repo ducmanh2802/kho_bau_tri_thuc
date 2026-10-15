@@ -16,6 +16,8 @@ export interface GameInfo {
   description: string;
   skillTag: string;
   color: string;
+  skillIds?: string[];
+  isRealtime?: boolean;
   isNew?: boolean;
 }
 
@@ -30,6 +32,8 @@ export const GAMES_CATALOG: GameInfo[] = [
     description: 'Chạm vào các bóng bóng mang đúng chữ cái đang rơi từ trên cao.',
     skillTag: 'Nhận diện bảng chữ cái',
     color: 'from-amber-400 to-orange-500',
+    skillIds: ["vn_alphabet_recognition"],
+    isRealtime: true,
   },
   {
     id: 'syllable_builder',
@@ -41,6 +45,7 @@ export const GAMES_CATALOG: GameInfo[] = [
     description: 'Ghép âm đầu, nguyên âm và dấu thanh để tạo thành từ có nghĩa.',
     skillTag: 'Ghép âm & Dấu thanh',
     color: 'from-orange-400 to-amber-600',
+    skillIds: ["vn_syllable_compose"],
   },
   {
     id: 'rhyme_hunter',
@@ -52,6 +57,7 @@ export const GAMES_CATALOG: GameInfo[] = [
     description: 'Hái những trái cây ngọt ngào mang vần "an", "on", "at" vào giỏ.',
     skillTag: 'Nhận biết vần lớp 1',
     color: 'from-emerald-400 to-teal-600',
+    skillIds: ["vn_rhyme"],
   },
   {
     id: 'sentence_scramble',
@@ -63,6 +69,7 @@ export const GAMES_CATALOG: GameInfo[] = [
     description: 'Bấm các toa tàu theo đúng thứ tự ngữ pháp để đoàn tàu lăn bánh.',
     skillTag: 'Cấu trúc câu hoàn chỉnh',
     color: 'from-blue-400 to-indigo-600',
+    skillIds: ["vn_sentence"],
   },
   {
     id: 'listen_pick',
@@ -74,6 +81,7 @@ export const GAMES_CATALOG: GameInfo[] = [
     description: 'Lắng nghe phát âm của máy và chọn đúng bức tranh tương ứng.',
     skillTag: 'Luyện nghe & Nhận diện từ',
     color: 'from-purple-400 to-pink-500',
+    skillIds: ["vn_listening"],
   },
   {
     id: 'spelling_duel',
@@ -85,7 +93,7 @@ export const GAMES_CATALOG: GameInfo[] = [
     description: 'Chinh phục c/k, g/gh, ng/ngh, ch/tr, s/x, d/gi/r qua 6 màn đấu.',
     skillTag: 'Chính tả phân biệt — sát đề Trạng Nguyên',
     color: 'from-rose-400 to-orange-500',
-    isNew: true,
+    skillIds: ["vn_spelling"],
   },
   {
     id: 'falling_numbers',
@@ -97,6 +105,8 @@ export const GAMES_CATALOG: GameInfo[] = [
     description: 'Hứng các quả bóng có số lớn hơn 5, bé hơn 6 hoặc số chẵn.',
     skillTag: 'So sánh số & Nhận diện số',
     color: 'from-blue-500 to-cyan-500',
+    skillIds: ["math_number_compare"],
+    isRealtime: true,
   },
   {
     id: 'speed_racing',
@@ -108,6 +118,7 @@ export const GAMES_CATALOG: GameInfo[] = [
     description: 'Tính nhanh phép cộng trừ để nạp Nitro cho xe đua về đích.',
     skillTag: 'Tính nhẩm trong 10',
     color: 'from-amber-500 to-red-500',
+    skillIds: ["math_arithmetic_fast"],
   },
   {
     id: 'number_tower',
@@ -119,6 +130,7 @@ export const GAMES_CATALOG: GameInfo[] = [
     description: 'Tìm viên gạch số còn thiếu trong phép cộng để tháp cao vút.',
     skillTag: 'Cộng gộp trong 10',
     color: 'from-sky-400 to-blue-600',
+    skillIds: ["math_addition"],
   },
   {
     id: 'ocean_fishing',
@@ -130,6 +142,7 @@ export const GAMES_CATALOG: GameInfo[] = [
     description: 'Thả cần câu bắt những chú cá mang kết quả đúng của phép trừ.',
     skillTag: 'Phép trừ trong 10',
     color: 'from-teal-400 to-cyan-600',
+    skillIds: ["math_subtraction"],
   },
   {
     id: 'shape_sorting',
@@ -141,6 +154,7 @@ export const GAMES_CATALOG: GameInfo[] = [
     description: 'Phân chia các đồ vật quanh em vào giỏ hình tròn, vuông, tam giác.',
     skillTag: 'Hình học trực quan',
     color: 'from-lime-500 to-emerald-600',
+    skillIds: ["math_shapes"],
   },
   {
     id: 'clock_money',
@@ -152,7 +166,7 @@ export const GAMES_CATALOG: GameInfo[] = [
     description: 'Xem giờ đúng, tiêu tiền Việt, đo cm/m và đếm ngày tháng.',
     skillTag: 'Đo lường & Thực tế — dạng thi mới',
     color: 'from-cyan-500 to-blue-600',
-    isNew: true,
+    skillIds: ["math_measurement"],
   },
   {
     id: 'word_story',
@@ -164,7 +178,7 @@ export const GAMES_CATALOG: GameInfo[] = [
     description: 'Đọc chuyện ngắn, giải toán lời văn từ dễ đến 100 như đề thi thật.',
     skillTag: 'Toán lời văn 6 cấp độ',
     color: 'from-indigo-500 to-violet-600',
-    isNew: true,
+    skillIds: ["math_word_problems"],
   },
   {
     id: 'animal_safari',
@@ -176,6 +190,7 @@ export const GAMES_CATALOG: GameInfo[] = [
     description: 'Khám phá sở thú, nghe tên và tìm đúng các bạn động vật dễ thương.',
     skillTag: 'Từ vựng động vật English',
     color: 'from-emerald-500 to-green-600',
+    skillIds: ["en_animals"],
   },
   {
     id: 'color_balloon',
@@ -187,6 +202,8 @@ export const GAMES_CATALOG: GameInfo[] = [
     description: 'Đập vỡ những quả bóng bay đúng màu sắc tiếng Anh theo yêu cầu.',
     skillTag: 'Màu sắc tiếng Anh',
     color: 'from-rose-400 to-pink-500',
+    skillIds: ["en_colors"],
+    isRealtime: true,
   },
   {
     id: 'phonics_pop',
@@ -198,7 +215,7 @@ export const GAMES_CATALOG: GameInfo[] = [
     description: 'Nghe từ giọng Anh-Anh, bắn đúng âm đầu: SH, CH, TH, BL, GR…',
     skillTag: 'Phonics nâng cao giọng Anh-Anh',
     color: 'from-fuchsia-500 to-purple-600',
-    isNew: true,
+    skillIds: ["en_phonics"],
   },
   {
     id: 'memory_cards',
@@ -210,6 +227,7 @@ export const GAMES_CATALOG: GameInfo[] = [
     description: 'Lật tìm các cặp hình giống nhau giúp rèn luyện khả năng ghi nhớ.',
     skillTag: 'Trí nhớ ngắn hạn & Tập trung',
     color: 'from-indigo-500 to-purple-600',
+    skillIds: ["memory"],
   },
   {
     id: 'coloring_canvas',
@@ -221,5 +239,6 @@ export const GAMES_CATALOG: GameInfo[] = [
     description: 'Thỏa sức vẽ tranh, tô màu và dán sticker đáng yêu lên tác phẩm.',
     skillTag: 'Sáng tạo & Khéo léo',
     color: 'from-yellow-400 to-orange-500',
+    skillIds: ["creativity"],
   },
 ];
