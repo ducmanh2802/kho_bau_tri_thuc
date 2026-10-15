@@ -143,7 +143,7 @@ export const LESSONS: Lesson[] = [
         skillId: 'math_number_pattern',
         difficulty: 3,
         type: 'multiple-choice',
-        prompt: 'Dãy số 100, 90, 80, … Số tiếp theo là?',
+        prompt: 'Dãy số đang giảm dần: 100, 90, 80, … Số tiếp theo là mấy?',
         options: ['70', '60', '75', '85'],
         correctAnswer: '70',
         hint: 'Dãy này giảm dần mỗi bước mười.',
@@ -301,7 +301,7 @@ export const LESSONS: Lesson[] = [
         prompt: 'Dãy đỏ – xanh lặp lại, bắt đầu bằng đỏ. Ô thứ 6 trong dãy là hình gì?',
         options: ['xanh', 'đỏ', 'vàng', 'tím'],
         correctAnswer: 'xanh',
-        hint: 'Vị trí lẻ là đỏ, vị trí chẵn là xanh.',
+        hint: 'Vị trí lẻ và vị trí chẵn lặp lại theo nhau.',
         explanation: 'Ô thứ 6 là vị trí chẵn nên là hình xanh.',
       }),
       mathQ(TOPIC, {

@@ -9,9 +9,12 @@ export const TOPIC = 'math-thoi-gian';
 export const SKILLS = ['math_clock_time', 'math_week_days', 'math_calendar_read'];
 
 const HINT_HOUR_HAND = 'Kim ngắn chỉ giờ, kim dài chỉ phút.';
-const HINT_MINUTE = 'Kim dài chỉ 12 thì đúng 0 phút.';
+const HINT_MINUTE = 'Kim dài chỉ 12 là giờ đúng.';
 const HINT_WEEK = 'Tuần lễ bắt đầu từ thứ Hai.';
 const HINT_MONTH = 'Một năm có mười hai tháng.';
+const HINT_WEEK_FIRST = 'Hãy nhắc lại tên các ngày trong tuần từ đầu.';
+const HINT_CLOCK_HANDS = 'Tên hai kim của đồng hồ khác nhau.';
+const HINT_TRUNGTHU = 'Tết Trung Thu rơi vào mùa thu.';
 
 /** Câu đọc giờ có mặt đồng hồ SVG. */
 function clockQuestion(
@@ -84,42 +87,42 @@ export const LESSONS: Lesson[] = [
         'Bé thức dậy lúc 6 giờ sáng.',
         { gio: 6, amPm: 'sáng' }
       ),
-      mathQ(TOPIC, {
-        id: 'math-q-tg-4',
-        skillId: 'math_clock_time',
-        difficulty: 1,
-        type: 'multiple-choice',
-        prompt: 'Kim ngắn chỉ 7, kim dài chỉ 12. Đồng hồ chỉ mấy giờ?',
-        options: ['7 giờ sáng', '12 giờ sáng', '6 giờ sáng', '5 giờ sáng'],
-        correctAnswer: '7 giờ sáng',
-        mediaEmoji: '🕖',
-        hint: HINT_HOUR_HAND,
-        explanation: 'Kim ngắn chỉ 7 nên đồng hồ chỉ 7 giờ.',
-      }),
-      mathQ(TOPIC, {
-        id: 'math-q-tg-5',
-        skillId: 'math_clock_time',
-        difficulty: 1,
-        type: 'multiple-choice',
-        prompt: 'Kim ngắn chỉ 10, kim dài chỉ 12. Đồng hồ chỉ mấy giờ?',
-        options: ['10 giờ sáng', '12 giờ sáng', '2 giờ sáng', '11 giờ sáng'],
-        correctAnswer: '10 giờ sáng',
-        mediaEmoji: '🕙',
-        hint: HINT_HOUR_HAND,
-        explanation: 'Kim ngắn chỉ 10 nên đồng hồ chỉ 10 giờ.',
-      }),
-      mathQ(TOPIC, {
-        id: 'math-q-tg-6',
-        skillId: 'math_clock_time',
-        difficulty: 2,
-        type: 'multiple-choice',
-        prompt: 'Kim ngắn chỉ 5, kim dài chỉ 12. Đồng hồ chỉ mấy giờ?',
-        options: ['5 giờ chiều', '12 giờ chiều', '6 giờ chiều', '4 giờ chiều'],
-        correctAnswer: '5 giờ chiều',
-        mediaEmoji: '🕔',
-        hint: HINT_HOUR_HAND,
-        explanation: 'Kim ngắn chỉ 5 nên đồng hồ chỉ 5 giờ chiều.',
-      }),
+      clockQuestion(
+        'math-q-tg-4',
+        'math_clock_time',
+        1,
+        'image-choice',
+        'Bé nhìn mặt đồng hồ rồi cho biết mấy giờ:',
+        ['7 giờ sáng', '12 giờ sáng', '6 giờ sáng', '5 giờ sáng'],
+        '7 giờ sáng',
+        HINT_HOUR_HAND,
+        'Kim ngắn chỉ 7 nên đồng hồ chỉ 7 giờ sáng.',
+        { gio: 7, amPm: 'sáng' }
+      ),
+      clockQuestion(
+        'math-q-tg-5',
+        'math_clock_time',
+        1,
+        'image-choice',
+        'Đồng hồ trong lớp học đang chỉ mấy giờ?',
+        ['10 giờ sáng', '12 giờ sáng', '2 giờ sáng', '11 giờ sáng'],
+        '10 giờ sáng',
+        HINT_HOUR_HAND,
+        'Kim ngắn chỉ 10 nên đồng hồ chỉ 10 giờ sáng.',
+        { gio: 10, amPm: 'sáng' }
+      ),
+      clockQuestion(
+        'math-q-tg-6',
+        'math_clock_time',
+        2,
+        'image-choice',
+        'Bé xem đồng hồ treo tường rồi cho biết mấy giờ:',
+        ['5 giờ chiều', '12 giờ chiều', '6 giờ chiều', '4 giờ chiều'],
+        '5 giờ chiều',
+        HINT_HOUR_HAND,
+        'Kim ngắn chỉ 5 nên đồng hồ chỉ 5 giờ chiều.',
+        { gio: 5, amPm: 'chiều' }
+      ),
       mathQ(TOPIC, {
         id: 'math-q-tg-7',
         skillId: 'math_clock_time',
@@ -128,7 +131,7 @@ export const LESSONS: Lesson[] = [
         prompt: 'Kim nào của đồng hồ cho biết giờ?',
         options: ['Kim ngắn', 'Kim dài', 'Cả hai kim', 'Không kim nào'],
         correctAnswer: 'Kim ngắn',
-        hint: 'Kim ngắn hơn, đi chậm hơn.',
+        hint: HINT_CLOCK_HANDS,
         explanation: 'Kim ngắn chỉ giờ, kim dài chỉ phút.',
       }),
       mathQ(TOPIC, {
@@ -269,7 +272,7 @@ export const LESSONS: Lesson[] = [
         prompt: 'Ngày nào bé đến trường đầu tiên trong tuần?',
         options: ['Thứ Hai', 'Chủ Nhật', 'Thứ Bảy', 'Thứ Tư'],
         correctAnswer: 'Thứ Hai',
-        hint: HINT_WEEK,
+        hint: HINT_WEEK_FIRST,
         explanation: 'Tuần lễ bắt đầu từ thứ Hai.',
       }),
       mathQ(TOPIC, {
@@ -511,7 +514,7 @@ export const LESSONS: Lesson[] = [
         prompt: 'Tết Trung Thu thường diễn ra vào tháng mấy?',
         options: ['Tháng Tám', 'Tháng Một', 'Tháng Năm', 'Tháng Mười'],
         correctAnswer: 'Tháng Tám',
-        hint: 'Tết Trung Thu rơi vào rằm tháng tám âm lịch.',
+        hint: HINT_TRUNGTHU,
         explanation: 'Tết Trung Thu thường ở tháng Tám.',
       }),
       mathQ(TOPIC, {

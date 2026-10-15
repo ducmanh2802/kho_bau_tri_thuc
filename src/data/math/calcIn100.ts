@@ -452,7 +452,7 @@ export const LESSONS: Lesson[] = [
         type: 'matching',
         prompt: 'Nối phép tính với đáp số đã đặt tính:',
         options: ['60', '61', '45', '54'],
-        correctAnswer: '36+24=60|52+9=61|70-25=45|62-8=54',
+        correctAnswer: '36 + 24=60|52 + 9=61|70 - 25=45|62 - 8=54',
         matchingPairs: [
           { left: '36 + 24', right: '60' },
           { left: '52 + 9', right: '61' },
