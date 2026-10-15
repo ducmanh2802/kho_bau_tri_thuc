@@ -1,7 +1,19 @@
 import { Topic } from '../types';
 import { balanceTopics } from './optionBalance';
+import { LETTER_LESSONS, LETTER_SKILLS } from './vietnamese/letters';
+import { TONE_LESSONS, TONE_SKILLS } from './vietnamese/tones';
+import { COMPOUND_LESSONS, COMPOUND_SKILLS, COMPOUND_TOPIC } from './vietnamese/compounds';
+import { PUNCT_LESSONS, PUNCT_SKILLS, PUNCT_TOPIC } from './vietnamese/punctuation';
+import { UPGRADE_QUESTIONS_BY_LESSON, UPGRADE_SKILLS_BY_TOPIC } from './vietnamese/upgrades';
 
-export const VIETNAMESE_TOPICS_RAW: Topic[] = [
+/**
+ * T02C/T10A — the hand-authored Grade-1 Vietnamese bank. Old lesson and
+ * question ids are preserved verbatim; the T10A work (letters, tone marks,
+ * compound letters, punctuation, and the "nâng bài cũ" upgrades) is merged in
+ * below to form the exported RAW topics. Keep this literal `const` literal so
+ * the merge stays in one reviewable place at the bottom of the file.
+ */
+const VIETNAMESE_TOPICS_BASE: Topic[] = [
   {
     id: 'vn-chu-cai',
     subject: 'tieng-viet',
@@ -1497,6 +1509,66 @@ export const VIETNAMESE_TOPICS_RAW: Topic[] = [
     ],
   },
 ];
+
+/**
+ * T10A merge — apply the "nâng bài cũ" upgrades, then fold in the new units
+ * (bảng chữ cái, dấu thanh, chữ ghép, dấu câu). Old ids are never renamed and
+ * every append keeps the raw bank deterministic so option balancing stays pure.
+ */
+export const VIETNAMESE_TOPICS_RAW: Topic[] = (() => {
+  const topics: Topic[] = VIETNAMESE_TOPICS_BASE.map((topic) => {
+    const upgradeSkills = UPGRADE_SKILLS_BY_TOPIC[topic.id] ?? [];
+    const skills = [
+      ...topic.skills,
+      ...upgradeSkills.filter((skill) => !topic.skills.includes(skill)),
+    ];
+    const lessons = topic.lessons.map((lesson) => {
+      const upgrade = UPGRADE_QUESTIONS_BY_LESSON[lesson.id];
+      if (!upgrade) return lesson;
+      return { ...lesson, questions: [...lesson.questions, ...upgrade.questions] };
+    });
+    return { ...topic, skills, lessons };
+  });
+
+  const byId = new Map(topics.map((topic) => [topic.id, topic]));
+
+  const chuCai = byId.get('vn-chu-cai');
+  if (chuCai) {
+    chuCai.skills = [...chuCai.skills, ...LETTER_SKILLS];
+    chuCai.lessons = [...chuCai.lessons, ...LETTER_LESSONS];
+  }
+
+  const dauThanh = byId.get('vn-dau-thanh');
+  if (dauThanh) {
+    dauThanh.skills = [...dauThanh.skills, ...TONE_SKILLS];
+    dauThanh.lessons = [...dauThanh.lessons, ...TONE_LESSONS];
+  }
+
+  topics.push(
+    {
+      id: COMPOUND_TOPIC,
+      subject: 'tieng-viet',
+      title: 'Chữ Ghép & Quy Tắc Âm Đầu',
+      subtitle: 'ch, nh, ph, th, kh, gh, gi, qu, tr, ng/ngh',
+      iconEmoji: '🧩',
+      color: 'from-teal-400 to-cyan-500',
+      skills: [...COMPOUND_SKILLS],
+      lessons: [...COMPOUND_LESSONS],
+    },
+    {
+      id: PUNCT_TOPIC,
+      subject: 'tieng-viet',
+      title: 'Dấu Câu & Viết Hoa',
+      subtitle: 'Dấu chấm, dấu hỏi, dấu chấm than và viết hoa đầu câu',
+      iconEmoji: '❓',
+      color: 'from-violet-400 to-purple-500',
+      skills: [...PUNCT_SKILLS],
+      lessons: [...PUNCT_LESSONS],
+    }
+  );
+
+  return topics;
+})();
 
 /** Balanced copy — correct answers distributed across option positions (P41 §5). */
 export const VIETNAMESE_TOPICS: Topic[] = balanceTopics(VIETNAMESE_TOPICS_RAW);
