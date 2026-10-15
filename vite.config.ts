@@ -38,10 +38,16 @@ export default defineConfig(() => {
           // T02C — keep react/react-dom out of the first-load entry chunk so
           // the main chunk budget (≤ 600 kB, goal ≤ 450 kB) survives the
           // ~1.300-question content expansion in T10–T14.
+          // T11C — the Toán lesson bank (0–100 content in `src/data/math/`
+          // + `src/data/mathCurriculum`) lives in its own `math-bank` chunk
+          // so the entry chunk stays within budget after wiring the new units.
           // (Rolldown only accepts the function form of manualChunks.)
           manualChunks: (id: string) => {
             if (id.includes('node_modules/react-dom') || id.includes('node_modules/react/')) {
               return 'react-vendor';
+            }
+            if (id.includes('/src/data/math/') || id.includes('/src/data/mathCurriculum')) {
+              return 'math-bank';
             }
             return undefined;
           },

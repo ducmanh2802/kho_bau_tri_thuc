@@ -458,8 +458,8 @@ export const MATH_LES15: Lesson = {
       difficulty: 3,
       skillId: 'math_subtraction_10',
       prompt:
-        'Ban mai có 8 bông hoa 🌷. Hoa héo 2 bông. Còn lại mấy bông hoa?',
-      audioPrompt: 'Ban mai có tám bông hoa. Hoa héo hai bông. Còn lại mấy bông hoa?',
+        'Bạn Mai có 8 bông hoa 🌷. Hoa héo 2 bông. Còn lại mấy bông hoa?',
+      audioPrompt: 'Bạn Mai có tám bông hoa. Hoa héo hai bông. Còn lại mấy bông hoa?',
       mediaEmoji: '🌷',
       options: ['6 bông hoa', '5 bông hoa', '7 bông hoa', '8 bông hoa'],
       correctAnswer: '6 bông hoa',

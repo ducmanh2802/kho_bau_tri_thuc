@@ -1,7 +1,18 @@
-import { Topic } from '../types';
+import { Lesson, Question, Topic } from '../types';
 import { balanceTopics } from './optionBalance';
+import { MATH_LES1_EXTRA, MATH_LES2_EXTRA, MATH_LES13 } from './math/numbers-0-10';
+import { MATH_LES4_EXTRA, MATH_LES5_EXTRA, MATH_LES14, MATH_LES15 } from './math/add-sub-10';
+import {
+  MATH_LES8_EXTRA,
+  MATH_LES9_EXTRA,
+  MATH_LES16,
+  MATH_LES17,
+  TOPIC_SO_21_100,
+} from './math/numbers-11-100';
+import { MATH_LES18, MATH_LES19, MATH_LES20, TOPIC_CONG_TRU_100 } from './math/add-sub-100';
+import { MATH_LES10_EXTRA, MATH_LES21 } from './math/word-problems-100';
 
-export const MATH_TOPICS_RAW: Topic[] = [
+const MATH_TOPICS_BASE: Topic[] = [
   {
     id: 'math-dem-0-10',
     subject: 'toan',
@@ -1238,6 +1249,52 @@ export const MATH_TOPICS_RAW: Topic[] = [
       },
     ],
   },];
+
+/**
+ * T11C — wire the split-out Grade-1 units (`src/data/math/*.ts`, spec T11 §1–5)
+ * into the bank. Legacy inline entries above are untouched (ids kept); each
+ * EXTRA array only APPENDS questions to its lesson, and each new Lesson/Topic
+ * is appended to its parent. Every arithmetic item carries
+ * `calc: { a, op, b }` so tests recompute answers by machine (no-carry,
+ * result 0–100). Number/place-value/number-line items carry `visual`.
+ */
+const T11C_LESSON_EXTRAS: Record<string, Question[]> = {
+  'math-les-1': MATH_LES1_EXTRA,
+  'math-les-2': MATH_LES2_EXTRA,
+  'math-les-4': MATH_LES4_EXTRA,
+  'math-les-5': MATH_LES5_EXTRA,
+  'math-les-8': MATH_LES8_EXTRA,
+  'math-les-9': MATH_LES9_EXTRA,
+  'math-les-10': MATH_LES10_EXTRA,
+};
+
+const T11C_TOPIC_EXTRA_LESSONS: Record<string, Lesson[]> = {
+  'math-dem-0-10': [MATH_LES13],
+  'math-cong-10': [MATH_LES14],
+  'math-tru-10': [MATH_LES15],
+  'math-loi-van': [MATH_LES21],
+};
+
+const T11C_NEW_TOPICS: Topic[] = [TOPIC_SO_21_100, TOPIC_CONG_TRU_100];
+
+function applyT11CUnits(base: Topic[]): Topic[] {
+  return [
+    ...base.map((topic) => ({
+      ...topic,
+      lessons: [
+        ...topic.lessons.map((lesson) => {
+          const extra = T11C_LESSON_EXTRAS[lesson.id];
+          return extra ? { ...lesson, questions: [...lesson.questions, ...extra] } : lesson;
+        }),
+        ...(T11C_TOPIC_EXTRA_LESSONS[topic.id] ?? []),
+      ],
+    })),
+    ...T11C_NEW_TOPICS,
+  ];
+}
+
+/** Full raw bank: legacy inline lessons + T11C units (spec T11 §1–5). Ids kept. */
+export const MATH_TOPICS_RAW: Topic[] = applyT11CUnits(MATH_TOPICS_BASE);
 
 /** Balanced copy — correct answers distributed across option positions (P41 §5). */
 export const MATH_TOPICS: Topic[] = balanceTopics(MATH_TOPICS_RAW);
