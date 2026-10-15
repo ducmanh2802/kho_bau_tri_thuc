@@ -20,23 +20,27 @@ export type QuestionType =
   | 'classify';
 
 export interface Question {
-  id: string;
-  subject: SubjectType;
-  topicId: string;
-  skillId: string;
-  difficulty: 1 | 2 | 3;
-  type: QuestionType;
-  prompt: string;
-  audioPrompt?: string; // Text to be read by TTS
-  mediaEmoji?: string;
-  options?: string[];
-  correctAnswer: string | string[]; // Can be string or array for ordering/matching
-  pairs?: { left: string; right: string }[];
-  matchingPairs?: { left: string; right: string }[];
-  orderingItems?: string[];
-  categoryBuckets?: string[];
-  hint?: string;
-  explanation?: string;
+   id: string;
+   subject: SubjectType;
+   topicId: string;
+   skillId: string;
+   difficulty: 1 | 2 | 3;
+   type: QuestionType;
+   prompt: string;
+   audioPrompt?: string; // Text to be read by TTS
+   mediaEmoji?: string;
+   options?: string[];
+   correctAnswer: string | string[]; // Can be string or array for ordering/matching
+   pairs?: { left: string; right: string }[];
+   matchingPairs?: { left: string; right: string }[];
+   orderingItems?: string[];
+   categoryBuckets?: string[];
+   hint?: string;
+   explanation?: string;
+   visual?: {
+     kind: 'TenFrame' | 'NumberLine' | 'PlaceValueBlocks' | 'Ruler' | 'ClockFace';
+     props?: Record<string, unknown>;
+   };
 }
 
 export interface Lesson {
