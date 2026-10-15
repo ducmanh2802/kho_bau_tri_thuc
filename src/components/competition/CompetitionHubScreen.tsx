@@ -32,13 +32,29 @@ import {
 interface CompetitionHubScreenProps {
   onBack: () => void;
   onProfileUpdate: () => void;
+  initialMode?: 'kid' | 'real';
+  initialRealMode?: boolean;
+  realMode?: boolean;
+  startInRealMode?: boolean;
+  forceReal?: boolean;
 }
 
 export const CompetitionHubScreen: React.FC<CompetitionHubScreenProps> = ({
   onBack,
   onProfileUpdate,
+  initialMode,
+  initialRealMode,
+  realMode,
+  startInRealMode,
+  forceReal,
 }) => {
-  const [activeTab, setActiveTab] = useState<'tournament' | 'mock_exams' | 'skill_practice' | 'speed_trial' | 'history'>('tournament');
+  const [arenaMode, setArenaMode] = useState<'kid' | 'real'>(() => {
+    if (initialMode === 'real' || initialRealMode || realMode || startInRealMode || forceReal) {
+      return 'real';
+    }
+    return 'kid';
+  });
+  const [activeTab, setActiveTab] = useState<'practice' | 'challenge' | 'achievements'>('practice');
   const [selectedSubject, setSelectedSubject] = useState<SubjectType>('tieng-viet');
 
   // Active exam session
@@ -57,6 +73,12 @@ export const CompetitionHubScreen: React.FC<CompetitionHubScreenProps> = ({
     setHistoryStore(StorageService.getCompetitionHistory());
     onProfileUpdate();
   };
+
+  const goldMedals = historyStore.examResults.filter((r) => r.score >= 8).length;
+  const realUnlocked = forceReal || goldMedals >= 3;
+  // In kid default mode the real arena stays locked unless earned or parent-opened.
+  const realActive = arenaMode === 'real' && (realUnlocked || forceReal || initialRealMode || realMode || startInRealMode || initialMode === 'real');
+  const kidModeActive = !realActive;
 
   const handleStartExam = (blueprint: ExamBlueprint) => {
     sound.playClick();
@@ -156,7 +178,12 @@ export const CompetitionHubScreen: React.FC<CompetitionHubScreenProps> = ({
   const readiness = CompetitionEngine.assessReadiness(historyStore.examResults);
 
   return (
-    <div className="w-full max-w-5xl mx-auto px-4 py-6 md:py-8 space-y-6 select-none">
+    <div
+      className="w-full max-w-5xl mx-auto px-4 py-6 md:py-8 space-y-6 select-none"
+      data-testid="competition-hub"
+      data-mode={kidModeActive ? 'kid' : 'real'}
+      data-arena-mode={kidModeActive ? 'kid' : 'real'}
+    >
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <button
@@ -196,14 +223,67 @@ export const CompetitionHubScreen: React.FC<CompetitionHubScreenProps> = ({
         </div>
       </div>
 
+      {/* Arena mode (Bé / Thi thật) */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-white border border-amber-200 rounded-2xl">
+        <div className="flex items-center gap-2">
+          <span className="text-xl">{kidModeActive ? '🧸' : '🏆'}</span>
+          <div>
+            <p className="text-sm font-black text-slate-800">
+              {kidModeActive ? 'Chế độ Bé' : 'Chế độ Thi thật'}
+            </p>
+            <p className="text-[11px] text-slate-500 font-medium">
+              {kidModeActive
+                ? 'Không áp lực thời gian và thứ hạng · huy chương + lời khen'
+                : 'Trạng Nguyên 4 vòng · có giờ · bảng xếp hạng'}
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            data-testid="competition-mode-kid"
+            onClick={() => {
+              sound.playClick();
+              setArenaMode('kid');
+            }}
+            className={`px-3 py-2 rounded-xl font-bold text-xs transition-all cursor-pointer ${
+              kidModeActive
+                ? 'bg-amber-500 text-white'
+                : 'bg-white border border-slate-200 text-slate-600'
+            }`}
+          >
+            Bé
+          </button>
+          <button
+            data-testid="competition-mode-real"
+            onClick={() => {
+              sound.playClick();
+              if (realUnlocked || forceReal || initialRealMode || realMode || startInRealMode || initialMode === 'real') {
+                setArenaMode('real');
+              }
+            }}
+            disabled={!realUnlocked && !forceReal && !initialRealMode && !realMode && !startInRealMode && initialMode !== 'real'}
+            className={`px-3 py-2 rounded-xl font-bold text-xs transition-all ${
+              realActive
+                ? 'bg-amber-500 text-white cursor-pointer'
+                : 'bg-slate-100 text-slate-400 cursor-not-allowed'
+            }`}
+          >
+            Thi thật
+          </button>
+        </div>
+        {!realUnlocked && !forceReal && !initialRealMode && !realMode && !startInRealMode && initialMode !== 'real' && (
+          <p className="text-[11px] font-bold text-slate-500 w-full">
+            🔒 Thi thật mở khi bé đạt 3 huy chương vàng 🥇 hoặc từ Bảng phụ huynh.
+          </p>
+        )}
+      </div>
+
       {/* Main Tabs Navigation */}
       <div className="flex items-center gap-2 overflow-x-auto pb-1 border-b border-amber-200">
         {[
-          { id: 'tournament', label: 'Trạng Nguyên 4 Vòng', icon: '👑' },
-          { id: 'mock_exams', label: 'Thi Thử Đấu Trường', icon: '🏆' },
-          { id: 'skill_practice', label: 'Luyện Dạng Bài', icon: '🎯' },
-          { id: 'speed_trial', label: 'Luyện Tốc Độ (3p)', icon: '⚡' },
-          { id: 'history', label: 'Lịch Sử & Sẵn Sàng', icon: '📈' },
+          { id: 'practice', label: 'Luyện thi', icon: '📚' },
+          { id: 'challenge', label: 'Thử thách', icon: '⚡' },
+          { id: 'achievements', label: 'Thành tích', icon: '🏅' },
         ].map((tab) => (
           <button
             key={tab.id}
@@ -223,8 +303,8 @@ export const CompetitionHubScreen: React.FC<CompetitionHubScreenProps> = ({
         ))}
       </div>
 
-      {/* Subject Filter (for Mock Exams & Skill Practice tabs) */}
-      {(activeTab === 'mock_exams' || activeTab === 'skill_practice') && (
+      {/* Subject Filter (for practice tab) */}
+      {activeTab === 'practice' && (
         <div className="flex items-center gap-2">
           {[
             { id: 'toan' as SubjectType, label: 'Môn Toán', emoji: '🔢' },
@@ -250,8 +330,8 @@ export const CompetitionHubScreen: React.FC<CompetitionHubScreenProps> = ({
         </div>
       )}
 
-      {/* TAB 0: TRẠNG NGUYÊN TOURNAMENT */}
-      {activeTab === 'tournament' && (
+      {/* TAB 1: THỬ THÁCH */}
+      {activeTab === 'challenge' && (
         <div className="space-y-4">
           <div className="p-4 bg-gradient-to-r from-amber-100 via-orange-100 to-rose-100 border-2 border-amber-300 rounded-3xl flex items-start gap-3">
             <span className="text-3xl">👑</span>
@@ -264,6 +344,7 @@ export const CompetitionHubScreen: React.FC<CompetitionHubScreenProps> = ({
             </div>
           </div>
 
+          {realActive ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {EXAM_BLUEPRINTS.filter((b) => b.mode === 'tournament').map((bp, idx) => {
               const unlocked = bp.subject === 'tieng-viet' && bp.id.startsWith('bp-tn-') && ['bp-tn-huong','bp-tn-huyen','bp-tn-tinh','bp-tn-quocgia'].includes(bp.id)
@@ -301,7 +382,10 @@ export const CompetitionHubScreen: React.FC<CompetitionHubScreenProps> = ({
                       </p>
                     )}
                     {/* Mini leaderboard */}
-                    <div className="bg-amber-50/60 rounded-2xl border border-amber-200 p-3 space-y-1.5">
+                    <div
+                      data-testid="competition-leaderboard"
+                      className="bg-amber-50/60 rounded-2xl border border-amber-200 p-3 space-y-1.5"
+                    >
                       <p className="text-[11px] font-black text-amber-900 uppercase">🏅 Bảng xếp hạng vòng này</p>
                       {board.slice(0, 4).map((row) => (
                         <div key={row.name} className={`flex items-center gap-2 text-xs font-bold ${row.isMe ? 'text-amber-900' : 'text-slate-600'}`}>
@@ -329,11 +413,16 @@ export const CompetitionHubScreen: React.FC<CompetitionHubScreenProps> = ({
               );
             })}
           </div>
+          ) : (
+          <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-slate-600">
+            🔒 Chế độ Thi thật (Trạng Nguyên 4 vòng, có giờ) chỉ mở khi bé đạt 3 huy chương vàng 🥇 hoặc từ Bảng phụ huynh.
+          </div>
+          )}
         </div>
       )}
 
-      {/* TAB 1: MOCK EXAMS */}
-      {activeTab === 'mock_exams' && (
+      {/* TAB 0: LUYỆN THI (mock exams) */}
+      {activeTab === 'practice' && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {filteredBlueprints.map((bp) => (
             <div
@@ -395,8 +484,8 @@ export const CompetitionHubScreen: React.FC<CompetitionHubScreenProps> = ({
         </div>
       )}
 
-      {/* TAB 2: SKILL PRACTICE */}
-      {activeTab === 'skill_practice' && (
+      {/* LUYỆN THI (skill practice) */}
+      {activeTab === 'practice' && (
         <div className="space-y-3">
           <p className="text-xs text-slate-500 font-medium">
             Chọn một kỹ năng cụ thể để rèn luyện 5 câu hỏi trọng tâm:
@@ -441,8 +530,8 @@ export const CompetitionHubScreen: React.FC<CompetitionHubScreenProps> = ({
         </div>
       )}
 
-      {/* TAB 3: SPEED TRIAL */}
-      {activeTab === 'speed_trial' && (
+      {/* THỬ THÁCH (speed trial) */}
+      {activeTab === 'challenge' && (
         <div className="space-y-4">
           <div className="p-4 bg-gradient-to-r from-amber-100 to-orange-100 border border-amber-300 rounded-2xl flex items-center gap-3">
             <Zap className="w-6 h-6 text-amber-600 shrink-0" />
@@ -484,14 +573,14 @@ export const CompetitionHubScreen: React.FC<CompetitionHubScreenProps> = ({
         </div>
       )}
 
-      {/* TAB 4: HISTORY & READINESS */}
-      {activeTab === 'history' && (
+      {/* TAB 2: THÀNH TÍCH */}
+      {activeTab === 'achievements' && (
         <div className="space-y-6">
           {/* Readiness Dashboard Card */}
           <ReadinessView
             readiness={readiness}
             onTakeMockExam={() => {
-              setActiveTab('mock_exams');
+              setActiveTab('practice');
               sound.playClick();
             }}
           />
@@ -568,6 +657,7 @@ export const CompetitionHubScreen: React.FC<CompetitionHubScreenProps> = ({
           isOpen={isExamModalOpen}
           onClose={() => setIsExamModalOpen(false)}
           onFinish={handleFinishExam}
+          kidMode={kidModeActive}
         />
       )}
 
@@ -584,6 +674,7 @@ export const CompetitionHubScreen: React.FC<CompetitionHubScreenProps> = ({
             }
           }}
           onStartRemediation={handleStartRemediation}
+          kidMode={kidModeActive}
         />
       )}
     </div>

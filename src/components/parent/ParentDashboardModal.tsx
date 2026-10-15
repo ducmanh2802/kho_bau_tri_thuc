@@ -35,12 +35,14 @@ interface ParentDashboardModalProps {
   isOpen: boolean;
   onClose: () => void;
   onDataReset?: () => void;
+  onOpenCompetitionReal?: () => void;
 }
 
 export const ParentDashboardModal: React.FC<ParentDashboardModalProps> = ({
   isOpen,
   onClose,
   onDataReset,
+  onOpenCompetitionReal,
 }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [gateQuestion, setGateQuestion] = useState({ a: 15, b: 18, ans: 33 });
@@ -825,6 +827,18 @@ const [activeTab, setActiveTab] = useState<
 
               {activeTab === 'competition' && (
                 <div className="space-y-5">
+                  {onOpenCompetitionReal && (
+                    <button
+                      onClick={() => {
+                        sound.playClick();
+                        onOpenCompetitionReal();
+                        onClose();
+                      }}
+                      className="w-full py-3 bg-gradient-to-r from-amber-500 to-rose-500 text-white rounded-2xl font-black text-sm shadow-md cursor-pointer"
+                    >
+                      Mở Đấu Trường Thi Thật (Trạng Nguyên)
+                    </button>
+                  )}
                   {/* Summary metric banner */}
                   {(() => {
                     const compStore = StorageService.getCompetitionHistory();
