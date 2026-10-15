@@ -2167,5 +2167,303 @@ export const P36_QUESTIONS: CompetitionQuestion[] = [
     20
   ),
 
-  // (P36 bank complete: 231 items. Counts verified by tests/competition-p36.test.ts.)
+  // ============ T12B — ENGLISH: PHONICS, SENTENCES, WORDS (+40) ============
+  // Balanced addition across the 7 English taxonomy skills so the English
+  // competition track leans less on plain vocabulary. No true/false added
+  // (keeps the Đúng share inside its band); every option set is 4-wide so the
+  // global round-robin placement keeps answer positions balanced (§5).
+  choice(
+    'cq-p36-e084', 'english', 'EN-PHONICS', 'EASY',
+    'Which word begins with the /b/ sound? 🐻', '🐻',
+    ['Bear', 'Cat', 'Dog', 'Fish'], 'Bear',
+    'Bear begins with the /b/ sound.',
+    15
+  ),
+  choice(
+    'cq-p36-e085', 'english', 'EN-PHONICS', 'EASY',
+    'Which word begins with the /p/ sound? 🐷', '🐷',
+    ['Pig', 'Cow', 'Duck', 'Goat'], 'Pig',
+    'Pig begins with the /p/ sound.',
+    15
+  ),
+  choice(
+    'cq-p36-e086', 'english', 'EN-PHONICS', 'MEDIUM',
+    'Which word ends with the /g/ sound? 🐸', '🐸',
+    ['Frog', 'Cat', 'Bee', 'Sun'], 'Frog',
+    'Frog ends with the /g/ sound: f-r-o-g.',
+    20
+  ),
+  blank(
+    'cq-p36-e087', 'english', 'EN-PHONICS', 'EASY',
+    'Complete the word "Sun": Su...', '☀️',
+    ['n', 'm', 't', 'p'], 'n',
+    'The word is "Sun", spelt s-u-n.',
+    15
+  ),
+  blank(
+    'cq-p36-e088', 'english', 'EN-PHONICS', 'MEDIUM',
+    'Complete the word "Duck": Duc...', '🦆',
+    ['k', 't', 'p', 'g'], 'k',
+    'The word is "Duck", spelt d-u-c-k.',
+    20
+  ),
+  blank(
+    'cq-p36-e089', 'english', 'EN-PHONICS', 'MEDIUM',
+    'Complete the word "Ship": Shi...', '🚢',
+    ['p', 't', 'd', 'n'], 'p',
+    'The word is "Ship", spelt s-h-i-p.',
+    20
+  ),
+  matching(
+    'cq-p36-e090', 'english', 'EN-PHONICS', 'EASY',
+    'Which letter do these words start with? Match Sun, Tree and Ant.', '🔤',
+    [
+      ['Sun', 's'],
+      ['Tree', 't'],
+      ['Ant', 'a'],
+    ],
+    'Sun starts with s, Tree with t and Ant with a.',
+    30
+  ),
+  matching(
+    'cq-p36-e091', 'english', 'EN-PHONICS', 'MEDIUM',
+    'Which sound do these words start with? Match Pig, Bag and Cat.', '🔊',
+    [
+      ['Pig', '/p/'],
+      ['Bag', '/b/'],
+      ['Cat', '/k/'],
+    ],
+    'Pig starts with /p/, Bag with /b/ and Cat with /k/.',
+    30
+  ),
+  ordering(
+    'cq-p36-e092', 'english', 'EN-PHONICS', 'EASY',
+    'Put the letters in A-B-C order.', '🔠',
+    ['A', 'B', 'C'],
+    'The letters in order are A, B, C.',
+    20
+  ),
+  ordering(
+    'cq-p36-e093', 'english', 'EN-PHONICS', 'MEDIUM',
+    'Put the letters in order to spell the word for a pet that says meow.', '🐈',
+    ['c', 'a', 't'],
+    'The letters c, a, t spell "cat".',
+    25
+  ),
+  choice(
+    'cq-p36-e094', 'english', 'EN-PHONICS', 'MEDIUM',
+    'Which word starts with the same sound as "Ten"? 🐯', '🐯',
+    ['Tiger', 'Dog', 'Fish', 'Bird'], 'Tiger',
+    '"Ten" and "Tiger" both begin with the /t/ sound.',
+    20
+  ),
+  choice(
+    'cq-p36-e095', 'english', 'EN-PHONICS', 'HARD',
+    'Which word has the three sounds /c/ /a/ /t/? 🐈', '🐈',
+    ['Cat', 'Cow', 'Cake', 'Car'], 'Cat',
+    'The sounds c-a-t make the word "Cat".',
+    20
+  ),
+  choice(
+    'cq-p36-e096', 'english', 'EN-NUMBERS', 'MEDIUM',
+    'Which sentence counts the cats? 🐱🐱🐱🐱', '🐱',
+    ['I see four cats', 'I see two cats', 'I see six cats', 'I see one cat'], 'I see four cats',
+    'There are four cats: 1, 2, 3, 4.',
+    25
+  ),
+  choice(
+    'cq-p36-e097', 'english', 'EN-NUMBERS', 'MEDIUM',
+    'Add the numbers: 6 + 4 = ...', '➕',
+    ['Ten', 'Nine', 'Eleven', 'Twelve'], 'Ten',
+    '6 + 4 = 10, and 10 is "Ten".',
+    25
+  ),
+  choice(
+    'cq-p36-e098', 'english', 'EN-NUMBERS', 'MEDIUM',
+    'What number comes after eight? 8️⃣', '8️⃣',
+    ['Nine', 'Ten', 'Seven', 'Six'], 'Nine',
+    'After eight comes nine: 8, 9.',
+    20
+  ),
+  choice(
+    'cq-p36-e099', 'english', 'EN-NUMBERS', 'HARD',
+    'I have 3 red pens and 4 blue pens. How many pens in all? ✏️', '✏️',
+    ['Seven', 'Eight', 'Six', 'Five'], 'Seven',
+    '3 red pens and 4 blue pens: 3 + 4 = 7 pens in all.',
+    25
+  ),
+  choice(
+    'cq-p36-e100', 'english', 'EN-COLORS', 'EASY',
+    'What colour is the banana? 🍌', '🍌',
+    ['Yellow', 'Blue', 'Green', 'Red'], 'Yellow',
+    'A banana is yellow.',
+    15
+  ),
+  choice(
+    'cq-p36-e101', 'english', 'EN-COLORS', 'EASY',
+    'What colour is the frog? 🐸', '🐸',
+    ['Green', 'Red', 'Pink', 'Black'], 'Green',
+    'A frog is green.',
+    15
+  ),
+  choice(
+    'cq-p36-e102', 'english', 'EN-COLORS', 'MEDIUM',
+    'The sky is clear in the day. What colour is the sky? 🌞', '🌞',
+    ['Blue', 'Green', 'Brown', 'Grey'], 'Blue',
+    'A clear daytime sky looks blue.',
+    20
+  ),
+  choice(
+    'cq-p36-e103', 'english', 'EN-COLORS', 'MEDIUM',
+    'Mix red paint and yellow paint. What colour do you get? 🎨', '🎨',
+    ['Orange', 'Green', 'Purple', 'Pink'], 'Orange',
+    'Red and yellow paint mix to make orange.',
+    20
+  ),
+  choice(
+    'cq-p36-e104', 'english', 'EN-ANIMALS', 'EASY',
+    'Which animal can hop and has long ears? 🐰', '🐰',
+    ['Rabbit', 'Fish', 'Cow', 'Snake'], 'Rabbit',
+    'A rabbit hops and has long ears.',
+    15
+  ),
+  choice(
+    'cq-p36-e105', 'english', 'EN-ANIMALS', 'MEDIUM',
+    'Which animal gives us milk? 🐄', '🐄',
+    ['Cow', 'Cat', 'Bird', 'Frog'], 'Cow',
+    'A cow gives us milk.',
+    20
+  ),
+  choice(
+    'cq-p36-e106', 'english', 'EN-ANIMALS', 'MEDIUM',
+    'Which animal says "Quack"? 🦆', '🦆',
+    ['Duck', 'Dog', 'Pig', 'Cow'], 'Duck',
+    'A duck says quack.',
+    20
+  ),
+  ordering(
+    'cq-p36-e107', 'english', 'EN-ANIMALS', 'MEDIUM',
+    'Put the words in order to make a sentence about the cat.', '🐈',
+    ['The', 'cat', 'is', 'black'],
+    'The sentence is: The cat is black.',
+    30
+  ),
+  choice(
+    'cq-p36-e108', 'english', 'EN-ANIMALS', 'HARD',
+    'Which animal lives in water and can swim? 🐟', '🐟',
+    ['Fish', 'Lion', 'Monkey', 'Bird'], 'Fish',
+    'A fish lives in water and swims.',
+    20
+  ),
+  choice(
+    'cq-p36-e109', 'english', 'EN-FAMILY', 'EASY',
+    "Your mum's mum is your ___. 👵", '👵',
+    ['Grandma', 'Grandpa', 'Sister', 'Baby'], 'Grandma',
+    "Your mother's mother is your grandma.",
+    15
+  ),
+  choice(
+    'cq-p36-e110', 'english', 'EN-FAMILY', 'EASY',
+    "Your father's son, but not you, is your ___. 👦", '👦',
+    ['brother', 'sister', 'mother', 'baby'], 'brother',
+    "Your father's son is your brother.",
+    18
+  ),
+  ordering(
+    'cq-p36-e111', 'english', 'EN-FAMILY', 'MEDIUM',
+    'Put the words in order to make a sentence about your family.', '👪',
+    ['This', 'is', 'my', 'family'],
+    'The sentence is: This is my family.',
+    30
+  ),
+  choice(
+    'cq-p36-e112', 'english', 'EN-FAMILY', 'MEDIUM',
+    "Your mum's sister is your ___. 👩", '👩',
+    ['aunt', 'uncle', 'cousin', 'brother'], 'aunt',
+    "Your mum's sister is your aunt.",
+    20
+  ),
+  choice(
+    'cq-p36-e113', 'english', 'EN-SCHOOL', 'EASY',
+    'Which thing do you use to write? ✏️', '✏️',
+    ['Pencil', 'Book', 'Bag', 'Chair'], 'Pencil',
+    'You write with a pencil.',
+    15
+  ),
+  choice(
+    'cq-p36-e114', 'english', 'EN-SCHOOL', 'EASY',
+    'Which thing do you read? 📖', '📖',
+    ['Book', 'Ruler', 'Pen', 'Desk'], 'Book',
+    'You read a book.',
+    15
+  ),
+  choice(
+    'cq-p36-e115', 'english', 'EN-SCHOOL', 'MEDIUM',
+    'You cut paper with ___. ✂️', '✂️',
+    ['Scissors', 'Pencil', 'Book', 'Bag'], 'Scissors',
+    'You cut paper with scissors.',
+    20
+  ),
+  ordering(
+    'cq-p36-e116', 'english', 'EN-SCHOOL', 'MEDIUM',
+    'Put the words in order to make a sentence about school.', '🏫',
+    ['I', 'go', 'to', 'school'],
+    'The sentence is: I go to school.',
+    30
+  ),
+  matching(
+    'cq-p36-e117', 'english', 'EN-SCHOOL', 'MEDIUM',
+    'Match each action with its object.', '🎒',
+    [
+      ['Read', 'book'],
+      ['Write', 'pencil'],
+      ['Sit', 'chair'],
+    ],
+    'You read a book, write with a pencil and sit on a chair.',
+    30
+  ),
+  choice(
+    'cq-p36-e118', 'english', 'EN-BODY', 'EASY',
+    'Which body part do you use to see? 👀', '👀',
+    ['Eyes', 'Ears', 'Nose', 'Hand'], 'Eyes',
+    'You see with your eyes.',
+    15
+  ),
+  choice(
+    'cq-p36-e119', 'english', 'EN-BODY', 'EASY',
+    'Which body part do you use to hear? 👂', '👂',
+    ['Ears', 'Eyes', 'Mouth', 'Foot'], 'Ears',
+    'You hear with your ears.',
+    15
+  ),
+  choice(
+    'cq-p36-e120', 'english', 'EN-BODY', 'MEDIUM',
+    'Which body part do you use to smell? 👃', '👃',
+    ['Nose', 'Eyes', 'Ears', 'Hand'], 'Nose',
+    'You smell with your nose.',
+    20
+  ),
+  choice(
+    'cq-p36-e121', 'english', 'EN-BODY', 'MEDIUM',
+    'Which body part do you use to kick a ball? 🦵', '🦵',
+    ['Leg', 'Arm', 'Head', 'Nose'], 'Leg',
+    'You kick a ball with your leg.',
+    20
+  ),
+  blank(
+    'cq-p36-e122', 'english', 'EN-BODY', 'EASY',
+    'I clap with my two ___. 👏', '👏',
+    ['hands', 'feet', 'eyes', 'ears'], 'hands',
+    'You clap with your hands.',
+    15
+  ),
+  choice(
+    'cq-p36-e123', 'english', 'EN-BODY', 'HARD',
+    'Which sentence is correct about your body? ✍️', '✍️',
+    ['I have two hands', 'I has two hands', 'I having two hands', 'I am have two hands'], 'I have two hands',
+    'The correct sentence is: I have two hands.',
+    20
+  ),
+
+  // (P36 bank complete: 271 items. Counts verified by tests/competition-p36.test.ts.)
 ];
