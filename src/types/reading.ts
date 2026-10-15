@@ -29,6 +29,9 @@ export type ReadingSkillCategory = 'ACCURACY' | 'FLUENCY' | 'COMPREHENSION' | 'P
  */
 export type ReadingStage = 'ACCURACY' | 'FLUENCY' | 'COMPREHENSION' | 'PROCESSING_SPEED' | 'COMPETITION_SPEED';
 
+/** Quick parent grading after the child reads aloud (😀 good, 😐 okay, 🙁 needs help). */
+export type ReadingParentRating = '😀' | '😐' | '🙁';
+
 export type ReadingQuestionType =
   | 'word-recognition'
   | 'syllable-clap'
@@ -110,6 +113,8 @@ export interface ReadingResponse {
   /** True when the learner paused longer than the hesitation threshold. */
   hesitation: boolean;
   answeredAt: number;
+  /** Optional parent quick grade when the child reads aloud (😀/😐/🙁). */
+  parentRating?: ReadingParentRating;
 }
 
 export interface ReadingErrorCategory {
@@ -145,6 +150,8 @@ export interface ReadingMetrics {
   errors: ReadingErrorCategory[];
   /** Stable id so replaying a session never double-counts. */
   timestamp: number;
+  /** Optional parent quick-grade tally (😀/😐/🙁) for self-read items. */
+  parentRatingCounts?: Record<ReadingParentRating, number>;
 }
 
 export interface ReadingSkillState {
@@ -182,6 +189,11 @@ export interface ReadingProfile {
   headline: string;
   encouragement: string;
   lastSessionAt?: number;
+  /** Parent quick grades keyed by passage id ("😀"/"😐"/"🙁"). */
+  parentRatings?: Record<string, ReadingParentRating>;
+  /** Alias retained for compatibility with earlier naming. */
+  parentGrades?: Record<string, ReadingParentRating>;
+  selfReadRatings?: ReadingParentRating[];
 }
 
 export interface ReadingSessionResult {

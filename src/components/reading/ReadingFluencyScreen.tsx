@@ -8,6 +8,8 @@ import {
   ReadingStage,
 } from '../../types/reading';
 import { ReadingEngine } from '../../services/readingEngine';
+import { adaptReadingQuestion } from '../../services/readingAdapter';
+import { ChoiceQuestion } from '../learning/questions/ChoiceQuestion';
 import { READING_POLICY } from '../../config/policy';
 import { StorageService } from '../../services/storage';
 import { sound } from '../../services/sound';
@@ -91,6 +93,9 @@ export const ReadingFluencyScreen: React.FC<ReadingFluencyScreenProps> = ({
   const [checked, setChecked] = useState(false);
   const [result, setResult] = useState<ReadingSessionResult | null>(null);
   const [showPassage, setShowPassage] = useState(true);
+  const [karaokeIndex, setKaraokeIndex] = useState(-1);
+  const [selfReadMode, setSelfReadMode] = useState(false);
+  const [parentGrade, setParentGrade] = useState<string | null>(null);
   const { state: audioState, speak: speakQuestion } = useSpeak();
   // Last canonical question text handed toward TTS (test hook, also rendered
   // as data-last-spoken for isolated-world automation).
@@ -109,6 +114,12 @@ export const ReadingFluencyScreen: React.FC<ReadingFluencyScreenProps> = ({
 
   const stageState = profile.stageStates[stage];
   const current = items[index];
+  const currentQuestion = useMemo(() => (current ? adaptReadingQuestion(current) : null), [current]);
+
+  useEffect(() => {
+    setKaraokeIndex(-1);
+    setParentGrade(passage ? (StorageService.getReadingParentRatings()[passage.id] ?? null) : null);
+  }, [passage]);
 
   const startStage = useCallback(
     (target: ReadingStage) => {
@@ -161,6 +172,58 @@ export const ReadingFluencyScreen: React.FC<ReadingFluencyScreenProps> = ({
     speakQuestion(target.text, 'vi-VN');
     logQuestionAudioTarget(target);
     setLastQuestionSpoken(target.text);
+  };
+
+  const karaokeWords = useMemo(
+    () => (passage ? passage.paragraphs.join(' ').split(/\s+/).filter(Boolean) : []),
+    [passage]
+  );
+
+  const wordOffsets = useMemo(() => {
+    const offsets: number[] = [];
+    const text = passage ? passage.paragraphs.join(' ') : '';
+    let cursor = 0;
+    for (const w of karaokeWords) {
+      const idx = text.indexOf(w, cursor);
+      offsets.push(idx >= 0 ? idx : cursor);
+      cursor = (idx >= 0 ? idx : cursor) + w.length;
+    }
+    return offsets;
+  }, [karaokeWords, passage]);
+
+  const readAllSentence = () => {
+    if (!passage) return;
+    const text = passage.paragraphs.join(' ');
+    setKaraokeIndex(0);
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+      const utter = new SpeechSynthesisUtterance(text);
+      utter.lang = 'vi-VN';
+      let boundarySeen = false;
+      const fallback = setTimeout(() => {
+        if (!boundarySeen) {
+          karaokeWords.forEach((_, i) => {
+            setTimeout(() => setKaraokeIndex(i), i * 260);
+          });
+          setTimeout(() => setKaraokeIndex(-1), karaokeWords.length * 260 + 200);
+        }
+      }, 600);
+      utter.onboundary = (e) => {
+        boundarySeen = true;
+        clearTimeout(fallback);        const idx = wordOffsets.findIndex((o, i) => {
+          const next = wordOffsets[i + 1] ?? Number.POSITIVE_INFINITY;
+          return e.charIndex >= o && e.charIndex < next;
+        });
+        if (idx >= 0) setKaraokeIndex(idx);
+      };
+      utter.onend = () => setKaraokeIndex(-1);
+      window.speechSynthesis.speak(utter);
+    } else {
+      karaokeWords.forEach((_, i) => {
+        setTimeout(() => setKaraokeIndex(i), i * 260);
+      });
+      setTimeout(() => setKaraokeIndex(-1), karaokeWords.length * 260 + 200);
+    }
   };
 
   const handleCheck = () => {
@@ -384,21 +447,28 @@ export const ReadingFluencyScreen: React.FC<ReadingFluencyScreenProps> = ({
                   Đoạn đọc: {passage.title}
                 </h2>
                 <div className="flex gap-2">
-                  <button
-                    onClick={() => speak(passage.paragraphs.join(' '))}
-                    data-testid="passage-audio"
-                    data-audio-state={audioState}
-                    aria-label={
-                      audioState === 'playing'
-                        ? 'Đang đọc đoạn văn'
-                        : audioState === 'unavailable'
-                          ? 'Thiết bị không đọc được, ba mẹ đọc cùng bé nhé'
-                          : 'Nghe đoạn đọc'
-                    }
-                    className="min-h-[44px] px-3 rounded-xl bg-blue-100 hover:bg-blue-200 text-blue-800 font-bold text-xs flex items-center gap-1"
-                  >
-                    <Volume2 className="w-4 h-4" /> Nghe đoạn đọc
-                  </button>
+                   <button
+                     onClick={() => speak(passage.paragraphs.join(' '))}
+                     data-testid="passage-audio"
+                     data-audio-state={audioState}
+                     aria-label={
+                       audioState === 'playing'
+                         ? 'Đang đọc đoạn văn'
+                         : audioState === 'unavailable'
+                           ? 'Thiết bị không đọc được, ba mẹ đọc cùng bé nhé'
+                           : 'Nghe đoạn đọc'
+                     }
+                     className="min-h-[44px] px-3 rounded-xl bg-blue-100 hover:bg-blue-200 text-blue-800 font-bold text-xs flex items-center gap-1"
+                   >
+                     <Volume2 className="w-4 h-4" /> Nghe đoạn đọc
+                   </button>
+                   <button
+                     onClick={readAllSentence}
+                     data-testid="karaoke-read-all"
+                     className="min-h-[44px] px-3 rounded-xl bg-amber-100 hover:bg-amber-200 text-amber-800 font-bold text-xs flex items-center gap-1"
+                   >
+                     <Play className="w-4 h-4" /> Đọc cả câu
+                   </button>
                   <button
                     onClick={() => setShowPassage((v) => !v)}
                     className="min-h-[44px] px-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs"
@@ -408,26 +478,82 @@ export const ReadingFluencyScreen: React.FC<ReadingFluencyScreenProps> = ({
                 </div>
               </div>
 
-              {showPassage && (
-                <div className="space-y-2">
-                  {passage.paragraphs.map((p, i) => (
-                    <p key={i} className="text-base md:text-lg font-semibold text-slate-800 leading-relaxed">
-                      {p}
-                    </p>
-                  ))}
-                  <div className="flex flex-wrap gap-2 pt-2 border-t border-amber-100">
-                    {passage.pictureBank.map((p) => (
-                      <span
-                        key={p.label}
-                        className="inline-flex items-center gap-1 text-xs font-bold bg-amber-50 border border-amber-200 rounded-xl px-2 py-1"
-                      >
-                        <span>{p.emoji}</span>
-                        {p.label}
-                      </span>
-                    ))}
+                {showPassage && (
+                  <div className="space-y-2">
+                    {(() => {
+                      let globalWordIndex = 0;
+                      return passage.paragraphs.map((p, i) => (
+                        <p key={i} className="text-2xl md:text-[28px] font-semibold text-slate-800 leading-[1.9] tracking-wide">
+                          {p.split(/(\s+)/).map((token, ti) => {
+                            if (/^\s+$/.test(token)) return token;
+                            const idx = globalWordIndex++;
+                            return (
+                              <span
+                                key={ti}
+                                onClick={() => {
+                                  speak(token);
+                                  setKaraokeIndex(idx);
+                                }}
+                                className={`cursor-pointer rounded px-0.5 transition-colors ${
+                                  karaokeIndex === idx ? 'bg-amber-300 text-amber-950' : 'hover:bg-amber-50'
+                                }`}
+                              >
+                                {token}
+                              </span>
+                            );
+                          })}
+                        </p>
+                      ));
+                    })()}
+                    <div className="flex flex-wrap gap-2 pt-2 border-t border-amber-100">
+                      {passage.pictureBank.map((p) => (
+                        <span
+                          key={p.label}
+                          className="inline-flex items-center gap-1 text-xs font-bold bg-amber-50 border border-amber-200 rounded-xl px-2 py-1"
+                        >
+                          <span>{p.emoji}</span>
+                          {p.label}
+                        </span>
+                      ))}
+                    </div>
+                    <div className="pt-3 border-t border-amber-100 space-y-3">
+                      <label className="flex items-center gap-2 text-xs font-bold text-slate-700">
+                        <input
+                          type="checkbox"
+                          checked={selfReadMode}
+                          onChange={(e) => setSelfReadMode(e.target.checked)}
+                        />
+                        Bé tự đọc (phụ huynh hỗ trợ &amp; chấm)
+                      </label>
+                      {selfReadMode && (
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="text-xs font-bold text-slate-700">Phụ huynh chấm:</span>
+                          {(['😀', '😐', '🙁'] as const).map((r) => (
+                            <button
+                              key={r}
+                              type="button"
+                              data-testid="parent-rating-option"
+                              onClick={() => {
+                                if (!passage) return;
+                                StorageService.saveReadingParentRating(passage.id, r);
+                                setParentGrade(r);
+                              }}
+                              className={`min-h-[44px] min-w-[44px] rounded-xl border-2 text-xl flex items-center justify-center ${
+                                parentGrade === r ? 'bg-amber-100 border-amber-500' : 'bg-white border-slate-200'
+                              }`}
+                              aria-label={`Chấm ${r}`}
+                            >
+                              {r}
+                            </button>
+                          ))}
+                          {parentGrade && (
+                            <span className="text-xs font-bold text-emerald-700">Đã chấm: {parentGrade}</span>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
             </section>
 
             {/* Question card */}
@@ -478,39 +604,19 @@ export const ReadingFluencyScreen: React.FC<ReadingFluencyScreenProps> = ({
                 )}
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {current.options.map((opt, optIdx) => {
-                  const selected = picked === opt;
-                  const isAnswer = opt === current.correctAnswer;
-                  let cls = 'bg-white border-slate-200 hover:bg-amber-50';
-                  if (checked) {
-                    if (isAnswer) cls = 'bg-emerald-50 border-emerald-500 text-emerald-900';
-                    else if (selected) cls = 'bg-rose-50 border-rose-500 text-rose-900';
-                    else cls = 'bg-white border-slate-200 opacity-50';
-                  } else if (selected) {
-                    cls = 'bg-amber-100 border-amber-500 text-amber-950';
-                  }
-                  return (
-                    <button
-                      key={optIdx}
-                      data-testid="answer-option"
-                      onClick={() => {
-                        if (checked) return;
-                        sound.playClick();
-                        setPicked(opt);
-                      }}
-                      disabled={checked}
-                      aria-pressed={selected}
-                      className={`min-h-[56px] p-4 rounded-2xl border-2 font-bold text-sm md:text-base flex items-center gap-3 text-left active:scale-[0.99] ${cls}`}
-                    >
-                      <span className="w-8 h-8 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center font-black text-xs shrink-0">
-                        {String.fromCharCode(65 + optIdx)}
-                      </span>
-                      <span className="flex-1">{opt}</span>
-                    </button>
-                  );
-                })}
-              </div>
+              {currentQuestion && (
+                <ChoiceQuestion
+                  question={currentQuestion}
+                  selectedAnswer={picked}
+                  onSelect={(opt) => {
+                    sound.playClick();
+                    setPicked(opt);
+                  }}
+                  isAnswerChecked={checked}
+                  isCorrect={checked && picked === current.correctAnswer}
+                  correctAnswer={current.correctAnswer}
+                />
+              )}
 
               {checked && (
                 <div
@@ -605,9 +711,9 @@ export const ReadingFluencyScreen: React.FC<ReadingFluencyScreenProps> = ({
 
       {/* Ladder */}
       <section className="space-y-3">
-        <h2 className="text-lg md:text-xl font-black text-amber-950 font-display flex items-center gap-2">
-          <span>🪜</span> Thang Luyện Đọc Của Bé
-        </h2>
+          <h2 className="text-lg md:text-xl font-black text-amber-950 font-display flex items-center gap-2">
+            <span>📚</span> Giá Sách Luyện Đọc (Thang Luyện Đọc Của Bé)
+          </h2>
         <p className="text-xs text-slate-500 font-medium">
           Bé chỉ mở được bước mới khi đã đạt chuẩn bước trước. Bước tốc độ chỉ mở khi bé hiểu nội
           dung đã — nhờ vậy bé đọc chậm mà đúng vẫn được đánh giá cao.

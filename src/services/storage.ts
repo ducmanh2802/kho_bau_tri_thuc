@@ -39,7 +39,7 @@ import type {
   SessionState,
 } from '../types/learningOS';
 import type { CompetitionExamResult, ErrorCategory } from '../types/competition';
-import type { ReadingMetrics, ReadingProfile, ReadingSkillState, ReadingStage, ReadingStageState } from '../types/reading';
+import type { ReadingMetrics, ReadingParentRating, ReadingProfile, ReadingSkillState, ReadingStage, ReadingStageState } from '../types/reading';
 
 const STORAGE_KEYS = {
   CHILD_PROFILE: 'kho_bau_child_profile',
@@ -572,6 +572,46 @@ export class StorageService {
   }
 
   /**
+   * Returns parent quick grades keyed by passage id (😀/😐/🙁).
+   */
+  public static getReadingParentRatings(): Record<string, ReadingParentRating> {
+    return StorageService.getReadingProfile().parentRatings ?? {};
+  }
+
+  /** Alias kept for names expected by callers/tests. */
+  public static getReadingParentGrades(): Record<string, ReadingParentRating> {
+    return StorageService.getReadingParentRatings();
+  }
+
+  /** Persists one parent quick grade for a passage (in-place on the profile). */
+  public static saveReadingParentRating(passageId: string, rating: ReadingParentRating): void {
+    if (typeof passageId !== 'string' || !passageId) return;
+    if (!['😀', '😐', '🙁'].includes(rating)) return;
+    const profile = StorageService.getReadingProfile();
+    const next = {
+      ...(profile.parentRatings ?? {}),
+      [passageId]: rating,
+    };
+    const updated: ReadingProfile = {
+      ...profile,
+      parentRatings: next,
+      parentGrades: { ...next },
+      selfReadRatings: [...Object.values(next)],
+    };
+    StorageService.saveReadingProfile(updated);
+  }
+
+  /** Alias kept for names expected by callers/tests. */
+  public static recordReadingParentRating(passageId: string, rating: ReadingParentRating): void {
+    StorageService.saveReadingParentRating(passageId, rating);
+  }
+
+  /** Alias kept for names expected by callers/tests. */
+  public static gradeReadingPassage(passageId: string, rating: ReadingParentRating): void {
+    StorageService.saveReadingParentRating(passageId, rating);
+  }
+
+  /**
    * Rebuilds a valid reading profile from an arbitrary payload.
    */
   private static sanitizeReadingProfile(raw: Record<string, unknown>): ReadingProfile {
@@ -622,6 +662,25 @@ export class StorageService {
       ? (p.currentStage as ReadingStage)
       : 'ACCURACY';
 
+    const VALID_RATING = new Set(['😀', '😐', '🙁']);
+    const safeRating = (v: unknown): ReadingParentRating | undefined =>
+      typeof v === 'string' && VALID_RATING.has(v) ? (v as ReadingParentRating) : undefined;
+
+    const parentRatings: Record<string, ReadingParentRating> = {};
+    for (const srcObj of [p.parentRatings, p.parentGrades, p.selfReadRatings]) {
+      // support both record and array shapes
+      if (srcObj && typeof srcObj === 'object' && !Array.isArray(srcObj)) {
+        for (const [key, val] of Object.entries(srcObj as Record<string, unknown>)) {
+          const r = safeRating(val);
+          if (r) parentRatings[key] = r;
+        }
+      }
+    }
+
+    const selfReadRatings = Array.isArray(p.selfReadRatings)
+      ? (p.selfReadRatings as unknown[]).map(safeRating).filter((r): r is ReadingParentRating => !!r)
+      : Object.values(parentRatings);
+
     return {
       currentStage,
       stageStates,
@@ -633,6 +692,9 @@ export class StorageService {
       headline: typeof p.headline === 'string' ? p.headline : base.headline,
       encouragement: typeof p.encouragement === 'string' ? p.encouragement : base.encouragement,
       lastSessionAt: typeof p.lastSessionAt === 'number' ? p.lastSessionAt : undefined,
+      parentRatings: Object.keys(parentRatings).length ? parentRatings : undefined,
+      parentGrades: Object.keys(parentRatings).length ? { ...parentRatings } : undefined,
+      selfReadRatings: selfReadRatings.length ? selfReadRatings : undefined,
     };
   }
 

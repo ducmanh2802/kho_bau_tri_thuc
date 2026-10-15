@@ -1,6 +1,7 @@
 import {
   ReadingErrorCategory,
   ReadingMetrics,
+  ReadingParentRating,
   ReadingPassage,
   ReadingProfile,
   ReadingQuestion,
@@ -254,6 +255,14 @@ export class ReadingEngine {
       ([category, count]) => ({ category, count })
     );
 
+    const parentRatingCounts = { '😀': 0, '😐': 0, '🙁': 0 } as Record<string, number>;
+    for (const r of responses) {
+      if (r.parentRating && Object.prototype.hasOwnProperty.call(parentRatingCounts, r.parentRating)) {
+        parentRatingCounts[r.parentRating] += 1;
+      }
+    }
+    const hasParentRatings = Object.values(parentRatingCounts).some((n) => n > 0);
+
     return {
       sessionId,
       stage,
@@ -274,6 +283,9 @@ export class ReadingEngine {
       questionTypePerformance,
       errors,
       timestamp: endedAt,
+      parentRatingCounts: hasParentRatings
+        ? (parentRatingCounts as ReadingMetrics['parentRatingCounts'])
+        : undefined,
     };
   }
 
@@ -499,6 +511,44 @@ export class ReadingEngine {
         reason: `Cần đạt ${state.accuracyGate}% để mở bước tiếp theo. Bé đang ở ${state.accuracy}%.`,
       };
     });
+  }
+
+  /** Records a parent quick grade (😀/😐/🙁) for a passage in the profile. */
+  public static recordParentRating(
+    profile: ReadingProfile,
+    passageId: string,
+    rating: ReadingParentRating
+  ): ReadingProfile {
+    if (!profile) return profile;
+    if (!passageId || !['😀', '😐', '🙁'].includes(rating)) return profile;
+    const next: ReadingProfile = {
+      ...profile,
+      parentRatings: { ...(profile.parentRatings ?? {}) },
+      parentGrades: { ...(profile.parentGrades ?? {}) },
+      selfReadRatings: [...(profile.selfReadRatings ?? [])],
+    };
+    next.parentRatings![passageId] = rating;
+    next.parentGrades![passageId] = rating;
+    next.selfReadRatings!.push(rating);
+    return next;
+  }
+
+  /** Alias kept for compatibility with alternate naming. */
+  public static applyParentRating(
+    profile: ReadingProfile,
+    passageId: string,
+    rating: ReadingParentRating
+  ): ReadingProfile {
+    return ReadingEngine.recordParentRating(profile, passageId, rating);
+  }
+
+  /** Alias kept for alternate naming. */
+  public static gradeSelfRead(
+    profile: ReadingProfile,
+    passageId: string,
+    rating: ReadingParentRating
+  ): ReadingProfile {
+    return ReadingEngine.recordParentRating(profile, passageId, rating);
   }
 
   private static headlineFor(profile: ReadingProfile): string {
