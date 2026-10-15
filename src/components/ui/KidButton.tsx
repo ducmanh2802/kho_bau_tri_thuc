@@ -48,12 +48,19 @@ export const KidButton: React.FC<KidButtonProps> = ({
     if (playClickSound && !disabled && !isLoading) {
       sound.playClick();
     }
+    // Bounce effect: briefly scale down then scale up
+    const button = e.currentTarget as HTMLButtonElement;
+    button.style.transition = 'transform 0.1s ease-in-out';
+    button.style.transform = 'scale(0.95)';
+    setTimeout(() => {
+      button.style.transform = 'scale(1)';
+    }, 100);
     onClick?.(e);
   };
 
   const baseClasses = `
     kb-btn font-black rounded-2xl flex items-center justify-center gap-2
-    transition-all active:scale-[0.96] cursor-pointer
+    cursor-pointer
     focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-amber-400
     disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100
     ${fullWidth ? 'w-full' : ''}

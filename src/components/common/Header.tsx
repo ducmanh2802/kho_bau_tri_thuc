@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { ActiveScreen, ChildProfile } from '../../types';
+import { StorageService } from '../../services/storage';
 import { sound } from '../../services/sound';
 import { Star, Sparkles, Flame, Volume2, VolumeX, Shield, ShoppingBag } from 'lucide-react';
 import { KidButton, Pill } from '../ui';
@@ -12,6 +13,25 @@ interface HeaderProps {
   onOpenParent: () => void;
   onOpenShop: () => void;
 }
+
+const getTimeOfDay = (): 'sáng' | 'chiều' | 'tối' => {
+  const hour = new Date().getHours();
+  if (hour >= 5 && hour < 11) return 'sáng';
+  if (hour >= 11 && hour < 18) return 'chiều';
+  return 'tối';
+};
+
+const getEncouragementPhrase = (timeOfDay: 'sáng' | 'chiều' | 'tối', hasStreak: boolean): string => {
+  const phrases: Record<'sáng' | 'chiều' | 'tối', string> = {
+    sáng: 'Chào buổi sáng bé oir!',
+    chiều: 'Bé làm tốt lắm!',
+    tối: 'Ngủ gật đi bé, gấu sẽ chờ bé mai!',
+  };
+  if (hasStreak) {
+    return 'Bền bỉ lắm bé!';
+  }
+  return phrases[timeOfDay];
+};
 
 const NavLink: React.FC<{
   item: (typeof NAVIGATION)[number];
@@ -44,6 +64,53 @@ const NavLink: React.FC<{
   );
 };
 
+const bearReactionPhrases = [
+  'Gấu rất thích khi bé chơi với gấu!',
+  'Bé đang làm tốt lắm, gấu đang 지켜 thu!',
+  'Hết! Gấu cười lên!',
+  'Bouncing!',
+  'Hết lâu rưỡi!',
+];
+
+const bearRandomReaction = (
+  setShowBearReaction: React.Dispatch<React.SetStateAction<boolean>>
+): void => {
+  const randomIndex = Math.floor(Math.random() * bearReactionPhrases.length);
+  const phrase = bearReactionPhrases[randomIndex];
+
+  // Play corresponding sound
+  if (typeof window !== 'undefined' && !sound.getMuted()) {
+    try {
+      if (randomIndex === 0) {
+        // Laugh
+        const utterance = new SpeechSynthesisUtterance('haha');
+        utterance.rate = 0.8;
+ utterance.pitch = 1.3;
+        window.speechSynthesis.speak(utterance);
+      } else if (randomIndex === 1) {
+        // Encouragement
+        const utterance = new SpeechSynthesisUtterance('chanh');
+        utterance.rate = 0.7;
+ utterance.pitch = 1.1;
+        window.speechSynthesis.speak(utterance);
+      } else if (randomIndex === 2) {
+        // Sneeze
+        const utterance = new SpeechSynthesisUtterance('huh');
+ utterance.rate = 0.5;
+ utterance.pitch = 0.8;
+        window.speechSynthesis.speak(utterance);
+      } else {
+        // Just play click
+        sound.playClick();
+      }
+    } catch {}
+  }
+
+  // Show temporary visual feedback
+  setShowBearReaction(true);
+  setTimeout(() => setShowBearReaction(false), 2000);
+};
+
 export const Header: React.FC<HeaderProps> = ({
   currentScreen,
   onNavigate,
@@ -52,6 +119,42 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenShop,
 }) => {
   const [isMuted, setIsMuted] = React.useState(sound.getMuted());
+  const [lastPhraseTime, setLastPhraseTime] = useState<number>(0);
+  const [showBearReaction, setShowBearReaction] = useState(false);
+
+  // Check days since last play using analytics todayDate
+  useEffect(() => {
+    const analytics = StorageService.getAnalytics();
+    const today = new Date().toISOString().split('T')[0];
+    const lastPlayedDate = analytics.todayDate;
+    const daysSinceLastPlay = lastPlayedDate !== today && lastPlayedDate ? 1 : 0;
+    // Just track if we played today, no complex day counting needed
+  }, []);
+
+  // Play contextual greeting when component mounts or time changes
+  useEffect(() => {
+    const timeOfDay = getTimeOfDay();
+    const hasStreak = profile.streak > 0;
+    const phrase = getEncouragementPhrase(timeOfDay, hasStreak);
+    const now = Date.now();
+
+    // Only play if enough time has passed (avoid spamming)
+    if (now - lastPhraseTime > 24 * 60 * 60 * 1000) {
+      // Don't play if muted
+      if (!isMuted) {
+        sound.speak(phrase, 'vi-VN');
+      }
+      setLastPhraseTime(now);
+    }
+  }, [isMuted]);
+
+  // Handle bear touch reaction
+  const handleBearClick = () => {
+    sound.playClick();
+    bearRandomReaction(setShowBearReaction);
+    setShowBearReaction(true);
+    setTimeout(() => setShowBearReaction(false), 2000);
+  };
 
   const handleToggleSound = () => {
     const next = !isMuted;
@@ -64,7 +167,9 @@ export const Header: React.FC<HeaderProps> = ({
   const navItems = NAVIGATION;
 
   return (
-    <header className="sticky top-0 z-40 w-full bg-[var(--color-kb-card)]/95 backdrop-blur-md border-b-2 border-amber-200/80 shadow-xs">
+    <header
+      className="sticky top-0 z-40 w-full bg-[var(--color-kb-card)]/95 backdrop-blur-md border-b-2 border-amber-200/80 shadow-xs"
+    >
       <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 h-16 flex items-center justify-between gap-2 sm:gap-4">
         {/* Zone 1: Single text element wordmark */}
         <KidButton
@@ -84,8 +189,18 @@ export const Header: React.FC<HeaderProps> = ({
           <span className="sm:hidden sr-only">Kho Báu Tri Thức — Về trang chủ</span>
         </KidButton>
 
-        {/*
-          Zone 2: navigation (T01/B11 + T01B/3 + T06).
+        {/* Bear mascot touch reaction (hidden on small screens) */}
+        {typeof window !== 'undefined' && window.innerWidth >= 375 && (
+          <button
+            onClick={handleBearClick}
+            aria-label="Phản ứng từ Linh thú Gấu"
+            className="absolute top-2 right-2 w-10 h-10 rounded-full bg-amber-100 border border-amber-200 flex items-center justify-center text-amber-600 text-xs font-bold transition-transform hover:bg-amber-200 active:scale-90"
+          >
+            🐾
+          </button>
+        )}
+
+        {/* Zone 2: navigation (T01/B11 + T01B/3 + T06).
           >= 1024px (lg) only the top nav shows; < 1024px only the bottom nav
           shows (see App.tsx). lg–2xl shows ALL 5 destinations as ICON-ONLY
           (hover/title + aria-label giữ tên đầy đủ) so the bar provably fits
@@ -173,7 +288,7 @@ export const Header: React.FC<HeaderProps> = ({
             className="min-h-[44px] min-w-[44px] px-3"
             onClick={() => {
               sound.playClick();
-              onOpenParent();
+              onOpenParent;
             }}
             aria-label="Khu vực dành cho Ba Mẹ"
             leftIcon={<Shield className="w-3.5 h-3.5 text-amber-400" aria-hidden="true" />}
