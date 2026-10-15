@@ -20,7 +20,7 @@ import {
 } from '../types';
 import { getAllSkills, getTopicsBySubject } from '../data/curriculum';
 import { GAMES_CATALOG } from '../data/gamesCatalog';
-import { localDateKey, diffDateKeys } from './dateUtils';
+import { localDateKey, diffDateKeys, parseDateKey } from './dateUtils';
 import { LearningOS, LEARNING_OS_POLICY } from './learningOS';
 // T02C — storage (first-load chunk) must NOT import CompetitionEngine,
 // ReadingEngine or the competition/reading banks. The demo seeder lives in
@@ -367,6 +367,17 @@ const DEFAULT_PARENT_SETTINGS: ParentSettings = {
 
 function getTodayString(): string {
   return localDateKey();
+}
+
+/**
+ * T14C — strict YYYY-MM-DD check: correct shape AND a real calendar day.
+ * The old regex-only check accepted impossible dates like `2026-13-99`,
+ * which then poisoned NEW-label and streak math; those are now rejected.
+ */
+function isRealDateKey(value: unknown): value is string {
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const parsed = parseDateKey(value);
+  return parsed !== null && localDateKey(parsed) === value;
 }
 
 function createDefaultQuests(): DailyQuest[] {
@@ -1155,7 +1166,7 @@ public static getParentSettings(): ParentSettings {
   public static getTreeWateredDate(): string | null {
     try {
       const raw = localStorage.getItem(STORAGE_KEYS.TREE_WATER);
-      if (typeof raw === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+      if (isRealDateKey(raw)) return raw;
     } catch {
       // Ignore — ngoài trình duyệt hoặc quota đầy thì coi như chưa tưới.
     }
@@ -1163,7 +1174,7 @@ public static getParentSettings(): ParentSettings {
   }
 
   public static setTreeWateredDate(dateKey: string): void {
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateKey)) return;
+    if (!isRealDateKey(dateKey)) return;
     try {
       localStorage.setItem(STORAGE_KEYS.TREE_WATER, dateKey);
     } catch {
@@ -1514,7 +1525,7 @@ public static getParentSettings(): ParentSettings {
     if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return out;
     for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
       if (typeof k !== 'string' || !k.trim()) continue;
-      if (typeof v !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(v)) continue;
+      if (!isRealDateKey(v)) continue;
       out[k] = v;
     }
     return out;
@@ -1674,7 +1685,7 @@ public static getParentSettings(): ParentSettings {
       if (raw) {
         const parsed = JSON.parse(raw);
         if (Array.isArray(parsed)) {
-          return parsed.filter((d): d is string => typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d));
+          return parsed.filter((d): d is string => isRealDateKey(d));
         }
       }
     } catch {

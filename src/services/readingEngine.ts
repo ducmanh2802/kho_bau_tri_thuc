@@ -521,16 +521,17 @@ export class ReadingEngine {
   ): ReadingProfile {
     if (!profile) return profile;
     if (!passageId || !['😀', '😐', '🙁'].includes(rating)) return profile;
-    const next: ReadingProfile = {
+    // T14C: idempotent per passage — re-grading updates the entry instead of
+    // appending a duplicate to selfReadRatings (mirrors the persisted
+    // StorageService.saveReadingParentRating semantics).
+    const parentRatings = { ...(profile.parentRatings ?? {}), [passageId]: rating };
+    const parentGrades = { ...(profile.parentGrades ?? {}), [passageId]: rating };
+    return {
       ...profile,
-      parentRatings: { ...(profile.parentRatings ?? {}) },
-      parentGrades: { ...(profile.parentGrades ?? {}) },
-      selfReadRatings: [...(profile.selfReadRatings ?? [])],
+      parentRatings,
+      parentGrades,
+      selfReadRatings: [...Object.values(parentRatings)],
     };
-    next.parentRatings![passageId] = rating;
-    next.parentGrades![passageId] = rating;
-    next.selfReadRatings!.push(rating);
-    return next;
   }
 
   /** Alias kept for compatibility with alternate naming. */
