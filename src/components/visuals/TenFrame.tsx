@@ -1,84 +1,94 @@
 import React from 'react';
 
 export interface TenFrameProps {
-  /** Số chục (0–5). */
-  chuc: number;
-  /** Số đơn vị (0–4). */
-  donVi: number;
+  /** Số lượng chấm cần hiển thị (0–20, hỗ trợ nhiều khung 10) */
+  count: number;
+  /** Màu chấm tô (mặc định cam) */
+  fillColor?: string;
+  /** Màu viền khung */
+  frameColor?: string;
+  /** Màu nền khung */
+  bgColor?: string;
 }
 
-export const TenFrame: React.FC<TenFrameProps> = ({ chuc, donVi }) => {
-  const total = chuc * 10 + donVi;
-  const filled = Math.min(total, 5);
-  const empty = Math.max(0, 5 - total);
+export const TenFrame: React.FC<TenFrameProps> = ({
+  count,
+  fillColor = '#e65100',
+  frameColor = '#e65100',
+  bgColor = '#fff3e0',
+}) => {
+  const numFrames = Math.ceil(Math.max(count, 1) / 10);
+  const frames = Array.from({ length: numFrames }, (_, frameIndex) => {
+    const frameStart = frameIndex * 10;
+    const frameCount = Math.min(count - frameStart, 10);
+    return (
+      <g key={frameIndex} transform={`translate(${frameIndex * 220}, 0)`}>
+        {/* Khung 10 ô: 2 hàng × 5 ô */}
+        <rect
+          x="10"
+          y="10"
+          width="200"
+          height="80"
+          rx="6"
+          ry="6"
+          fill={bgColor}
+          stroke={frameColor}
+          strokeWidth="3"
+        />
+        {/* Các ô - hàng trên (5 ô) */}
+        {Array.from({ length: 5 }, (_, col) => (
+          <rect
+            key={`top-${col}`}
+            x={20 + col * 38}
+            y={18}
+            width="30"
+            height="30"
+            rx="4"
+            ry="4"
+            fill={col < Math.min(frameCount, 5) ? fillColor : bgColor}
+            stroke={frameColor}
+            strokeWidth="1.5"
+          />
+        ))}
+        {/* Các ô - hàng dưới (5 ô) */}
+        {Array.from({ length: 5 }, (_, col) => (
+          <rect
+            key={`bottom-${col}`}
+            x={20 + col * 38}
+            y={54}
+            width="30"
+            height="30"
+            rx="4"
+            ry="4"
+            fill={col < Math.max(0, frameCount - 5) ? fillColor : bgColor}
+            stroke={frameColor}
+            strokeWidth="1.5"
+          />
+        ))}
+        {/* Số thứ tự khung */}
+        <text
+          x="110"
+          y="105"
+          textAnchor="middle"
+          fontSize="12"
+          fill="#667085"
+        >
+          {numFrames > 1 ? `Khung ${frameIndex + 1}` : `Tổng: ${count}`}
+        </text>
+      </g>
+    );
+  });
+
+  const totalWidth = numFrames * 220;
 
   return (
     <svg
-      width="200"
-      height="180"
-      viewBox="0 0 200 180"
+      width={totalWidth}
+      height="120"
+      viewBox={`0 0 ${totalWidth} 120`}
       xmlns="http://www.w3.org/2000/svg"
     >
-      <rect x="20" y="20" width="160" height="140" rx="8" ry="8" fill="#fff3e0" stroke="#e65100" stroke-width="3"/>
-      {/* Chục cột trái (màu cam) */}
-      {chuc > 0 && (
-        <g fill="#e65100">
-          {Array.from({ length: chuc }, (_, i) => (
-            <circle
-              key={i}
-              cx={30 + i * 30}
-              cy={70}
-              r={18}
-            />
-          ))}
-        </g>
-      )}
-      {/* Đơn vị cột phải */}
-      {donVi > 0 && (
-        <g fill="#ffe082">
-          {Array.from({ length: donVi }, (_, i) => (
-            <circle
-              key={i}
-              cx={90 + i * 30}
-              cy={70}
-              r={18}
-            />
-          ))}
-        </g>
-      )}
-      {/* Hết tròn trắng cho chỗ trống */}
-      {filled < 5 && (
-        <g fill="#fff3e0">
-          {Array.from({ length: 5 - filled }, (_, i) => (
-            <circle
-              key={i}
-              cx={30 + i * 30}
-              cy={70}
-              r={18}
-            />
-          ))}
-        </g>
-      )}
-      {empty > 0 && (
-        <g fill="#ffe082">
-          {Array.from({ length: empty }, (_, i) => (
-            <circle
-              key={i}
-              cx={90 + (i - (5 - filled)) * 30}
-              cy={70}
-              r={18}
-            />
-          ))}
-        </g>
-      )}
-      {/* Ghi số ở dưới */}
-      <text
-        x="100"
-        y="95"
-        text-anchor="middle"
-        font-size="14"
-        fill="#e65100"
-      >{total}</text>
+      {frames}
     </svg>
   );
 };
