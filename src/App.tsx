@@ -3,19 +3,25 @@ import { ActiveScreen, ChildProfile, SubjectType } from './types';
 import { StorageService } from './services/storage';
 import { Header } from './components/common/Header';
 import { HomeScreen } from './components/home/HomeScreen';
-import { WorldMapScreen } from './components/world/WorldMapScreen';
-import { SubjectScreen } from './components/subject/SubjectScreen';
-import { DailyReviewScreen } from './components/review/DailyReviewScreen';
 import { NAVIGATION } from './config/navigation';
 
 /**
  * CODE SPLITTING (P31)
  *
- * The home, map and subject screens are the first paint and stay in the main
- * chunk. Everything a child reaches later (14 mini-games, the competition hub,
- * reading fluency, parent mode, shops) is loaded on demand so first render does
- * not pay for the whole app.
+ * The home screen is the first paint and stays in the main chunk.
+ * Everything a child reaches later (world map, subject screens, review,
+ * mini-games, the competition hub, reading fluency, parent mode, shops)
+ * is loaded on demand so first render does not pay for the whole app.
  */
+const WorldMapScreen = lazy(() =>
+  import('./components/world/WorldMapScreen').then((m) => ({ default: m.WorldMapScreen }))
+);
+const SubjectScreen = lazy(() =>
+  import('./components/subject/SubjectScreen').then((m) => ({ default: m.SubjectScreen }))
+);
+const DailyReviewScreen = lazy(() =>
+  import('./components/review/DailyReviewScreen').then((m) => ({ default: m.DailyReviewScreen }))
+);
 const GamesHubScreen = lazy(() =>
   import('./components/games/GamesHubScreen').then((m) => ({ default: m.GamesHubScreen }))
 );
