@@ -70,6 +70,22 @@ export const LessonPlayerModal: React.FC<LessonPlayerModalProps> = ({
   const [isCorrect, setIsCorrect] = useState(false);
   const [showHint, setShowHint] = useState(false);
   const [score, setScore] = useState(0);
+  const [isFinished, setIsFinished] = useState(false);
+  // The result screen ("+N Sao") stays inside THIS dialog. The parent is told
+  // the lesson is complete (onComplete → profile refresh → maybe the level-up
+  // celebration) only when the child leaves the result screen, so the two
+  // dialogs never stack (T20A / B-05) and the child always sees what they earned.
+  const finishedRef = useRef(false);
+  const completeNotifiedRef = useRef(false);
+  const onCompleteRef = useRef(onComplete);
+  onCompleteRef.current = onComplete;
+  const notifyComplete = () => {
+    if (!finishedRef.current || completeNotifiedRef.current) return;
+    completeNotifiedRef.current = true;
+    onCompleteRef.current?.();
+  };
+  // Leaving by the back gesture / Esc after finishing still reports completion.
+  useEffect(() => () => notifyComplete(), []); // eslint-disable-line react-hooks/exhaustive-deps
   const dialogRef = useFocusTrap<HTMLDivElement>(true);
   const { requestClose } = useModalHistory(onClose);
   const { state: audioState, speak: speakQuestion } = useSpeak();
@@ -209,17 +225,33 @@ export const LessonPlayerModal: React.FC<LessonPlayerModalProps> = ({
     if (currentIdx + 1 < lesson.questions.length) {
       setCurrentIdx(currentIdx + 1);
     } else {
+      // Rewards are saved right away; the result screen shows them.
+      setIsFinished(true);
+      finishedRef.current = true;
       sound.playLevelUp();
       fireCelebrationConfetti();
       StorageService.completeLesson(lesson.id, lesson.subject, lesson.xpReward, lesson.starReward);
-      if (onComplete) onComplete();
-      if (onClose) onClose();
     }
   };
 
+  const handleFinishAndClose = () => {
+    sound.playClick();
+    notifyComplete();
+    onClose();
+  };
+
   const handleRetryLesson = () => {
+    sound.playClick();
     setCurrentIdx(0);
     setScore(0);
+    setSelectedAnswer(null);
+    setOrderedList([]);
+    setMatchingState({});
+    setDragItem(null);
+    setIsAnswerChecked(false);
+    setIsCorrect(false);
+    setShowHint(false);
+    setIsFinished(false);
   };
 
   const handleRetryCurrentQuestion = () => {
@@ -473,7 +505,10 @@ return (
               <span>{score} đúng</span>
             </div>
             <button
-              onClick={requestClose}
+              onClick={() => {
+                notifyComplete();
+                requestClose();
+              }}
               aria-label="Đóng bài học"
               title="Đóng bài học (Esc)"
               data-testid="lesson-close"
@@ -493,6 +528,7 @@ return (
         </div>
 
         {/* Question Area */}
+        {!isFinished ? (
         <div className="flex-1 flex flex-col min-h-0">
           <div className="flex-1 overflow-y-auto p-4 md:p-6">
             {/* Prompt Card */}
@@ -574,6 +610,58 @@ return (
             </div>
           </div>
         </div>
+        ) : (
+          // Completion Result Screen — kept INSIDE this dialog (one dialog at a
+          // time); onComplete fires when the child leaves it (handleFinishAndClose).
+          <div className="flex-1 overflow-y-auto flex flex-col items-center justify-center p-4 md:p-6 text-center animate-pop">
+            <div className="w-20 h-20 bg-amber-100 rounded-full flex items-center justify-center mb-4 animate-bounce">
+              <Star className="w-12 h-12 fill-amber-400 text-amber-500" aria-hidden="true" />
+            </div>
+
+            <h3 className="text-2xl md:text-3xl font-black text-amber-950 font-display mb-1">
+              CHÚC MỪNG BÉ HOÀN THÀNH!
+            </h3>
+            <p className="text-slate-600 text-sm md:text-base font-semibold mb-6">
+              Bé đã làm đúng <span className="text-amber-600 font-black">{score}</span> /{' '}
+              {lesson.questions.length} câu hỏi của bài học:
+              <br />
+              <span className="text-slate-900 font-bold [overflow-wrap:anywhere]">{lesson.title}</span>
+            </p>
+
+            {/* Earned Rewards — wraps on a 360px phone */}
+            <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 py-3 px-4 bg-amber-50 rounded-2xl border-2 border-amber-200 mb-6 max-w-full">
+              <div className="flex items-center gap-2 text-amber-700 font-black text-base">
+                <Star className="w-6 h-6 fill-amber-400 text-amber-500" aria-hidden="true" />
+                <span>+{lesson.starReward} Sao</span>
+              </div>
+              <div className="flex items-center gap-2 text-purple-700 font-black text-base">
+                <Sparkles className="w-6 h-6 text-purple-500" aria-hidden="true" />
+                <span>+{lesson.xpReward} XP</span>
+              </div>
+              <div className="flex items-center gap-1.5 text-blue-700 font-black text-base">
+                <span aria-hidden="true">🎟️</span>
+                <span>+1 Vé Chơi</span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 w-full max-w-sm">
+              <button
+                onClick={handleRetryLesson}
+                className="flex-1 min-h-[48px] py-3 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-2xl flex items-center justify-center gap-1.5 transition-all active:scale-95 text-sm"
+              >
+                <RotateCcw className="w-4 h-4" aria-hidden="true" />
+                <span>Học lại</span>
+              </button>
+              <button
+                onClick={handleFinishAndClose}
+                autoFocus
+                className="flex-1 min-h-[48px] py-3 px-4 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-black rounded-2xl shadow-lg transition-transform active:scale-95 text-sm"
+              >
+                <span>Về bản đồ</span>
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

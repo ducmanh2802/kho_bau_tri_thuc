@@ -151,9 +151,10 @@ async function body(page, ui) {
 
   // T20A / B-03 (fixed in T20A): the lesson's own completion screen (rewards +
   // "Về bản đồ") must stay on screen so the child sees what they earned.
-  // A claimed level stacks the celebration on top of it — dismiss it first.
+  // The level-up celebration now opens only AFTER the child leaves that screen
+  // (one dialog at a time, B-05). Older builds stacked it on top — handle both.
   const celebrated = await dismissLevelUpCelebration(page);
-  if (celebrated) log('levelUpCelebrationDismissed', { ok: true });
+  if (celebrated) log('levelUpCelebrationDismissed', { ok: true, stacked: true });
   const backToMap = page.getByRole('button', { name: 'Về bản đồ' });
   if (await backToMap.count()) {
     try {
@@ -169,6 +170,11 @@ async function body(page, ui) {
     const lessonClose = page.locator('[data-testid="lesson-close"]');
     if (await lessonClose.count()) await lessonClose.first().click(CLICK).catch(() => {});
   }
+  await page.waitForTimeout(300);
+  const celebratedAfter = await dismissLevelUpCelebration(page);
+  if (celebratedAfter) log('levelUpCelebrationDismissed', { ok: true, afterResultScreen: true });
+  const dialogsLeft = await page.locator('[role="dialog"]:visible').count();
+  if (dialogsLeft) fail(`${dialogsLeft} dialog(s) still open after leaving the lesson`);
   await page.waitForTimeout(300);
 
   // ---------- 3. READING FLUENCY ----------

@@ -6,6 +6,8 @@
  * It records which types were genuinely exercised and interacted with.
  */
 
+import { dismissLevelUpCelebration } from './lib.mjs';
+
 const state = { steps: [], errors: [], typesSeen: {}, typesCompleted: {} };
 const CLICK = { timeout: 12000 };
 
@@ -147,6 +149,13 @@ async function sweepOneLesson(page, nodes, index, subject) {
   await page.waitForTimeout(400);
 
   for (let q = 0; q < 15; q += 1) {
+    // The result screen says "Bé đã làm đúng …": check it BEFORE reading the
+    // type label, or "đúng" is mistaken for a true/false question.
+    const screenText = await page.locator('[role=dialog]').first().innerText().catch(() => '');
+    if (/HOÀN THÀNH|KẾT QUẢ/.test(screenText)) {
+      log('lessonComplete', { subject, lesson: lessonText });
+      break;
+    }
     const type = await currentType(page);
     if (type === 'unknown') {
       const completeText = await page.locator('[role=dialog]').innerText();
@@ -182,9 +191,18 @@ async function sweepOneLesson(page, nodes, index, subject) {
     break;
   }
 
+  // Leave the result screen like a child would ("Về bản đồ"): the lesson is
+  // reported complete then, and a level-up celebration may open after it.
+  const backToMap = page.getByRole('button', { name: 'Về bản đồ' });
+  if (await backToMap.count()) {
+    await backToMap.first().click(CLICK).catch(() => {});
+    await page.waitForTimeout(400);
+  }
   // Close EVERY dialog left behind (the player modal can survive the lesson
-  // popup, and a leftover modal blocks the next node).
+  // popup, the level-up celebration closes with "Tuyệt Vời", and a leftover
+  // modal blocks the next node).
   for (let attempt = 0; attempt < 4; attempt += 1) {
+    if (await dismissLevelUpCelebration(page)) continue;
     if ((await page.locator('[role=dialog]').count()) === 0) break;
     const closeBtn = page
       .locator('[data-testid="lesson-close"], button[aria-label="Đóng"], [data-testid="game-close"]')
