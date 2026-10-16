@@ -242,7 +242,7 @@ export function validateCompetitionQuestion(q: CompetitionQuestion): ValidationI
       `estimatedSeconds=${q.estimatedSeconds} nằm ngoài khoảng hợp lý ${CONTENT_POLICY.MIN_ESTIMATED_SECONDS}-${CONTENT_POLICY.MAX_ESTIMATED_SECONDS}s.`
     );
   }
-  if (q.options.length < CONTENT_POLICY.MIN_OPTIONS)
+  if (q.questionType !== 'true-false' && q.options.length < CONTENT_POLICY.MIN_OPTIONS)
     push('TOO_FEW_OPTIONS', `Cần tối thiểu ${CONTENT_POLICY.MIN_OPTIONS} phương án.`);
   if (q.options.length > CONTENT_POLICY.MAX_OPTIONS)
     push('TOO_MANY_OPTIONS', `Tối đa ${CONTENT_POLICY.MAX_OPTIONS} phương án cho lớp 1.`);

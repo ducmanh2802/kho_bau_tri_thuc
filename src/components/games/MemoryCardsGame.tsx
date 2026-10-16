@@ -145,7 +145,7 @@ export const MemoryCardsGame: React.FC<{ onExit: () => void }> = ({ onExit }) =>
         </div>
 
         {/* Cards Grid */}
-        <div className="grid grid-cols-3 sm:grid-cols-4 gap-3 w-full">
+        <div className="grid grid-cols-3 sm:grid-cols-4 gap-3 w-full min-w-0" style={{ gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' }}>
           {cards.map((card) => {
             const showFace = card.isFlipped || card.isMatched;
             return (
