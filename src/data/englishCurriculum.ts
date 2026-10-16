@@ -327,7 +327,7 @@ export const ENGLISH_TOPICS_RAW: Topic[] = [
             mediaEmoji: '🔢',
             options: ['Three', 'Two', 'Four', 'One'],
             correctAnswer: 'Three',
-            hint: 'Count down from five: four, three.',
+            hint: 'Start at five and take two steps back.',
             explanation: 'Correct! 5 - 2 = 3 (Three).',
           },
           {
@@ -342,7 +342,7 @@ export const ENGLISH_TOPICS_RAW: Topic[] = [
             mediaEmoji: '🔢',
             options: ['Four', 'Two', 'Five', 'One'],
             correctAnswer: 'Four',
-            hint: 'Count: One, Two, Three, Four.',
+            hint: 'Say numbers in order starting at One.',
             explanation: 'Great! Four comes after Three.',
           },
         ],
@@ -451,7 +451,7 @@ export const ENGLISH_TOPICS_RAW: Topic[] = [
             mediaEmoji: '🔵',
             options: ['Blue', 'Red', 'Green', 'Yellow'],
             correctAnswer: 'Blue',
-            hint: 'B-L-U-E Blue!',
+            hint: 'Listen well and find the matching word.',
             explanation: 'Great! Blue means màu xanh dương.',
           },
           {
@@ -481,7 +481,7 @@ export const ENGLISH_TOPICS_RAW: Topic[] = [
             mediaEmoji: '🌱',
             options: ['Green', 'Blue', 'Brown', 'Yellow'],
             correctAnswer: 'Green',
-            hint: 'Fresh grass is green.',
+            hint: 'Look at the leaves on a tree.',
             explanation: 'Yes! Grass is green.',
           },
           {
@@ -511,7 +511,7 @@ export const ENGLISH_TOPICS_RAW: Topic[] = [
             mediaEmoji: '🎨',
             options: ['Orange', 'Purple', 'Green', 'Blue'],
             correctAnswer: 'Orange',
-            hint: 'Red + Yellow = Orange.',
+            hint: 'Think about mixing two warm colors.',
             explanation: 'Great! Red and yellow make orange.',
           },
         ],
@@ -682,7 +682,7 @@ export const ENGLISH_TOPICS_RAW: Topic[] = [
             mediaEmoji: '🐱',
             options: ['Kitten', 'Puppy', 'Chick', 'Duckling'],
             correctAnswer: 'Kitten',
-            hint: 'A baby dog is a puppy, a baby cat is a kitten.',
+            hint: 'Think of a tiny baby cat saying “meo meo”.',
             explanation: 'Correct! Kitten = Con mèo con.',
           },
         ],
@@ -1296,7 +1296,7 @@ export const ENGLISH_TOPICS_RAW: Topic[] = [
             mediaEmoji: '🍊',
             options: ['Orange', 'Apple', 'Banana', 'Grape'],
             correctAnswer: 'Orange',
-            hint: 'It is orange and round.',
+            hint: 'It is round with a bumpy peel you can smell.',
             explanation: 'Great! Orange = Quả cam.',
           },
           {
@@ -2034,7 +2034,7 @@ export const ENGLISH_TOPICS_RAW: Topic[] = [
             mediaEmoji: '😊',
             options: ['am', 'is', 'are', 'have'],
             correctAnswer: 'am',
-            hint: 'I am ...',
+            hint: 'Say it with me: “I” goes with the first word.',
             explanation: 'Yes! I am happy.',
           },
           {
@@ -2468,7 +2468,7 @@ export const ENGLISH_TOPICS_RAW: Topic[] = [
             options: ['Apple', 'Carrot', 'Banana', 'Broccoli', 'Orange', 'Tomato'],
             correctAnswer: 'Fruits',
             categoryBuckets: ['Fruits', 'Vegetables'],
-            hint: 'Fruits are sweet, vegetables are savory.',
+            hint: 'Sweet foods grow on trees; the other group grows in soil.',
             explanation: 'Fruits: Apple, Banana, Orange. Vegetables: Carrot, Broccoli, Tomato.',
           },
           {
@@ -2484,7 +2484,7 @@ export const ENGLISH_TOPICS_RAW: Topic[] = [
             options: ['Bread', 'Water', 'Rice', 'Juice', 'Meat', 'Milk'],
             correctAnswer: 'Food',
             categoryBuckets: ['Food', 'Drink'],
-            hint: 'You chew food, you sip drinks.',
+            hint: 'You chew one group, you sip the other group.',
             explanation: 'Food: Bread, Rice, Meat. Drink: Water, Juice, Milk.',
           },
           {
@@ -2500,7 +2500,7 @@ export const ENGLISH_TOPICS_RAW: Topic[] = [
             options: ['Elephant', 'Ant', 'Whale', 'Bee', 'Giraffe', 'Mouse'],
             correctAnswer: 'Big',
             categoryBuckets: ['Big', 'Small'],
-            hint: 'Big animals are large, small animals are tiny.',
+            hint: 'Think of elephants and whales, then ants and bees.',
             explanation: 'Big: Elephant, Whale, Giraffe. Small: Ant, Bee, Mouse.',
           },
           {
@@ -2564,7 +2564,7 @@ export const ENGLISH_TOPICS_RAW: Topic[] = [
             options: ['A', 'B', 'E', 'C', 'I', 'D'],
             correctAnswer: 'Vowel',
             categoryBuckets: ['Vowel', 'Consonant'],
-            hint: 'Some letters are open sounds (vowels), others are closed (consonants).',
+            hint: 'Try singing each letter: open sounds go in this group.',
             explanation: 'Vowels: A, E, I. Consonants: B, C, D.',
           },
           {
