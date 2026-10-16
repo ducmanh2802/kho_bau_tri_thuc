@@ -174,8 +174,8 @@ export const Header: React.FC<HeaderProps> = ({
         {/* Zone 1: Single text element wordmark */}
         <KidButton
           variant="secondary"
-          size="md"
-          className="gap-2 text-left shrink-0 min-w-0 min-w-[44px] min-h-[44px] justify-center sm:justify-start"
+          size="icon"
+          className="gap-2 text-left shrink-0 sm:justify-start sm:px-4"
           onClick={() => {
             sound.playClick();
             onNavigate('home');
@@ -188,17 +188,6 @@ export const Header: React.FC<HeaderProps> = ({
           </span>
           <span className="sm:hidden sr-only">Kho Báu Tri Thức — Về trang chủ</span>
         </KidButton>
-
-        {/* Bear mascot touch reaction (hidden on small screens) */}
-        {typeof window !== 'undefined' && window.innerWidth >= 375 && (
-          <button
-            onClick={handleBearClick}
-            aria-label="Phản ứng từ Linh thú Gấu"
-            className="absolute top-2 right-2 w-10 h-10 rounded-full bg-amber-100 border border-amber-200 flex items-center justify-center text-amber-600 text-xs font-bold transition-transform hover:bg-amber-200 active:scale-90"
-          >
-            🐾
-          </button>
-        )}
 
         {/* Zone 2: navigation (T01/B11 + T01B/3 + T06).
           >= 1024px (lg) only the top nav shows; < 1024px only the bottom nav
@@ -219,6 +208,19 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* Zone 3: primary actions & kid profile stats */}
         <div className="flex items-center gap-1.5 sm:gap-2 md:gap-3 shrink-0">
+          {/* Bear mascot touch reaction. It used to be `absolute top-2 right-2`
+              on the header, i.e. painted on top of the "Ba Mẹ" button at the
+              right edge, and was shown from a one-off `window.innerWidth`
+              check at render time. Now it is a normal item of this row, shown
+              by CSS from 375px. T20A / B-07 — 44px touch target kept. */}
+          <button
+            onClick={handleBearClick}
+            aria-label="Phản ứng từ Linh thú Gấu"
+            className="hidden min-[375px]:flex shrink-0 w-11 h-11 rounded-full bg-amber-100 border border-amber-200 items-center justify-center text-amber-600 text-xs font-bold transition-transform hover:bg-amber-200 active:scale-90"
+          >
+            🐾
+          </button>
+
           {/* Streak indicator */}
           <Pill
             variant="streak"
@@ -254,8 +256,8 @@ export const Header: React.FC<HeaderProps> = ({
           {/* Avatar Shop Button */}
           <KidButton
             variant="secondary"
-            size="md"
-            className="min-w-[44px] min-h-[44px] px-3"
+            size="icon"
+            className="shrink-0"
             onClick={() => {
               sound.playClick();
               onOpenShop();
@@ -269,8 +271,8 @@ export const Header: React.FC<HeaderProps> = ({
               has its own mute toggle, so nothing becomes unreachable. */}
           <KidButton
             variant="secondary"
-            size="md"
-            className="min-w-[44px] min-h-[44px] max-[300px]:hidden px-3"
+            size="icon"
+            className="shrink-0 max-[300px]:hidden"
             onClick={handleToggleSound}
             aria-label={isMuted ? 'Bật âm thanh' : 'Tắt âm thanh'}
             aria-pressed={isMuted}
@@ -284,11 +286,14 @@ export const Header: React.FC<HeaderProps> = ({
           {/* Parent Mode Gate button */}
           <KidButton
             variant="primary"
-            size="md"
-            className="min-h-[44px] min-w-[44px] px-3"
+            size="icon"
+            className="shrink-0 lg:px-3"
             onClick={() => {
               sound.playClick();
-              onOpenParent;
+              // T20A / B-05 — this used to read `onOpenParent;` (a no-op), so the
+              // "Ba Mẹ" button opened nothing and the whole parent area was
+              // unreachable from the header.
+              onOpenParent();
             }}
             aria-label="Khu vực dành cho Ba Mẹ"
             leftIcon={<Shield className="w-3.5 h-3.5 text-amber-400" aria-hidden="true" />}

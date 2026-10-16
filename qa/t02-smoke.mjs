@@ -34,8 +34,8 @@ try {
   page.on('pageerror', (e) => errors.push('[page] ' + String(e).slice(0, 200)));
   await page.goto(origin + '/', { waitUntil: 'networkidle' });
   await page.waitForTimeout(1000);
-  // open hub
-  await page.getByRole('button', { name: /Chơi ngay/i }).first().click();
+  // open hub (T20A: the hub is reached from the navigation bar)
+  await page.locator('[data-testid="nav-games"]:visible').first().click();
   await page.waitForTimeout(1200);
   // open spelling duel via its card's play button
   const duelCard = page.locator('div', { hasText: 'Đấu Trường Chính Tả' }).last();

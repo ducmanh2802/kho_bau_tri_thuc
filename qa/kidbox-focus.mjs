@@ -14,7 +14,7 @@ export default async function run(page, ui) {
 
   try {
     await page.goto(APP_ORIGIN);
-    await page.waitForSelector('text=Xin chào', { timeout: 20000 });
+    await page.waitForSelector('[data-testid="nav-home"]:visible', { timeout: 20000 });
 
     await page.getByRole('button', { name: /Tiếng Anh/ }).first().click(CLICK);
     await page.waitForTimeout(800);

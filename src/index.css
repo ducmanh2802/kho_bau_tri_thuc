@@ -213,6 +213,13 @@
   }
 }
 
+/* Height kept free above the fixed bottom navigation (App.tsx, below lg):
+   the 5 tabs are 48-58px tall (2-line labels on 360px phones) + 12px padding
+   + border. <main> and floating banners reserve this + the safe-area inset. */
+:root {
+  --kb-bottom-nav-h: 4.75rem;
+}
+
 @layer base {
   body {
     font-family: 'Nunito', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;

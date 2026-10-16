@@ -200,17 +200,21 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   return (
     <div className="w-full max-w-5xl mx-auto px-4 py-4 md:py-6 space-y-6 select-none">
       {/* 1. HERO: Gấu Bút Chì (wave) + greeting bubble + 3 pills */}
-      <div className="relative animate-gradient kb-hero-pattern bg-gradient-to-r from-amber-700 via-orange-700 to-rose-700 rounded-3xl p-5 md:p-6 shadow-xl text-white overflow-hidden border-4 border-amber-200">
+      <div className="relative animate-gradient kb-hero-pattern bg-gradient-to-r from-amber-700 via-orange-700 to-rose-700 rounded-3xl p-4 sm:p-5 md:p-6 shadow-xl text-white overflow-hidden border-4 border-amber-200">
         {/* Background decorative shapes */}
         <div className="absolute top-2 right-4 text-6xl opacity-20 pointer-events-none animate-pulse-slow">✨</div>
         <div className="absolute -bottom-4 -left-4 text-8xl opacity-15 pointer-events-none">⭐</div>
 
-        <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-5">
+        {/* Side by side only from lg: at md (768px) the "Học tiếp" button cannot
+            shrink (~360px), which left ~170px for the greeting (one word per line). */}
+        <div className="relative z-10 flex flex-col lg:flex-row items-center justify-between gap-5">
           {/* Left: Mascot + Greeting + Stats */}
-          <div className="flex flex-col min-[340px]:flex-row items-center gap-4 md:gap-5 text-center min-[340px]:text-left md:text-left">
+          {/* min-w-0 flex-1: next to the "Học tiếp" button (lg+) this block takes
+              the remaining width instead of being squeezed. */}
+          <div className="min-w-0 flex-1 flex flex-col min-[340px]:flex-row items-center gap-4 md:gap-5 text-center min-[340px]:text-left md:text-left">
             {/* Mascot Avatar with wave pose */}
             <div className="relative shrink-0">
-              <div className="w-24 h-24 md:w-28 md:h-28 bg-white/95 rounded-3xl shadow-xl flex items-center justify-center text-6xl md:text-7xl border-4 border-amber-200 animate-float">
+              <div className="w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28 bg-white/95 rounded-3xl shadow-xl flex items-center justify-center text-5xl sm:text-6xl md:text-7xl border-4 border-amber-200 animate-float">
                 {profile.avatarBase === 'bear' ? '🐻' : profile.avatarBase === 'fox' ? '🦊' : '🐰'}
               </div>
               {/* Wave animation indicator */}
@@ -220,15 +224,18 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
               </span>
             </div>
 
-            <div>
+            {/* min-w-0: the greeting column may shrink next to the mascot; the
+                speaker is a fixed 44px icon button (size "md" carried 24px side
+                padding and squeezed "Chào Bé Minh!" to one word per line). */}
+            <div className="min-w-0">
               <div className="flex items-center gap-2 justify-center md:justify-start">
-                <h1 className="text-2xl md:text-3xl font-black font-display tracking-tight text-white drop-shadow-sm">
+                <h1 className="min-w-0 text-2xl md:text-3xl leading-tight font-black font-display tracking-tight text-white drop-shadow-sm [overflow-wrap:anywhere]">
                   Chào {profile.name}! 👋
                 </h1>
                 <KidButton
                   variant="secondary"
-                  size="md"
-                  className="min-w-[44px] min-h-[44px]"
+                  size="icon"
+                  className="shrink-0"
                   onClick={playWelcomeVoice}
                   aria-label="Nghe lời chào"
                   leftIcon="🔊"
@@ -255,7 +262,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           </div>
 
           {/* Right: Giant "Học tiếp" button */}
-          <div className="w-full md:w-auto shrink-0 flex flex-col items-stretch md:items-end gap-2">
+          <div className="w-full lg:w-auto shrink-0 flex flex-col items-stretch lg:items-end gap-2">
             <KidButton
               variant="primary"
               size="xl"
@@ -286,14 +293,17 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                   sound.playClick();
                   onNavigate('home'); // Parent modal will be opened from header
                 }}
-                className="text-xs md:text-sm font-bold text-amber-100 hover:text-white underline underline-offset-2"
+                // T20A / B-07 — 00_RULES §7: every tappable target ≥ 44px.
+                // This text link was 16px tall (min-w/44 + py-1 keeps the
+                // inline look while giving the finger a real target).
+                className="min-h-[44px] px-1 py-2 inline-flex items-center text-xs md:text-sm font-bold text-amber-100 hover:text-white underline underline-offset-2"
                 aria-label="Xem lý do gợi ý này ở Bảng Phụ Huynh"
               >
                 Vì sao gợi ý này?
               </button>
             )}
             {decisionLoading && (
-              <p className="text-amber-50 text-[11px] font-medium text-center md:text-right">
+              <p className="text-amber-50 text-[11px] font-medium text-center lg:text-right">
                 Đang tìm hoạt động tốt nhất cho bé...
               </p>
             )}
@@ -307,41 +317,49 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           Hôm Nay Bé Học Gì?
         </SectionTitle>
 
+        {/* Mobile: 2 equal columns (grid-cols-2 = repeat(2, minmax(0, 1fr))).
+            Cards use KidButton size "tile": explicit 12px padding on phones
+            (size "lg" forced 32px side padding, leaving ~90px for content at
+            375px) and content stretched to the card width instead of centred,
+            so nothing can spill over both edges into the neighbouring card. */}
         <div className="grid grid-cols-2 gap-3 md:gap-4">
           {SUBJECT_CARDS.map((subject) => (
             <KidButton
               key={subject.id}
               variant={subject.variant}
-              size="lg"
+              size="tile"
               fullWidth
-              className={`min-h-[140px] md:min-h-[150px] text-left justify-between flex flex-col p-4 ${
+              className={`min-h-[140px] md:min-h-[150px] text-left ${
                 subject.locked ? 'opacity-60 cursor-not-allowed' : ''
               }`}
               onClick={() => handleSubjectClick(subject)}
               disabled={subject.locked}
               aria-disabled={subject.locked}
             >
-              <div className="flex items-start justify-between">
-                <div>
-                  <span className="text-[10px] uppercase font-black tracking-widest text-white/80">
-                    Môn Học Lớp 1
-                  </span>
-                  <h3 className="text-xl font-black font-display mt-0.5 flex items-center gap-1.5">
-                    {subject.title}
-                    {subject.locked && (
-                      <span className="text-[10px] bg-white/20 px-1.5 py-0.5 rounded-full">🔒 Sắp mở</span>
-                    )}
-                  </h3>
-                </div>
-                <span className="text-4xl md:text-5xl group-hover:scale-110 transition-transform shrink-0">{subject.icon}</span>
+              {/* Label + icon share the first row; the title gets the full card
+                  width below them, so "Tiếng Việt" / "Toán Học" stay on one line
+                  on a 360px phone instead of being squeezed next to the icon.
+                  T20A / B-08 — `min-w-0` lets the label shrink below its
+                  longest word (it used to push the cards wider than 360px). */}
+              <div className="flex items-start justify-between gap-2">
+                <span className="min-w-0 text-[10px] sm:text-[11px] uppercase font-black tracking-wide sm:tracking-widest text-white/80">
+                  Môn Học Lớp 1
+                </span>
+                <span className="text-3xl sm:text-4xl md:text-5xl leading-none group-hover:scale-110 transition-transform shrink-0" aria-hidden="true">{subject.icon}</span>
               </div>
+              <h3 className="text-lg sm:text-xl leading-tight font-black font-display mt-1 [overflow-wrap:anywhere]">
+                {subject.title}
+                {subject.locked && (
+                  <span className="inline-block ml-1 text-[10px] bg-white/20 px-1.5 py-0.5 rounded-full">🔒 Sắp mở</span>
+                )}
+              </h3>
 
               <div className="mt-auto pt-2">
-                <p className="text-[11px] text-white/90 font-bold mb-2">{subject.subtitle}</p>
+                <p className="text-xs leading-snug text-white/90 font-bold mb-2 line-clamp-3 sm:line-clamp-none [overflow-wrap:anywhere]">{subject.subtitle}</p>
                 {/* Progress ring placeholder */}
                 <div className="flex items-center gap-2">
-                  <div className="relative w-14 h-14 flex-shrink-0" aria-hidden="true">
-                    <svg className="w-14 h-14 transform -rotate-90" viewBox="0 0 28 28">
+                  <div className="relative w-11 h-11 sm:w-14 sm:h-14 flex-shrink-0" aria-hidden="true">
+                    <svg className="w-11 h-11 sm:w-14 sm:h-14 transform -rotate-90" viewBox="0 0 28 28">
                       <circle
                         cx="14"
                         cy="14"
@@ -375,7 +393,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                         style={{ width: '50%' }}
                       />
                     </div>
-                    <p className="text-[10px] text-white/80 font-bold mt-1">Tiến độ: 50%</p>
+                    <p className="text-[10px] leading-tight text-white/80 font-bold mt-1">Tiến độ: 50%</p>
                   </div>
                 </div>
               </div>
@@ -413,24 +431,26 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           </KidButton>
         </div>
 
-        {/* Quest icons row - exactly 3 round icons */}
-        <div className="flex items-center justify-center gap-3 md:gap-4">
+        {/* Quest icons row - exactly 3 round icons + chest. A 4-column grid of
+            square cells (max 96px): four fixed 80px tiles + gaps (356px) were
+            wider than the card on a 360px phone and spilled out on both sides. */}
+        <div className="grid grid-cols-4 gap-2 sm:gap-3 md:gap-4 max-w-md mx-auto">
           {quests.slice(0, 3).map((q, idx) => (
             <button
               key={q.id}
               onClick={() => {}}
               disabled={q.completed}
-              className={`relative w-20 h-20 md:w-24 md:h-24 flex-shrink-0 flex flex-col items-center justify-center gap-1.5 rounded-2xl border-3 transition-all ${
+              className={`relative w-full max-w-24 aspect-square mx-auto min-w-0 flex flex-col items-center justify-center gap-1 rounded-2xl border-3 transition-all ${
                 q.completed
                   ? 'bg-emerald-50 border-emerald-300 text-emerald-950 cursor-default'
                   : 'bg-amber-50 border-amber-200 text-slate-700 hover:border-amber-400 hover:shadow-md cursor-pointer'
               }`}
               aria-label={q.completed ? `Nhiệm vụ ${idx + 1}: ${q.title} - đã hoàn thành` : `Nhiệm vụ ${idx + 1}: ${q.title}`}
             >
-              <span className="text-3xl md:text-4xl" aria-hidden="true">
+              <span className="text-2xl min-[400px]:text-3xl md:text-4xl leading-none" aria-hidden="true">
                 {q.completed ? '✅' : idx === 0 ? '📚' : idx === 1 ? '🎮' : '📖'}
               </span>
-              <span className="text-[10px] md:text-[11px] font-black text-center leading-tight px-1">
+              <span className="max-w-full text-[10px] md:text-[11px] font-black text-center leading-tight px-1 [overflow-wrap:anywhere]">
                 {q.title.length > 10 ? q.title.slice(0, 10) + '…' : q.title}
               </span>
               <Pill variant="star" size="xs" className="absolute -top-1 -right-1">
@@ -442,7 +462,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           <button
             onClick={handleClaimChest}
             disabled={!canClaimChest || chestClaimed}
-            className={`relative w-20 h-20 md:w-24 md:h-24 flex-shrink-0 flex flex-col items-center justify-center gap-1.5 rounded-2xl border-3 transition-all ${
+            className={`relative w-full max-w-24 aspect-square mx-auto min-w-0 flex flex-col items-center justify-center gap-1 rounded-2xl border-3 transition-all ${
               chestClaimed
                 ? 'bg-amber-50 border-amber-200 text-slate-500 cursor-default'
                 : canClaimChest
@@ -451,10 +471,10 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             }`}
             aria-label={chestClaimed ? 'Rương kho báu đã nhận hôm nay' : canClaimChest ? 'Mở rương kho báu nhận thưởng' : `Rương kho báu - cần ${3 - completedQuestsCount} nhiệm vụ nữa`}
           >
-            <span className="text-3xl md:text-4xl" aria-hidden="true">
+            <span className="text-2xl min-[400px]:text-3xl md:text-4xl leading-none" aria-hidden="true">
               {chestClaimed ? '🎁' : canClaimChest ? '🧨' : '🔒'}
             </span>
-            <span className="text-[10px] md:text-[11px] font-black text-center leading-tight px-1">
+            <span className="max-w-full text-[10px] md:text-[11px] font-black text-center leading-tight px-1 [overflow-wrap:anywhere]">
               {chestClaimed ? 'Đã mở' : 'Rương'}
             </span>
             {!chestClaimed && canClaimChest && (
@@ -476,15 +496,15 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             <KidButton
               key={shortcut.screen}
               variant="primary"
-              size="md"
+              size="tile"
               fullWidth
-              className={`min-h-[100px] text-center justify-center p-3 bg-gradient-to-br ${shortcut.gradient} ${shortcut.border} border-3 hover:scale-[1.02] active:scale-95 text-white`}
+              className={`min-h-[100px] text-center bg-gradient-to-br ${shortcut.gradient} ${shortcut.border} border-3 hover:scale-[1.02] active:scale-95 text-white`}
               onClick={() => handleShortcutClick(shortcut.screen)}
             >
-              <div className="flex flex-col items-center gap-1.5">
-                <span className="text-3xl md:text-4xl">{shortcut.icon}</span>
-                <h4 className="font-black text-sm md:text-base font-display">{shortcut.label}</h4>
-                <p className="text-[11px] font-semibold opacity-90">{shortcut.desc}</p>
+              <div className="flex-1 flex flex-col items-center justify-center gap-1 min-w-0">
+                <span className="text-2xl min-[400px]:text-3xl md:text-4xl leading-none" aria-hidden="true">{shortcut.icon}</span>
+                <h4 className="font-black text-sm md:text-base leading-tight font-display [overflow-wrap:anywhere]">{shortcut.label}</h4>
+                <p className="text-[11px] leading-snug font-semibold opacity-90 [overflow-wrap:anywhere]">{shortcut.desc}</p>
               </div>
             </KidButton>
           ))}
@@ -499,41 +519,41 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         <div className="grid grid-cols-3 gap-3 mt-3">
           <KidButton
             variant="primary"
-            size="md"
+            size="tile"
             fullWidth
-            className="min-h-[100px] text-center justify-center p-3 bg-gradient-to-br from-amber-500 to-orange-500 border-3 border-amber-300 hover:scale-[1.02] active:scale-95 text-white"
+            className="min-h-[100px] text-center bg-gradient-to-br from-amber-500 to-orange-500 border-3 border-amber-300 hover:scale-[1.02] active:scale-95 text-white"
             onClick={() => onNavigate('sticker_album')}
           >
-            <div className="flex flex-col items-center gap-1.5">
-              <span className="text-3xl md:text-4xl">📚</span>
-              <h4 className="font-black text-sm md:text-base font-display">Album Sticker</h4>
-              <p className="text-[11px] font-semibold opacity-90">Sưu tầm 60 sticker</p>
+            <div className="flex-1 flex flex-col items-center justify-center gap-1 min-w-0">
+              <span className="text-2xl min-[400px]:text-3xl md:text-4xl leading-none" aria-hidden="true">📚</span>
+              <h4 className="font-black text-sm md:text-base leading-tight font-display [overflow-wrap:anywhere]">Album Sticker</h4>
+              <p className="text-[11px] leading-snug font-semibold opacity-90 [overflow-wrap:anywhere]">Sưu tầm 60 sticker</p>
             </div>
           </KidButton>
           <KidButton
             variant="primary"
-            size="md"
+            size="tile"
             fullWidth
-            className="min-h-[100px] text-center justify-center p-3 bg-gradient-to-br from-rose-500 to-pink-500 border-3 border-rose-300 hover:scale-[1.02] active:scale-95 text-white"
+            className="min-h-[100px] text-center bg-gradient-to-br from-rose-500 to-pink-500 border-3 border-rose-300 hover:scale-[1.02] active:scale-95 text-white"
             onClick={() => onNavigate('gacha_machine')}
           >
-            <div className="flex flex-col items-center gap-1.5">
-              <span className="text-3xl md:text-4xl">🎰</span>
-              <h4 className="font-black text-sm md:text-base font-display">Máy Gắp</h4>
-              <p className="text-[11px] font-semibold opacity-90">Dùng vé quay sticker</p>
+            <div className="flex-1 flex flex-col items-center justify-center gap-1 min-w-0">
+              <span className="text-2xl min-[400px]:text-3xl md:text-4xl leading-none" aria-hidden="true">🎰</span>
+              <h4 className="font-black text-sm md:text-base leading-tight font-display [overflow-wrap:anywhere]">Máy Gắp</h4>
+              <p className="text-[11px] leading-snug font-semibold opacity-90 [overflow-wrap:anywhere]">Dùng vé quay sticker</p>
             </div>
           </KidButton>
           <KidButton
             variant="primary"
-            size="md"
+            size="tile"
             fullWidth
-            className="min-h-[100px] text-center justify-center p-3 bg-gradient-to-br from-emerald-500 to-teal-500 border-3 border-emerald-300 hover:scale-[1.02] active:scale-95 text-white"
+            className="min-h-[100px] text-center bg-gradient-to-br from-emerald-500 to-teal-500 border-3 border-emerald-300 hover:scale-[1.02] active:scale-95 text-white"
             onClick={() => onNavigate('streak_calendar')}
           >
-            <div className="flex flex-col items-center gap-1.5">
-              <span className="text-3xl md:text-4xl">📅</span>
-              <h4 className="font-black text-sm md:text-base font-display">Lịch Chuỗi</h4>
-              <p className="text-[11px] font-semibold opacity-90">Dấu chân Gấu Bút Chì</p>
+            <div className="flex-1 flex flex-col items-center justify-center gap-1 min-w-0">
+              <span className="text-2xl min-[400px]:text-3xl md:text-4xl leading-none" aria-hidden="true">📅</span>
+              <h4 className="font-black text-sm md:text-base leading-tight font-display [overflow-wrap:anywhere]">Lịch Chuỗi</h4>
+              <p className="text-[11px] leading-snug font-semibold opacity-90 [overflow-wrap:anywhere]">Dấu chân Gấu Bút Chì</p>
             </div>
           </KidButton>
         </div>

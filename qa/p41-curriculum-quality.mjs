@@ -10,6 +10,7 @@
  * NOT attempted here (it would be a fabricated result).
  */
 
+import { openFirstLesson } from './lib.mjs';
 const state = { ok: false, steps: [], errors: [] };
 
 const log = (name, detail = {}) => state.steps.push({ step: name, ...detail });
@@ -36,7 +37,7 @@ export default async function run(page, ui) {
     localStorage.setItem('__sentinel', 'alive');
   });
   await page.reload();
-  await page.waitForSelector('text=Xin chào', { timeout: 20000 });
+  await page.waitForSelector('[data-testid="nav-home"]:visible', { timeout: 20000 });
   log('boot', { ok: true });
 
   // ---- Vietnamese subject -> first lesson ---------------------------------
@@ -47,7 +48,7 @@ export default async function run(page, ui) {
   log('vietnameseSubject', { lessonCount: lessonButtons });
   if (lessonButtons === 0) fail('no Vietnamese lessons listed');
 
-  await page.locator('[data-testid^="lesson-button-"]').first().click(CLICK); await page.getByRole('button', { name: /Bắt đầu/ }).click(CLICK);
+  await openFirstLesson(page);
   await page.waitForSelector('text=Câu hỏi 1', { timeout: 20000 });
   log('lessonOpened', { ok: true });
 

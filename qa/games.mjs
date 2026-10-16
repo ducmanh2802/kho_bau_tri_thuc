@@ -129,10 +129,8 @@ export default async function run(page, ui) {
 
   await page.evaluate(() => localStorage.clear());
   await page.reload();
-  await page.waitForSelector('text=Xin chào', { timeout: 20000 });
-  await page.getByRole('navigation', { name: 'Điều hướng nhanh' })
-    .getByRole('button', { name: 'Trò Chơi', exact: true })
-    .click(CLICK);
+  await page.waitForSelector('[data-testid="nav-home"]:visible', { timeout: 20000 });
+  await page.locator('[data-testid="nav-games"]:visible').first().click(CLICK);
   await page.waitForSelector('text=Đấu Trường Trò Chơi Trí Tuệ', { timeout: 20000 });
 
   // ---- A) every game mounts and closes ----
@@ -182,10 +180,8 @@ export default async function run(page, ui) {
   // ---- B/C/D) reward behaviour ----
   await page.evaluate(() => localStorage.clear());
   await page.reload();
-  await page.waitForSelector('text=Xin chào', { timeout: 20000 });
-  await page.getByRole('navigation', { name: 'Điều hướng nhanh' })
-    .getByRole('button', { name: 'Trò Chơi', exact: true })
-    .click(CLICK);
+  await page.waitForSelector('[data-testid="nav-home"]:visible', { timeout: 20000 });
+  await page.locator('[data-testid="nav-games"]:visible').first().click(CLICK);
   await page.waitForSelector('text=Đấu Trường Trò Chơi Trí Tuệ', { timeout: 20000 });
 
   const countBefore = await page.evaluate(readCount);

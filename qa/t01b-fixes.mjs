@@ -3,6 +3,7 @@
  * Best-effort browser check (00_RULES #10): `npm run build` roi
  * `node qa/run-one.mjs qa/t01b-fixes.mjs`. Khong mo duoc trinh duyet -> SKIPPED.
  */
+import { openFirstLesson } from './lib.mjs';
 import path from 'node:path';
 import fs from 'node:fs';
 
@@ -45,7 +46,7 @@ export default async function run(page, ui) {
 
   await page.evaluate(() => localStorage.clear());
   await page.goto(ui.origin + '/', { waitUntil: 'networkidle' });
-  await page.waitForSelector('text=Xin chào', { timeout: 20000 });
+  await page.waitForSelector('[data-testid="nav-home"]:visible', { timeout: 20000 });
 
   // ---- 5. font Nunito thuc te cua body ----
   out.bodyFont = await page.evaluate(() => getComputedStyle(document.body).fontFamily);
@@ -107,7 +108,7 @@ export default async function run(page, ui) {
   for (const w of [360, 375]) {
     await page.setViewportSize({ width: w, height: 667 });
     await page.goto(ui.origin + '/', { waitUntil: 'networkidle' });
-    await page.waitForSelector('text=Xin chào', { timeout: 20000 });
+    await page.waitForSelector('[data-testid="nav-home"]:visible', { timeout: 20000 });
     // Mo hub qua bottom nav (testid moi)
     await navGo('games');
     await page.waitForSelector('text=Đấu Trường Trò Chơi Trí Tuệ', { timeout: 20000 });
@@ -140,7 +141,7 @@ export default async function run(page, ui) {
   // ---- 8. icon loa phan biet + 2. sticky action bai hoc 375x667 ----
   await page.setViewportSize({ width: 375, height: 667 });
   await page.goto(ui.origin + '/', { waitUntil: 'networkidle' });
-  await page.waitForSelector('text=Xin chào', { timeout: 20000 });
+  await page.waitForSelector('[data-testid="nav-home"]:visible', { timeout: 20000 });
   await navGo('games');
   await page.waitForSelector('text=Đấu Trường Trò Chơi Trí Tuệ', { timeout: 20000 });
   await page.getByRole('button', { name: /Chơi ngay/ }).first().click(CLICK);
@@ -168,10 +169,10 @@ export default async function run(page, ui) {
 
   // Bai hoc: mo mon -> bai dau -> nut Kiem tra thay duoc khong can cuon
   await page.goto(ui.origin + '/', { waitUntil: 'networkidle' });
-  await page.waitForSelector('text=Xin chào', { timeout: 20000 });
+  await page.waitForSelector('[data-testid="nav-home"]:visible', { timeout: 20000 });
   await page.getByRole('button', { name: /Tiếng Việt/ }).first().click(CLICK);
   await page.waitForTimeout(800);
-  await page.locator('[data-testid^="lesson-button-"]').first().click(CLICK); await page.getByRole('button', { name: /Bắt đầu/ }).click(CLICK);
+  await openFirstLesson(page);
   await page.waitForSelector('[role="dialog"]', { timeout: 20000 });
   await page.waitForTimeout(800);
   // Chon 1 dap an de kich hoat nut
@@ -209,7 +210,7 @@ export default async function run(page, ui) {
 
   // ---- 9. nut cham >= 44px (mau) ----
   await page.goto(ui.origin + '/', { waitUntil: 'networkidle' });
-  await page.waitForSelector('text=Xin chào', { timeout: 20000 });
+  await page.waitForSelector('[data-testid="nav-home"]:visible', { timeout: 20000 });
   const touch = await page.evaluate(() => {
     const res = {};
     const visible = (sel) =>

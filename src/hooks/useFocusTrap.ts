@@ -23,6 +23,7 @@ const FOCUSABLE_SELECTOR = [
  */
 export function useFocusTrap<T extends HTMLElement = HTMLDivElement>(active: boolean) {
   const ref = useRef<T | null>(null);
+  const previouslyFocusedRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     if (!active) return;
@@ -30,7 +31,7 @@ export function useFocusTrap<T extends HTMLElement = HTMLDivElement>(active: boo
     if (!container) return;
 
     // Remember where focus came from so we can hand it back on close.
-    const previouslyFocused = document.activeElement as HTMLElement | null;
+    previouslyFocusedRef.current = document.activeElement as HTMLElement | null;
 
     const focusables = (): HTMLElement[] =>
       Array.from(container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)).filter(
@@ -43,15 +44,18 @@ export function useFocusTrap<T extends HTMLElement = HTMLDivElement>(active: boo
     const focusIntoDialog = () => {
       const items = focusables();
       const target = items[0] ?? container;
-      if (document.activeElement !== target) target.focus({ preventScroll: true });
+      // Force focus even if activeElement is the target (handles race conditions)
+      target.focus({ preventScroll: true });
     };
+    // Immediate focus attempt
     focusIntoDialog();
-    const deferred = window.setTimeout(focusIntoDialog, 60);
+    // Deferred focus after paint
+    const deferred = window.setTimeout(focusIntoDialog, 50);
+    // Additional deferred focus after next paint
+    const deferred2 = window.setTimeout(focusIntoDialog, 150);
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key !== 'Tab') return;
-      // Any key activity also re-asserts containment (covers focus lost to a
-      // programmatic .focus() elsewhere while the dialog is open).
       const items = focusables();
       if (items.length === 0) {
         event.preventDefault();
@@ -61,6 +65,13 @@ export function useFocusTrap<T extends HTMLElement = HTMLDivElement>(active: boo
       const first = items[0];
       const last = items[items.length - 1];
       const current = document.activeElement;
+
+      // If focus is outside the dialog, bring it back in
+      if (!container.contains(current as Node)) {
+        event.preventDefault();
+        first.focus({ preventScroll: true });
+        return;
+      }
 
       if (event.shiftKey && (current === first || !container.contains(current))) {
         event.preventDefault();
@@ -75,9 +86,11 @@ export function useFocusTrap<T extends HTMLElement = HTMLDivElement>(active: boo
 
     return () => {
       window.clearTimeout(deferred);
+      window.clearTimeout(deferred2);
       document.removeEventListener('keydown', handleKeyDown, true);
-      if (previouslyFocused && document.contains(previouslyFocused)) {
-        previouslyFocused.focus({ preventScroll: true });
+      // Restore focus to the element that had it before the dialog opened
+      if (previouslyFocusedRef.current && document.contains(previouslyFocusedRef.current)) {
+        previouslyFocusedRef.current.focus({ preventScroll: true });
       }
     };
   }, [active]);

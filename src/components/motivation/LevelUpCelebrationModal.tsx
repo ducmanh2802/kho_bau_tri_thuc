@@ -13,6 +13,26 @@ interface LevelUpCelebrationModalProps {
   levelTitle: string;
 }
 
+/**
+ * T20A — one source of truth for "the celebration is really on screen".
+ *
+ * Both the reward effect and the early return must use the exact same
+ * predicate, otherwise the fanfare can fire while nothing is shown (or the
+ * modal can appear silently).
+ */
+export function shouldCelebrateLevelUp(isOpen: boolean, result: LevelClaimResult): boolean {
+  return isOpen && result.claimed.length > 0;
+}
+
+/**
+ * T20A — the reward fanfare, extracted so it can be unit-tested: this repo
+ * ships no DOM renderer, so the effect itself cannot be mounted in tests.
+ */
+export function playLevelUpCelebration(): void {
+  sound.playLevelUp();
+  fireCelebrationConfetti();
+}
+
 export const LevelUpCelebrationModal: React.FC<LevelUpCelebrationModalProps> = ({
   isOpen,
   onClose,
@@ -21,22 +41,25 @@ export const LevelUpCelebrationModal: React.FC<LevelUpCelebrationModalProps> = (
   levelTitle,
 }) => {
   useEffect(() => {
-    if (isOpen && result.claimed.length > 0) {
-      sound.playLevelUp();
-      fireCelebrationConfetti();
+    if (shouldCelebrateLevelUp(isOpen, result)) {
+      playLevelUpCelebration();
     }
   }, [isOpen, result]);
 
-  if (!isOpen || result.claimed.length === 0) return null;
-
-  const newLevels = result.claimed;
-  const highestLevel = Math.max(...newLevels);
-  const isNewTitle = highestLevel === currentLevel;
-
+  // T20A / B-02 — Rules of Hooks: every hook must run on EVERY render. The
+  // early return used to sit between useEffect and useCallback, so opening the
+  // celebration (from a "render nothing" state) added a hook and React threw
+  // #310 — which unmounted the whole app right after a lesson was completed.
   const handleClose = useCallback(() => {
     sound.playClick();
     onClose();
   }, [onClose]);
+
+  if (!shouldCelebrateLevelUp(isOpen, result)) return null;
+
+  const newLevels = result.claimed;
+  const highestLevel = Math.max(...newLevels);
+  const isNewTitle = highestLevel === currentLevel;
 
   return (
     <div

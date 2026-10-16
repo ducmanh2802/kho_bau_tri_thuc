@@ -3,19 +3,25 @@ import { ActiveScreen, ChildProfile, SubjectType } from './types';
 import { StorageService } from './services/storage';
 import { Header } from './components/common/Header';
 import { HomeScreen } from './components/home/HomeScreen';
-import { WorldMapScreen } from './components/world/WorldMapScreen';
-import { SubjectScreen } from './components/subject/SubjectScreen';
-import { DailyReviewScreen } from './components/review/DailyReviewScreen';
 import { NAVIGATION } from './config/navigation';
 
 /**
  * CODE SPLITTING (P31)
  *
- * The home, map and subject screens are the first paint and stay in the main
- * chunk. Everything a child reaches later (14 mini-games, the competition hub,
- * reading fluency, parent mode, shops) is loaded on demand so first render does
- * not pay for the whole app.
+ * The home screen is the first paint and stays in the main chunk.
+ * Everything a child reaches later (world map, subject screens, review,
+ * mini-games, the competition hub, reading fluency, parent mode, shops)
+ * is loaded on demand so first render does not pay for the whole app.
  */
+const WorldMapScreen = lazy(() =>
+  import('./components/world/WorldMapScreen').then((m) => ({ default: m.WorldMapScreen }))
+);
+const SubjectScreen = lazy(() =>
+  import('./components/subject/SubjectScreen').then((m) => ({ default: m.SubjectScreen }))
+);
+const DailyReviewScreen = lazy(() =>
+  import('./components/review/DailyReviewScreen').then((m) => ({ default: m.DailyReviewScreen }))
+);
 const GamesHubScreen = lazy(() =>
   import('./components/games/GamesHubScreen').then((m) => ({ default: m.GamesHubScreen }))
 );
@@ -184,7 +190,10 @@ export default function App() {
       />
 
       {/* Main Content Viewport */}
-      <main className="flex-1 pb-16 md:pb-6">
+      {/* Below lg the fixed bottom nav covers the end of the page: keep its
+          height + the safe-area inset free (pb-16 was shorter than the nav plus
+          inset, and md:pb-6 left 768–1023px with 24px under a ~60px nav). */}
+      <main className="flex-1 pb-[calc(var(--kb-bottom-nav-h)+env(safe-area-inset-bottom))] lg:pb-6">
         {currentScreen === 'home' && (
           <HomeScreen
             profile={profile}
@@ -348,7 +357,9 @@ export default function App() {
               <span className="text-xl leading-none" aria-hidden="true">
                 {tab.icon}
               </span>
-              <span className="text-[14px] truncate max-w-full leading-tight">{tab.shortLabel}</span>
+              {/* Wraps onto 2 lines on 360px phones ("Trang / Chủ") instead of
+                  being cut to "Trang C…"; 14px kept (T06). */}
+              <span className="text-[14px] max-w-full leading-tight text-center [overflow-wrap:anywhere]">{tab.shortLabel}</span>
             </button>
           );
         })}

@@ -6,6 +6,8 @@
  * It records which types were genuinely exercised and interacted with.
  */
 
+import { dismissLevelUpCelebration } from './lib.mjs';
+
 const state = { steps: [], errors: [], typesSeen: {}, typesCompleted: {} };
 const CLICK = { timeout: 12000 };
 
@@ -120,17 +122,106 @@ async function answerByType(page, type) {
 }
 
 async function navigateToLessons(page) {
-  await page.goto('/');
-  await page.waitForSelector('text=Xin chào', { timeout: 20000 });
+  // T20A: a relative URL cannot be navigated to — always use the live origin.
+  const origin = new URL(page.url()).origin;
+  await page.goto(origin + '/');
+  await page.waitForSelector('[data-testid="nav-home"]:visible', { timeout: 20000 });
   // Navigate to world map or subject selection
-  const worldMapBtn = page.getByRole('navigation', { name: 'Điều hướng nhanh' }).getByRole('button', { name: 'Bản đồ' });
+  const worldMapBtn = page.locator('[data-testid="nav-world_map"]:visible');
   if (await worldMapBtn.count()) {
     await worldMapBtn.click(CLICK);
     await page.waitForSelector('text=Kho Báu Tri Thức', { timeout: 20000 });
   }
 }
 
+/**
+ * Play one lesson node end-to-end, recording every question type met.
+ * T20A — the subject screen is an adventure path of overlapping nodes
+ * (bug B-01), so the node is activated with the keyboard.
+ */
+async function sweepOneLesson(page, nodes, index, subject) {
+  const lessonText = (await nodes.nth(index).getAttribute('aria-label')) || `bài ${index + 1}`;
+  await nodes.nth(index).focus();
+  await page.keyboard.press('Enter');
+  const startBtn = page.getByRole('button', { name: /Bắt đầu/ }).first();
+  if (await startBtn.count()) await startBtn.click(CLICK);
+  await page.waitForSelector('[data-testid$="-question"]', { timeout: 20000 }).catch(() => {});
+  await page.waitForTimeout(400);
+
+  for (let q = 0; q < 15; q += 1) {
+    // The result screen says "Bé đã làm đúng …": check it BEFORE reading the
+    // type label, or "đúng" is mistaken for a true/false question.
+    const screenText = await page.locator('[role=dialog]').first().innerText().catch(() => '');
+    if (/HOÀN THÀNH|KẾT QUẢ/.test(screenText)) {
+      log('lessonComplete', { subject, lesson: lessonText });
+      break;
+    }
+    const type = await currentType(page);
+    if (type === 'unknown') {
+      const completeText = await page.locator('[role=dialog]').innerText();
+      if (/HOÀN THÀNH|KẾT QUẢ/.test(completeText)) {
+        log('lessonComplete', { subject, lesson: lessonText });
+        break;
+      }
+      fail(`${subject} lesson "${lessonText}" question ${q + 1}: no recognisable type label`);
+      // T20A / B-03: after the last question the result screen is skipped, so
+      // "no type" here is the known defect rather than a broken harness.
+      if (q + 1 > 1) fail(`${subject}: result screen skipped after the last question (B-03)`);
+      break;
+    }
+
+    state.typesSeen[type] = (state.typesSeen[type] || 0) + 1;
+    log('question', { subject, lesson: lessonText, question: q + 1, type });
+
+    const touched = await answerByType(page, type);
+    if (touched > 0) state.typesCompleted[type] = (state.typesCompleted[type] || 0) + 1;
+
+    const checkBtn = page.getByRole('button', { name: /Kiểm tra/ });
+    if (await checkBtn.count()) {
+      await checkBtn.click(CLICK);
+      await page.waitForTimeout(500);
+    }
+
+    const nextBtn = page.getByRole('button', { name: /Câu tiếp|Xem kết quả/ });
+    if (await nextBtn.count()) {
+      await nextBtn.click(CLICK);
+      await page.waitForTimeout(500);
+      continue;
+    }
+    break;
+  }
+
+  // Leave the result screen like a child would ("Về bản đồ"): the lesson is
+  // reported complete then, and a level-up celebration may open after it.
+  const backToMap = page.getByRole('button', { name: 'Về bản đồ' });
+  if (await backToMap.count()) {
+    await backToMap.first().click(CLICK).catch(() => {});
+    await page.waitForTimeout(400);
+  }
+  // Close EVERY dialog left behind (the player modal can survive the lesson
+  // popup, the level-up celebration closes with "Tuyệt Vời", and a leftover
+  // modal blocks the next node).
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    if (await dismissLevelUpCelebration(page)) continue;
+    if ((await page.locator('[role=dialog]').count()) === 0) break;
+    const closeBtn = page
+      .locator('[data-testid="lesson-close"], button[aria-label="Đóng"], [data-testid="game-close"]')
+      .last();
+    if (!(await closeBtn.count())) break;
+    await closeBtn.click(CLICK).catch(() => {});
+    await page.waitForTimeout(350);
+  }
+}
+
 async function runLessonTypeSweep(page) {
+  // T20A: only the first lesson of a subject is unlocked for a brand-new child,
+  // so enable the parent override the app itself exposes (unlockAllLessons) to
+  // reach enough lessons for a type sweep.
+  await page.evaluate(() => {
+    const raw = JSON.parse(localStorage.getItem('kho_bau_child_profile') || '{}');
+    raw.unlockAllLessons = true;
+    localStorage.setItem('kho_bau_child_profile', JSON.stringify(raw));
+  });
   const subjects = ['Tiếng Việt', 'Toán Học', 'English'];
   const expectedTypes = TYPE_LABELS.map(([, t]) => t);
 
@@ -150,77 +241,20 @@ async function runLessonTypeSweep(page) {
       continue;
     }
 
-    // Now we should be on the subject screen with lessons
-    // Find and click a lesson that has new question types
-    const lessonCards = page.locator('[role=button]:has-text("Bài")');
-    const lessonCount = await lessonCards.count();
-
-    for (let i = 0; i < lessonCount; i += 1) {
-      const lessonCard = lessonCards.nth(i);
-      const lessonText = await lessonCard.innerText();
-      
-      // Look for lessons with new types in their title
-      if (lessonText.includes('Mới') || lessonText.includes('Nối') || lessonText.includes('Đúng') || 
-          lessonText.includes('Kéo') || lessonText.includes('Sắp xếp') || lessonText.includes('Biểu thức')) {
-        await lessonCard.click(CLICK);
-        await page.waitForSelector('role=dialog', { timeout: 20000 });
-        await page.waitForTimeout(500);
-        
-        // Start the lesson
-        const startBtn = page.getByRole('button', { name: /Bắt đầu|Chơi/ });
-        if (await startBtn.count()) {
-          await startBtn.click(CLICK);
-          await page.waitForSelector('role=dialog', { timeout: 20000 });
-          await page.waitForTimeout(500);
-        }
-
-        // Now in lesson player - sweep through questions
-        let questionNum = 0;
-        for (let q = 0; q < 15; q += 1) {
-          const type = await currentType(page);
-          if (type === 'unknown') {
-            // Check if lesson completed
-            const completeText = await page.locator('[role=dialog]').innerText();
-            if (completeText.includes('HOÀN THÀNH') || completeText.includes('KẾT QUẢ')) {
-              log('lessonComplete', { subject, lesson: lessonText });
-              break;
-            }
-            fail(`${subject} lesson "${lessonText}" question ${q + 1}: no recognisable type label`);
-            break;
-          }
-
-          state.typesSeen[type] = (state.typesSeen[type] || 0) + 1;
-          log('question', { subject, lesson: lessonText, question: q + 1, type });
-
-          const touched = await answerByType(page, type);
-          if (touched > 0) state.typesCompleted[type] = (state.typesCompleted[type] || 0) + 1;
-
-          // Click "Kiểm tra" if not auto-submit
-          const checkBtn = page.getByRole('button', { name: /Kiểm tra/ });
-          if (await checkBtn.count()) {
-            await checkBtn.click(CLICK);
-            await page.waitForTimeout(500);
-          }
-
-          // Click "Câu tiếp theo" or "Xem kết quả"
-          const nextBtn = page.getByRole('button', { name: /Câu tiếp|Xem kết quả/ });
-          if (await nextBtn.count()) {
-            await nextBtn.click(CLICK);
-            await page.waitForTimeout(500);
-            continue;
-          }
-          break;
-        }
-
-        // Close any remaining dialogs
-        const closeBtn = page.getByRole('button', { name: /Đóng|Về bản đồ/ }).last();
-        if (await closeBtn.count()) {
-          await closeBtn.click(CLICK).catch(() => {});
-          await page.waitForTimeout(300);
-        }
-
-        // Only test one lesson per subject for speed
-        break;
+    // T20A: the subject screen is an adventure path of lesson NODES (not cards),
+    // so walk the first few nodes instead of looking for "Bài" cards.
+    const nodes = page.locator('[data-testid^="lesson-button-"]');
+    const nodeCount = await nodes.count();
+    for (let i = 0; i < Math.min(nodeCount, 4); i += 1) {
+      try {
+        await sweepOneLesson(page, nodes, i, subject);
+      } catch (e) {
+        // One stuck lesson must never abort the whole sweep (T20A).
+        const msg = e && e.message ? String(e.message).split('\n')[0] : String(e);
+        fail(`${subject} lesson ${i + 1} aborted: ${msg}`);
+        const dismiss = page.locator('[data-testid="lesson-close"], button[aria-label="Đóng"]').last();
+        if (await dismiss.count()) await dismiss.click(CLICK).catch(() => {});
+        await page.waitForTimeout(300);
       }
     }
   }
