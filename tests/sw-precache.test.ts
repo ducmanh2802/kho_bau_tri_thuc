@@ -25,7 +25,7 @@ describe('T02C — sw precache manifest builder', () => {
       'assets/index-abc123.js': 'x',
       'assets/react-vendor-def456.js': 'y',
       'assets/index-ghi789.css': 'z',
-      'fonts/nunito-800-vietnamese.woff2': 'f',
+      'fonts/nunito-vietnamese.woff2': 'f',
       'icon-192.png': 'i',
       'favicon.svg': 's',
       'manifest.webmanifest': '{}',
@@ -37,7 +37,7 @@ describe('T02C — sw precache manifest builder', () => {
     expect(urls).toContain('/assets/index-abc123.js');
     expect(urls).toContain('/assets/react-vendor-def456.js');
     expect(urls).toContain('/assets/index-ghi789.css');
-    expect(urls).toContain('/fonts/nunito-800-vietnamese.woff2');
+    expect(urls).toContain('/fonts/nunito-vietnamese.woff2');
     expect(urls).toContain('/icon-192.png');
     expect(urls).toContain('/favicon.svg');
     // sw.js must never precache itself; sorted + deduplicated.

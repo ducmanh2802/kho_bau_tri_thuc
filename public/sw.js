@@ -36,22 +36,13 @@ const PRECACHE_MANIFEST =
   typeof __PRECACHE_MANIFEST__ !== 'undefined' ? __PRECACHE_MANIFEST__ : [];
 
 /** T01/B12 — self-hosted fonts precached for offline use (fallback when the
- *  build manifest is unavailable, e.g. an unpatched dev copy). */
+ *  build manifest is unavailable, e.g. an unpatched dev copy).
+ *  FIX font-nhoe: 4 file variable thay cho 14 file per-weight cũ. */
 const FONT_URLS = [
-  '/fonts/nunito-500-latin.woff2',
-  '/fonts/nunito-500-vietnamese.woff2',
-  '/fonts/nunito-600-latin.woff2',
-  '/fonts/nunito-600-vietnamese.woff2',
-  '/fonts/nunito-700-latin.woff2',
-  '/fonts/nunito-700-vietnamese.woff2',
-  '/fonts/nunito-800-latin.woff2',
-  '/fonts/nunito-800-vietnamese.woff2',
-  '/fonts/nunito-900-latin.woff2',
-  '/fonts/nunito-900-vietnamese.woff2',
-  '/fonts/comfortaa-600-latin.woff2',
-  '/fonts/comfortaa-600-vietnamese.woff2',
-  '/fonts/comfortaa-700-latin.woff2',
-  '/fonts/comfortaa-700-vietnamese.woff2',
+  '/fonts/nunito-latin.woff2',
+  '/fonts/nunito-vietnamese.woff2',
+  '/fonts/comfortaa-latin.woff2',
+  '/fonts/comfortaa-vietnamese.woff2',
 ];
 
 /** Asset extensions we are willing to cache. */
