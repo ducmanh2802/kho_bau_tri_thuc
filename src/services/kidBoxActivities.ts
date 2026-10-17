@@ -141,7 +141,16 @@ function vocabToItem(v: KidBoxVocabulary, isCorrect: boolean): KidBoxActivityIte
  */
 function choiceRound(entries: KidBoxVocabulary[]): KidBoxActivityItem[] {
   if (entries.length === 0) return [];
-  const [target, ...rest] = entries;
+  // §28 — never offer the same word twice in one round.
+  const seen = new Set<string>();
+  const distinct = entries.filter((v) => {
+    const key = v.word.trim().toLowerCase();
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+  if (distinct.length === 0) return [];
+  const [target, ...rest] = distinct;
   return [vocabToItem(target, true), ...rest.map((v) => vocabToItem(v, false))].sort(
     (a, b) => hashSeed(`${a.id}-${b.id}`) - hashSeed(`${a.id}-${b.id}`)
   );
@@ -256,16 +265,10 @@ function buildListenAndActActivity(unit: KidBoxUnit): KidBoxActivity | null {
 
 /** §6 STEP 3 — UNDERSTAND: word ↔ meaning. */
 function buildUnderstandActivity(unit: KidBoxUnit): KidBoxActivity | null {
-  const pool = unit.vocabulary.filter((v) => Boolean(v.meaningVi));
+  const pool = unit.vocabulary.filter((v) => Boolean(v.pictureEmoji) && Boolean(v.meaningVi));
   if (pool.length < 2) return null;
 
-  const entries = rotate(pool, Math.min(MAX_CHOICES, pool.length), `understand-${unit.id}`);
-  const [target, ...rest] = entries;
-  const items = [
-    // The prompt carries the word; the options carry the meanings.
-    vocabToItem(target, true),
-    ...rest.map((v) => ({ ...vocabToItem(v, false), captionEn: v.meaningVi, captionVi: v.word })),
-  ].sort((a, b) => hashSeed(`${a.id}-${b.id}`) - hashSeed(`${a.id}-${b.id}`));
+  const items = meaningMatchRound(pool, `understand-${unit.id}`);
 
   return baseActivity({
     unit,
@@ -337,32 +340,12 @@ function buildRecognitionActivity(unit: KidBoxUnit): KidBoxActivity | null {
   });
 }
 
-/** §8 STEP 5 — PRACTICE: initial sound, using the unit's phonics chart. */
+/** §8 STEP 5 — PRACTICE: hear a word from the unit's phonics chart, choose it. */
 function buildPhonicsActivity(unit: KidBoxUnit): KidBoxActivity | null {
-  const usable = unit.phonics.filter((p) => Boolean(p.exampleWord));
-  if (usable.length < 2) return null;
-
-  const [target, ...rest] = rotate(usable, Math.min(3, usable.length), `phonics-${unit.id}`);
-  const items: KidBoxActivityItem[] = [
-    {
-      id: `${target.id}-sound`,
-      speakText: target.exampleWord,
-      captionEn: target.exampleWord,
-      pictureEmoji: target.exampleEmoji,
-      word: target.exampleWord,
-      isCorrect: true,
-      skillId: target.skillId,
-    },
-    ...rest.map((other) => ({
-      id: `${other.id}-option`,
-      speakText: other.exampleWord,
-      captionEn: other.exampleWord,
-      pictureEmoji: other.exampleEmoji,
-      word: other.exampleWord,
-      isCorrect: false,
-      skillId: target.skillId,
-    })),
-  ];
+  const items = phonicsChoiceRound(unit, `phonics-${unit.id}`);
+  if (items.length < 2) return null;
+  const target = unit.phonics.find((p) => items[0].id === `${p.id}-sound`);
+  if (!target) return null;
 
   return baseActivity({
     unit,
@@ -371,11 +354,11 @@ function buildPhonicsActivity(unit: KidBoxUnit): KidBoxActivity | null {
     mode: 'SINGLE_CHOICE',
     skillId: target.skillId,
     title: 'Which word do you hear?',
-    titleVi: 'Nghe âm đầu, chọn từ đúng',
-    instructionEn: 'Listen to the first sound. Choose the word.',
-    instructionVi: 'Nghe âm đầu của từ rồi chọn từ bắt đầu bằng âm đó.',
+    titleVi: 'Nghe và chọn đúng từ',
+    instructionEn: 'Listen to the word. Choose the word you hear.',
+    instructionVi: 'Nghe từ tiếng Anh rồi chọn đúng từ đó. Nghe bao nhiêu lần cũng được nhé.',
     items,
-    explanation: 'Luyện nhận âm đầu và phân biệt các từ gần giống nhau.',
+    explanation: 'Nghe từ trong bảng âm của unit rồi chọn đúng từ đó. Luyện tai nghe và đọc từ vựng.',
     estimatedSeconds: items.length * 16,
     sourceType: unit.sourceType,
     difficulty: 2,
@@ -559,11 +542,106 @@ function buildCheckActivity(unit: KidBoxUnit): KidBoxActivity | null {
 /** How many follow-up rounds a choice-style activity may chain. */
 const MAX_ROUNDS = 4;
 
+/** A choice round whose options are plain vocabulary items (word + picture). */
+function vocabChoiceRound(pool: KidBoxVocabulary[], seed: string): KidBoxActivityItem[] {
+  if (pool.length < 2) return [];
+  return choiceRound(rotate(pool, Math.min(MAX_CHOICES, pool.length), seed));
+}
+
 /**
- * Produces every round for an activity. Choice-style activities chain fresh
- * rounds from the same unit (same pool, different deterministic rotation), so
- * each round stays small, unambiguous and free of duplicate options. Speaking,
- * ordering and acting activities are single-round by nature.
+ * A choice round for "What does it mean?".
+ *
+ * The stimulus is the ENGLISH WORD (`target.word`), and every option — the
+ * target's own meaning included — renders `captionEn`, the Vietnamese MEANING.
+ * The target therefore stays the single correct item while the options are the
+ * meanings, so the child really has to know the word, and grading by item id
+ * still resolves to the meaning the child actually clicked.
+ */
+function meaningMatchRound(pool: KidBoxVocabulary[], seed: string): KidBoxActivityItem[] {
+  const usable = pool.filter((v) => Boolean(v.meaningVi));
+  if (usable.length < 2) return [];
+  const entries = rotate(usable, Math.min(MAX_CHOICES, usable.length), seed);
+  const [target, ...rest] = entries;
+  if (!target) return [];
+  const asMeaning = (v: KidBoxVocabulary, isCorrect: boolean): KidBoxActivityItem => ({
+    ...vocabToItem(v, isCorrect),
+    captionEn: v.meaningVi,
+    captionVi: v.word,
+  });
+  return [asMeaning(target, true), ...rest.map((v) => asMeaning(v, false))].sort(
+    (a, b) => hashSeed(`${a.id}-${b.id}`) - hashSeed(`${a.id}-${b.id}`)
+  );
+}
+
+/**
+ * A choice round whose options are WORDS (no pictures) and whose stimulus is an
+ * initial sound. Used by the phonics "Which word do you hear?" drill, where the
+ * distractors must be other phonics examples, never random vocabulary.
+ *
+ * Returns an empty round when the unit has fewer than two usable phonics rows,
+ * so a unit without a phonics chart simply has no phonics drill (§9).
+ */
+function phonicsChoiceRound(unit: KidBoxUnit, seed: string): KidBoxActivityItem[] {
+  // §28 — options must be distinct. A unit's phonics chart can teach the same
+  // example word under several rows (letter C, the cat/bat pair, the c-a-t
+  // blend), and two identical options would make "which word do you hear?"
+  // ambiguous — one of them would be marked correct and the other not.
+  const seenWords = new Set<string>();
+  const usable = unit.phonics.filter((p) => {
+    const key = p.exampleWord.trim().toLowerCase();
+    if (!key || seenWords.has(key)) return false;
+    seenWords.add(key);
+    return true;
+  });
+  if (usable.length < 2) return [];
+  const entries = rotate(usable, Math.min(MAX_CHOICES, usable.length), seed);
+  const [target, ...rest] = entries;
+  if (!target) return [];
+  return [
+    {
+      id: `${target.id}-sound`,
+      speakText: target.exampleWord,
+      captionEn: target.exampleWord,
+      pictureEmoji: target.exampleEmoji,
+      word: target.exampleWord,
+      isCorrect: true,
+      skillId: target.skillId,
+    },
+    ...rest.map((other) => ({
+      id: `${other.id}-option`,
+      speakText: other.exampleWord,
+      captionEn: other.exampleWord,
+      pictureEmoji: other.exampleEmoji,
+      word: other.exampleWord,
+      isCorrect: false,
+      skillId: target.skillId,
+    })),
+  ];
+}
+
+/** How many rounds an activity kind can chain without repeating content. */
+function roundsCountFor(activity: KidBoxActivity, pool: KidBoxVocabulary[]): number {
+  if (activity.kind === 'MEANING_MATCH') {
+    const meaningPool = pool.filter((v) => Boolean(v.meaningVi));
+    return Math.min(MAX_ROUNDS, Math.ceil(meaningPool.length / MAX_CHOICES));
+  }
+  if (activity.kind === 'MISSING_WORD') {
+    const phonicsCount = activity.items.length + MAX_CHOICES - 1;
+    return Math.min(MAX_ROUNDS, Math.max(1, Math.ceil(phonicsCount / MAX_CHOICES)));
+  }
+  return Math.min(MAX_ROUNDS, Math.ceil(pool.length / MAX_CHOICES));
+}
+
+/**
+ * Produces every round for an activity. Round 0 is ALWAYS the authored
+ * `activity.items` so evidence ids stay stable; follow-up rounds are rebuilt
+ * from the same unit with the SAME semantics as the authored ones.
+ *
+ * §28 invariant: the stimulus (picture / spoken sound / English word) and the
+ * four options of a round must belong to the same task. A round is therefore
+ * never allowed to substitute one task's options for another's — swapping a
+ * phonics stimulus for a vocabulary grid is what made the audio and the answer
+ * pictures unrelated.
  */
 export function buildRounds(activity: KidBoxActivity, unit: KidBoxUnit): KidBoxActivityItem[][] {
   if (activity.mode !== 'SINGLE_CHOICE' && activity.mode !== 'CHECK') return [activity.items];
@@ -571,12 +649,60 @@ export function buildRounds(activity: KidBoxActivity, unit: KidBoxUnit): KidBoxA
   const pool = unit.vocabulary.filter((v) => Boolean(v.pictureEmoji));
   if (pool.length < 2) return [activity.items];
 
-  const rounds: KidBoxActivityItem[][] = [];
-  const roundsCount = Math.min(MAX_ROUNDS, Math.ceil(pool.length / MAX_CHOICES));
+  const rounds: KidBoxActivityItem[][] = [activity.items];
+  const roundsCount = roundsCountFor(activity, pool);
   for (let i = 0; i < roundsCount; i += 1) {
-    rounds.push(choiceRound(rotate(pool, Math.min(MAX_CHOICES, pool.length), `${activity.id}-round${i}`)));
+    const seed = `${activity.id}-round${i + 1}`;
+    const round =
+      activity.kind === 'MEANING_MATCH'
+        ? meaningMatchRound(pool, seed)
+        : activity.kind === 'MISSING_WORD'
+          ? phonicsChoiceRound(unit, seed)
+          : vocabChoiceRound(pool, seed);
+    if (round.length > 1) rounds.push(round);
   }
   return rounds;
+}
+
+/* ------------------------------------------------------------------ */
+/* STIMULUS POLICY (§28 — what the child sees, hears and chooses)       */
+/* ------------------------------------------------------------------ */
+
+/**
+ * How one choice round is presented. Keeping this in the mapping layer means
+ * the UI never has to guess which channel carries the task:
+ *
+ * - `stimulus` — what is shown/said BEFORE the child chooses.
+ * - `option`   — what each of the four answers renders as.
+ * - `speaks`   — whether the round announces itself with British English.
+ *
+ * The answer must never be printed on the options: rendering word + picture on
+ * every option made "listen and choose the picture" solvable by reading.
+ */
+export interface KidBoxChoicePresentation {
+  stimulus: 'none' | 'picture' | 'word' | 'meaning';
+  option: 'picture' | 'word' | 'meaning';
+  speaks: boolean;
+}
+
+const CHOICE_PRESENTATION: Partial<Record<KidBoxActivityKind, KidBoxChoicePresentation>> = {
+  PICTURE_TO_WORD: { stimulus: 'picture', option: 'word', speaks: false },
+  LISTEN_AND_CHOOSE: { stimulus: 'none', option: 'picture', speaks: true },
+  MEANING_MATCH: { stimulus: 'word', option: 'meaning', speaks: false },
+  MISSING_WORD: { stimulus: 'none', option: 'word', speaks: true },
+  RECOGNITION: { stimulus: 'word', option: 'picture', speaks: false },
+  SPACED_REVIEW: { stimulus: 'word', option: 'picture', speaks: false },
+  MINI_CHECK: { stimulus: 'word', option: 'picture', speaks: false },
+};
+
+/** Presentation for an activity; unknown kinds fall back to word → picture. */
+export function getChoicePresentation(activity: KidBoxActivity): KidBoxChoicePresentation {
+  return CHOICE_PRESENTATION[activity.kind] ?? { stimulus: 'word', option: 'picture', speaks: false };
+}
+
+/** True when the round's stimulus is carried by audio rather than on screen. */
+export function isAudioStimulus(activity: KidBoxActivity): boolean {
+  return getChoicePresentation(activity).speaks;
 }
 
 /* ------------------------------------------------------------------ */

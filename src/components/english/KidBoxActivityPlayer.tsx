@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { KIDBOX_STEP_LABELS, KidBoxActivity, KidBoxActivityItem, KidBoxUnit } from '../../types/kidBox';
-import { buildRounds, KidBoxResponse } from '../../services/kidBoxActivities';
+import { buildRounds, getChoicePresentation, KidBoxResponse } from '../../services/kidBoxActivities';
 import { submitActivityResponse } from '../../services/kidBoxEngine';
 import { KidBoxStore } from '../../services/kidBoxStore';
 import { StorageService } from '../../services/storage';
@@ -89,13 +89,16 @@ export const KidBoxActivityPlayer: React.FC<KidBoxActivityPlayerProps> = ({
     startedAt.current = Date.now();
   }, [roundIndex, isSpeaking, recognition.supported]);
 
-  // §12 — a listening activity announces itself as soon as it opens.
+  // §12 — a listening activity announces itself as soon as it opens. The set
+  // of listening activities comes from the mapping layer, so a new audio drill
+  // is never silently silent (§28: audio and answers must belong to one task).
+  const presentation = useMemo(() => getChoicePresentation(activity), [activity]);
   useEffect(() => {
-    if (activity.step === 'HEAR' && target) {
+    if (presentation.speaks && target) {
       const timer = setTimeout(() => sound.speak(target.speakText, BRITISH_LOCALE), 350);
       return () => clearTimeout(timer);
     }
-  }, [activity.step, target]);
+  }, [presentation.speaks, target]);
 
   const submit = useCallback(
     (response: KidBoxResponse, responseKey: string, extra?: { speechUsed?: boolean }) => {
@@ -296,8 +299,9 @@ export const KidBoxActivityPlayer: React.FC<KidBoxActivityPlayerProps> = ({
             )}
           </div>
 
-          {/* Listening controls — free replay (§12) */}
-          {(activity.step === 'HEAR' || activity.allowReplay) && target && !isGame && (
+          {/* Listening controls — free replay (§12). Shown for every activity whose
+              stimulus is audio, so a listening drill can never open in silence. */}
+          {presentation.speaks && target && !isGame && (
             <div className="flex flex-wrap items-center gap-2">
               <button
                 onClick={() => replay(false)}
@@ -391,8 +395,10 @@ export const KidBoxActivityPlayer: React.FC<KidBoxActivityPlayerProps> = ({
           {/* CHOICE steps: SEE / HEAR / UNDERSTAND / PRACTICE / CHECK */}
           {!isGame && !isAct && !isSpeaking && (
             <div className="space-y-4">
-              {/* For SEE, the target's picture is the prompt; for the rest the options carry it. */}
-              {activity.step === 'SEE' && target?.pictureEmoji && (
+              {/* The stimulus comes from the mapping layer, so it always matches
+                  the four answers: a picture for SEE, a spoken word for the
+                  listening drills, the English word for the reading drills. */}
+              {presentation.stimulus === 'picture' && target?.pictureEmoji && (
                 <div className="text-center">
                   <div className="inline-flex w-28 h-28 md:w-32 md:h-32 items-center justify-center text-6xl md:text-7xl bg-amber-50 border-4 border-amber-200 rounded-3xl">
                     <span aria-hidden="true">{target.pictureEmoji}</span>
@@ -401,14 +407,28 @@ export const KidBoxActivityPlayer: React.FC<KidBoxActivityPlayerProps> = ({
                 </div>
               )}
 
+              {presentation.stimulus === 'word' && target && (
+                <div className="text-center p-5 rounded-3xl bg-amber-50 border-4 border-amber-200">
+                  <p className="sr-only">{target.captionEn}</p>
+                  <p className="text-4xl md:text-5xl font-black font-display text-slate-900 break-words" lang="en">
+                    {target.word ?? target.captionEn}
+                  </p>
+                </div>
+              )}
+
+              {/* Audio is never the only channel (§32): the word being heard is
+                  captioned so a voiceless/offline device still sees the task.
+                  The free replay buttons live in the listening controls above. */}
+              {presentation.stimulus === 'none' && target && (
+                <p className="sr-only">{target.captionEn}</p>
+              )}
+
               <div className="grid grid-cols-2 gap-3">
                 {round
-                  .filter((item) => activity.step !== 'SEE' || !item.isCorrect)
+                  .filter((item) => presentation.stimulus !== 'picture' || !item.isCorrect)
                   .map((item) => {
                     const isSelected = selectedId === item.id;
                     const isAnswer = Boolean(selectedId) && item.isCorrect;
-                    const showMeaning = activity.step === 'UNDERSTAND';
-                    const showWord = activity.step !== 'UNDERSTAND';
                     return (
                       <button
                         key={item.id}
@@ -423,20 +443,21 @@ export const KidBoxActivityPlayer: React.FC<KidBoxActivityPlayerProps> = ({
                               : 'border-slate-200 bg-white hover:border-slate-300'
                         }`}
                       >
-                        {activity.step !== 'UNDERSTAND' && item.pictureEmoji && (
+                        {presentation.option === 'picture' && item.pictureEmoji && (
                           <span className="block text-4xl md:text-5xl" aria-hidden="true">
                             {item.pictureEmoji}
                           </span>
                         )}
                         <span
                           className="block text-sm md:text-base text-slate-900 mt-1 break-words"
-                          lang={showMeaning ? 'vi' : 'en'}
+                          lang={presentation.option === 'meaning' ? 'vi' : 'en'}
                         >
-                          {showMeaning ? item.captionEn : item.word ?? item.captionEn}
+                          {presentation.option === 'meaning'
+                            ? item.captionEn
+                            : presentation.option === 'word'
+                              ? item.word ?? item.captionEn
+                              : ''}
                         </span>
-                        {showWord && activity.step === 'UNDERSTAND' && (
-                          <span className="block text-[11px] text-slate-500">{item.captionVi}</span>
-                        )}
                       </button>
                     );
                   })}

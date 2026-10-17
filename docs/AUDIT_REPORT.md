@@ -110,3 +110,13 @@ npm run audit:snapshot          # so sánh tree hiện tại với docs/audit-st
 | 2026-10-17 21:03 | src/components/learning/chess/chessEngine.ts, src/components/learning/chess/ChessGame.tsx | 🟡 Cần audit phần liệt kê |
 | 2026-10-17 21:24 | src/components/learning/chess/ChessMoveDemo.tsx, src/components/learning/chess/ChessGame.tsx, src/components/learning/chess/ChessScreen.tsx | 🟡 Cần audit phần liệt kê |
 | 2026-10-17 21:44 | src/components/learning/englishIoe/EnglishIoeScreen.tsx, src/data/englishIoe/index.ts, src/App.tsx, src/components/home/HomeScreen.tsx, src/components/learning/chess/ChessMoveDemo.tsx, src/types/index.ts | 🟡 Cần audit phần liệt kê |
+| 2026-10-17 21:58 | src/components/learning/cotuong/cotuongEngine.ts, src/components/learning/cotuong/CotuongGame.tsx, src/components/learning/cotuong/CotuongScreen.tsx, tests/cotuong-engine.test.ts, src/App.tsx, src/components/home/HomeScreen.tsx, src/components/learning/englishIoe/EnglishIoeScreen.tsx, src/data/englishIoe/index.ts, … | 🟡 Cần audit phần liệt kê |
+| 2026-10-17 21:59 | Không có thay đổi mã nguồn | ✅ Sạch |
+| 2026-10-17 22:00 | src/components/learning/cotuong/cotuongEngine.ts, src/components/learning/cotuong/CotuongGame.tsx, tests/cotuong-engine.test.ts | 🟡 Cần audit phần liệt kê |
+| 2026-10-17 22:01 | Không có thay đổi mã nguồn | ✅ Sạch |
+| 2026-10-17 22:33 | Không có thay đổi mã nguồn | ✅ Sạch |
+| 2026-10-17 22:44 | tests/english-ioe.test.ts, tests/kidbox-bridge-practice.test.ts, tests/tmp-advisor.test.ts, tests/tmp-probe.test.ts, src/components/english/KidBoxActivityPlayer.tsx, src/components/learning/englishIoe/EnglishIoeScreen.tsx, src/data/englishIoe/index.ts, src/services/kidBoxActivities.ts | 🟡 Cần audit phần liệt kê |
+| 2026-10-17 22:45 | Không có thay đổi mã nguồn | ✅ Sạch |
+| 2026-10-17 22:53 | src/services/kidBoxActivities.ts, tests/kidbox-bridge-practice.test.ts | 🟡 Cần audit phần liệt kê |
+| 2026-10-17 22:55 | Không có thay đổi mã nguồn | ✅ Sạch |
+| 2026-10-17 22:55 | Không có thay đổi mã nguồn | ✅ Sạch |
