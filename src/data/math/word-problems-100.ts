@@ -6,7 +6,7 @@ import { mathQ, mathLesson } from './factory';
  * trong 100, KHÔNG nhớ.
  *
  * Nối thêm câu vào math-les-10 (giữ id cũ) và thêm math-les-21.
- * Hai câu cũ có phép tính có nhớ (14+9, 50-18) được sửa thành không nhớ
+ * Hai câu cũ có phép tính có nhớ (14+9, 50 − 18) được sửa thành không nhớ
  * để đúng GDPT 2018 (giữ nguyên id, ghi trong báo cáo).
  */
 
@@ -40,8 +40,8 @@ export const MATH_LES10_EXTRA: Question[] = [
     mediaEmoji: '🌷',
     options: ['20 bông hoa', '22 bông hoa', '16 bông hoa', '30 bông hoa'],
     correctAnswer: '20 bông hoa',
-    hint: 'Thấy "còn lại" thì làm phép trừ 36 - 16.',
-    explanation: 'Đúng rồi! 36 - 16 = 20 bông hoa.',
+    hint: 'Thấy "còn lại" thì làm phép trừ 36 − 16.',
+    explanation: 'Đúng rồi! 36 − 16 = 20 bông hoa.',
     calc: { a: 36, op: '-', b: 16 },
   }),
   mathQ('math-loi-van', {
@@ -57,7 +57,7 @@ export const MATH_LES10_EXTRA: Question[] = [
     options: ['30 quả trứng', '28 quả trứng', '35 quả trứng', '25 quả trứng'],
     correctAnswer: '30 quả trứng',
     hint: 'Lấy 45 trừ 15.',
-    explanation: 'Chính xác! 45 - 15 = 30 quả trứng.',
+    explanation: 'Chính xác! 45 − 15 = 30 quả trứng.',
     calc: { a: 45, op: '-', b: 15 },
   }),
   mathQ('math-loi-van', {
@@ -73,7 +73,7 @@ export const MATH_LES10_EXTRA: Question[] = [
     options: ['13 bạn', '14 bạn', '15 bạn', '12 bạn'],
     correctAnswer: '13 bạn',
     hint: 'Lấy 28 trừ 15.',
-    explanation: 'Rất giỏi! 28 - 15 = 13 bạn.',
+    explanation: 'Rất giỏi! 28 − 15 = 13 bạn.',
     calc: { a: 28, op: '-', b: 15 },
   }),
   mathQ('math-loi-van', {
@@ -89,7 +89,7 @@ export const MATH_LES10_EXTRA: Question[] = [
     options: ['30 cuốn sách', '28 cuốn sách', '32 cuốn sách', '20 cuốn sách'],
     correctAnswer: '30 cuốn sách',
     hint: 'Lấy 40 trừ 10.',
-    explanation: 'Đúng! 40 - 10 = 30 cuốn sách.',
+    explanation: 'Đúng! 40 − 10 = 30 cuốn sách.',
     calc: { a: 40, op: '-', b: 10 },
   }),
   mathQ('math-loi-van', {
@@ -104,7 +104,7 @@ export const MATH_LES10_EXTRA: Question[] = [
     options: ['10 quả cam', '12 quả cam', '15 quả cam', '20 quả cam'],
     correctAnswer: '10 quả cam',
     hint: 'Lấy 25 trừ 15.',
-    explanation: 'Tuyệt! 25 - 15 = 10 quả cam.',
+    explanation: 'Tuyệt! 25 − 15 = 10 quả cam.',
     calc: { a: 25, op: '-', b: 15 },
   }),
 ];
@@ -146,7 +146,7 @@ export const MATH_LES21: Lesson = mathLesson(
       options: ['20 hành khách', '30 hành khách', '25 hành khách', '15 hành khách'],
       correctAnswer: '20 hành khách',
       hint: 'Lấy 40 trừ 20.',
-      explanation: 'Đúng rồi! 40 - 20 = 20 hành khách.',
+      explanation: 'Đúng rồi! 40 − 20 = 20 hành khách.',
       calc: { a: 40, op: '-', b: 20 },
     }),
     mathQ('math-loi-van', {
@@ -161,7 +161,7 @@ export const MATH_LES21: Lesson = mathLesson(
       options: ['23 viên bi', '25 viên bi', '32 viên bi', '13 viên bi'],
       correctAnswer: '23 viên bi',
       hint: 'Lấy 35 trừ 12.',
-      explanation: 'Chính xác! 35 - 12 = 23 viên bi.',
+      explanation: 'Chính xác! 35 − 12 = 23 viên bi.',
       calc: { a: 35, op: '-', b: 12 },
     }),
     mathQ('math-loi-van', {
@@ -177,7 +177,7 @@ export const MATH_LES21: Lesson = mathLesson(
       options: ['40 cái bánh', '35 cái bánh', '45 cái bánh', '50 cái bánh'],
       correctAnswer: '40 cái bánh',
       hint: 'Lấy 60 trừ 20.',
-      explanation: 'Đúng! 60 - 20 = 40 cái bánh.',
+      explanation: 'Đúng! 60 − 20 = 40 cái bánh.',
       calc: { a: 60, op: '-', b: 20 },
     }),
     mathQ('math-loi-van', {
@@ -193,7 +193,7 @@ export const MATH_LES21: Lesson = mathLesson(
       options: ['30 cây bút chì', '36 cây bút chì', '26 cây bút chì', '20 cây bút chì'],
       correctAnswer: '30 cây bút chì',
       hint: 'Lấy 46 trừ 16.',
-      explanation: 'Rất giỏi! 46 - 16 = 30 cây bút chì.',
+      explanation: 'Rất giỏi! 46 − 16 = 30 cây bút chì.',
       calc: { a: 46, op: '-', b: 16 },
     }),
     mathQ('math-loi-van', {
@@ -209,7 +209,7 @@ export const MATH_LES21: Lesson = mathLesson(
       options: ['30 cuốn sách', '20 cuốn sách', '40 cuốn sách', '25 cuốn sách'],
       correctAnswer: '30 cuốn sách',
       hint: 'Lấy 50 trừ 20.',
-      explanation: 'Đúng rồi! 50 - 20 = 30 cuốn sách.',
+      explanation: 'Đúng rồi! 50 − 20 = 30 cuốn sách.',
       calc: { a: 50, op: '-', b: 20 },
     }),
     mathQ('math-loi-van', {
@@ -224,7 +224,7 @@ export const MATH_LES21: Lesson = mathLesson(
       options: ['40 phong bì', '35 phong bì', '45 phong bì', '50 phong bì'],
       correctAnswer: '40 phong bì',
       hint: 'Lấy 70 trừ 30.',
-      explanation: 'Tuyệt! 70 - 30 = 40 phong bì.',
+      explanation: 'Tuyệt! 70 − 30 = 40 phong bì.',
       calc: { a: 70, op: '-', b: 30 },
     }),
     mathQ('math-loi-van', {
@@ -253,7 +253,7 @@ export const MATH_LES21: Lesson = mathLesson(
       options: ['25 bạn', '30 bạn', '35 bạn', '20 bạn'],
       correctAnswer: '25 bạn',
       hint: 'Lấy 55 trừ 30.',
-      explanation: 'Chính xác! 55 - 30 = 25 bạn.',
+      explanation: 'Chính xác! 55 − 30 = 25 bạn.',
       calc: { a: 55, op: '-', b: 30 },
     }),
     mathQ('math-loi-van', {
@@ -268,7 +268,7 @@ export const MATH_LES21: Lesson = mathLesson(
       options: ['50 viên bi', '45 viên bi', '55 viên bi', '60 viên bi'],
       correctAnswer: '50 viên bi',
       hint: 'Lấy 80 trừ 30.',
-      explanation: 'Xuất sắc! 80 - 30 = 50 viên bi.',
+      explanation: 'Xuất sắc! 80 − 30 = 50 viên bi.',
       calc: { a: 80, op: '-', b: 30 },
     }),
   ],

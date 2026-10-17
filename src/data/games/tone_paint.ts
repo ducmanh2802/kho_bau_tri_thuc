@@ -100,7 +100,7 @@ export const POOL_BY_TIER: TonePaintSeed[][] = [
     { w: 'véo', focus: 'véo', t: 'sắc', vow: 'e', emoji: '🤏' },
     { w: 'cáo', focus: 'cáo', t: 'sắc', vow: 'a', emoji: '🦊' },
     { w: 'mèo', focus: 'mèo', t: 'huyền', vow: 'e', emoji: '🐱' },
-    { w: 'kéo', focus: 'kéo', t: 'sắc', vow: 'e', emoji: '🪢' },
+    { w: 'kéo', focus: 'kéo', t: 'sắc', vow: 'e', emoji: '🧶' },
     { w: 'chào', focus: 'chào', t: 'huyền', vow: 'a', emoji: '👋' },
     { w: 'đào', focus: 'đào', t: 'huyền', vow: 'a', emoji: '🍑' },
     { w: 'gạo', focus: 'gạo', t: 'nặng', vow: 'a', emoji: '🍚' },

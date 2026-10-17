@@ -51,7 +51,7 @@ export const T13_CON_VAT_PASSAGES: ReadingPassage[] = [
     ],
     pictureBank: [
       { emoji: '🐠', label: 'cá vàng' },
-      { emoji: '🫧', label: 'bể cá' },
+      { emoji: '🐟', label: 'bể cá' },
       { emoji: '🌊', label: 'nước trong' },
       { emoji: '👧', label: 'bé ngắm cá' },
     ],

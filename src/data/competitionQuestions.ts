@@ -310,7 +310,7 @@ export const COMPETITION_QUESTIONS: CompetitionQuestion[] = [
     version: 1,
     difficulty: 'HARD',
     prompt: 'Giải câu đố: "Cái gì bằng một gang tay / Người người cần đến sớm ngày chải răng?"',
-    mediaEmoji: '🪥',
+    mediaEmoji: '🦷',
     options: ['Cái gương', 'Bàn chải đánh răng', 'Khăn mặt', 'Cái lược'],
     correctAnswer: 'Bàn chải đánh răng',
     explanation: 'Bàn chải đánh răng dài khoảng 1 gang tay, dùng mỗi sớm để chải răng sạch bóng.',

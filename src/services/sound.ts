@@ -3,6 +3,63 @@
  * 100% self-contained, no external audio files needed!
  */
 
+export type VoicePersonaId =
+  | 'narrator'
+  | 'teacher'
+  | 'uncle'
+  | 'grandma'
+  | 'kid_girl'
+  | 'kid_boy';
+
+export interface VoicePersona {
+  id: VoicePersonaId;
+  /** Tên hiển thị cho phụ huynh (chọn trong Dashboard). */
+  label: string;
+  gender: 'female' | 'male';
+  isChild: boolean;
+  /** Pitch tuyệt đối trong khoảng cho phép của Web Speech [0, 2]. */
+  pitch: number;
+  /** Hệ số nhân tốc độ đọc so với tốc độ cơ sở của ngôn ngữ. */
+  rate: number;
+}
+
+export const VOICE_PERSONAS: Record<VoicePersonaId, VoicePersona> = {
+  narrator: { id: 'narrator', label: 'Người dẫn chuyện', gender: 'female', isChild: false, pitch: 1.1, rate: 1 },
+  teacher: { id: 'teacher', label: 'Cô giáo hiền', gender: 'female', isChild: false, pitch: 1.0, rate: 1 },
+  uncle: { id: 'uncle', label: 'Chú vui vẻ', gender: 'male', isChild: false, pitch: 0.8, rate: 1.02 },
+  grandma: { id: 'grandma', label: 'Bà ấm áp', gender: 'female', isChild: false, pitch: 1.12, rate: 0.82 },
+  kid_girl: { id: 'kid_girl', label: 'Bạn nhỏ nữ', gender: 'female', isChild: true, pitch: 1.5, rate: 1.04 },
+  kid_boy: { id: 'kid_boy', label: 'Bạn nhỏ nam', gender: 'male', isChild: true, pitch: 1.32, rate: 1.06 },
+};
+
+/** Các persona luân phiên khi khen ngợi: 2 giọng trẻ em + 3 giọng người lớn. */
+export const PRAISE_PERSONA_ROTATION: VoicePersonaId[] = [
+  'teacher',
+  'kid_girl',
+  'uncle',
+  'kid_boy',
+  'grandma',
+];
+
+const FEMALE_VOICE_HINTS =
+  /\bfemale\b|\bwomen\b|\bgirl\b|nữ|hoai\s*my|zira|hazel|susan|samantha|victoria|karen|moira|tessa|fiona|amanda|linh|mai\b|lan\b|nga\b|thao\b|huong\b/i;
+
+const MALE_VOICE_HINTS =
+  /\bmale\b|\bmen\b|\bboy\b|nam\b|minh\b|david|mark|daniel|alex\b|tom\b|fred\b|george|oliver|diego|jiang|duc\b|hung\b|tuan\b|hoang\b/i;
+
+function hashPersonaId(id: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < id.length; i++) {
+    h ^= id.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+
+function clampSpeechRange(value: number): number {
+  return Math.min(2, Math.max(0.1, value));
+}
+
 class SoundService {
   private ctx: AudioContext | null = null;
   private isMuted: boolean = false;
@@ -244,7 +301,11 @@ class SoundService {
   }
 
   // Text to speech (Vietnamese & English)
-  public speak(text: string, lang: 'vi-VN' | 'en-US' | 'en-GB' = 'vi-VN') {
+  public speak(
+    text: string,
+    lang: 'vi-VN' | 'en-US' | 'en-GB' = 'vi-VN',
+    options?: { personaId?: VoicePersonaId }
+  ) {
     if (this.isMuted || !this.voiceEnabled) return;
     if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
 
@@ -255,10 +316,14 @@ class SoundService {
       window.speechSynthesis.cancel(); // Stop any pending utterances
       const utterance = new SpeechSynthesisUtterance(text);
       utterance.lang = lang;
-      utterance.rate = lang === 'vi-VN' ? 0.9 : 0.85; // Slightly slower, clear for grade 1 kids
-      utterance.pitch = 1.1; // Friendly, warm pitch
+      const baseRate = lang === 'vi-VN' ? 0.9 : 0.85;
+      utterance.rate = clampSpeechRange(baseRate * (options?.personaId ? VOICE_PERSONAS[options.personaId].rate : 1));
+      utterance.pitch = clampSpeechRange(options?.personaId ? VOICE_PERSONAS[options.personaId].pitch : 1.1);
 
-      const matchingVoice = this.pickVoice(lang);
+      const matchingVoice =
+        options?.personaId !== undefined
+          ? this.pickPersonaVoice(options.personaId, lang)
+          : this.pickVoice(lang);
       if (matchingVoice) {
         utterance.voice = matchingVoice;
       }
@@ -278,17 +343,39 @@ class SoundService {
    * fall back to text/captions instead of pretending an audio happened.
    */
   public pickVoice(lang: 'vi-VN' | 'en-US' | 'en-GB'): SpeechSynthesisVoice | null {
+    return this.voiceCandidates(lang)[0] ?? null;
+  }
+
+  /** All platform voices matching the locale chain (exact → regional → base). */
+  private voiceCandidates(lang: 'vi-VN' | 'en-US' | 'en-GB'): SpeechSynthesisVoice[] {
     const allVoices = this.cachedVoices.length > 0 ? this.cachedVoices : this.getVoices();
-    if (allVoices.length === 0) return null;
+    if (allVoices.length === 0) return [];
 
     const base = lang.split('-')[0];
-    const exact = allVoices.find((v) => v.lang === lang || v.lang.replace('_', '-') === lang);
-    if (exact) return exact;
+    const exact = allVoices.filter((v) => v.lang === lang || v.lang.replace('_', '-') === lang);
+    if (exact.length > 0) return exact;
 
-    const regional = allVoices.find((v) => v.lang.replace('_', '-').startsWith(`${lang}-`));
-    if (regional) return regional;
+    const regional = allVoices.filter((v) => v.lang.replace('_', '-').startsWith(`${lang}-`));
+    if (regional.length > 0) return regional;
 
-    return allVoices.find((v) => v.lang.replace('_', '-').startsWith(base)) ?? null;
+    return allVoices.filter((v) => v.lang.replace('_', '-').startsWith(base));
+  }
+
+  /**
+   * Voice chosen for a persona: prefer a platform voice whose name hints at
+   * the persona's gender (so different personas sound like different people
+   * when the device offers several voices), otherwise rotate deterministically
+   * through the locale pool. Pitch/rate still apply on top.
+   */
+  public pickPersonaVoice(personaId: VoicePersonaId, lang: 'vi-VN' | 'en-US' | 'en-GB'): SpeechSynthesisVoice | null {
+    const candidates = this.voiceCandidates(lang);
+    if (candidates.length === 0) return null;
+    const persona = VOICE_PERSONAS[personaId];
+    const hints = persona.gender === 'female' ? FEMALE_VOICE_HINTS : MALE_VOICE_HINTS;
+    const gendered = candidates.filter((v) => hints.test(v.name));
+    const pool = gendered.length > 0 ? gendered : candidates;
+    const index = hashPersonaId(personaId) % pool.length;
+    return pool[index] ?? null;
   }
 
   /** Re-reads the platform voice list (populated asynchronously on load). */

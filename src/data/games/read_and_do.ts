@@ -278,7 +278,7 @@ export const POOL_BY_TIER: ReadDoSeed[][] = [
     {
       sentence: 'Đặt chậu hoa cạnh cửa.', position: 'cạnh', scene: 'Sân nhà mát', sceneEmoji: '🏡',
       objects: [
-        { id: 'chau', label: 'chậu hoa', emoji: '🪴' },
+        { id: 'chau', label: 'chậu hoa', emoji: '🌺' },
         { id: 'tao', label: 'quả táo', emoji: '🍎' },
         { id: 'bong', label: 'quả bóng', emoji: '⚽' },
       ],
@@ -370,7 +370,7 @@ export const POOL_BY_TIER: ReadDoSeed[][] = [
         { id: 'oc', label: 'con ốc', emoji: '🐚' },
       ],
       places: [
-        { id: 'be', label: 'bể', emoji: '🫧' },
+        { id: 'be', label: 'bể', emoji: '💧' },
         { id: 'song', label: 'dòng sông', emoji: '🏞️' },
         { id: 'hop', label: 'hộp', emoji: '📦' },
       ],
@@ -457,7 +457,7 @@ export const POOL_BY_TIER: ReadDoSeed[][] = [
         { id: 'oc-1', label: 'một con ốc', emoji: '🐚' },
       ],
       places: [
-        { id: 'be', label: 'bể', emoji: '🫧' },
+        { id: 'be', label: 'bể', emoji: '💧' },
         { id: 'song', label: 'dòng sông', emoji: '🏞️' },
         { id: 'hop', label: 'hộp', emoji: '📦' },
       ],
@@ -494,8 +494,8 @@ export const POOL_BY_TIER: ReadDoSeed[][] = [
     {
       sentence: 'Đặt một chậu hoa cạnh cửa.', position: 'cạnh', scene: 'Sân nhà mát', sceneEmoji: '🏡',
       objects: [
-        { id: 'chau-1', label: 'một chậu hoa', emoji: '🪴' },
-        { id: 'chau-2', label: 'hai chậu hoa', emoji: '🪴' },
+        { id: 'chau-1', label: 'một chậu hoa', emoji: '🌺' },
+        { id: 'chau-2', label: 'hai chậu hoa', emoji: '🌺' },
         { id: 'la-1', label: 'một chiếc lá', emoji: '🍃' },
       ],
       places: [
@@ -576,7 +576,7 @@ export const POOL_BY_TIER: ReadDoSeed[][] = [
     {
       sentence: 'Đặt chậu hoa cạnh cửa và chiếc lá dưới gốc cây.', position: 'cạnh', scene: 'Sân nhà mát', sceneEmoji: '🏡',
       objects: [
-        { id: 'chau', label: 'chậu hoa', emoji: '🪴' },
+        { id: 'chau', label: 'chậu hoa', emoji: '🌺' },
         { id: 'la', label: 'chiếc lá', emoji: '🍃' },
         { id: 'bong', label: 'quả bóng', emoji: '⚽' },
       ],
@@ -632,7 +632,7 @@ export const POOL_BY_TIER: ReadDoSeed[][] = [
         { id: 'la', label: 'chiếc lá', emoji: '🍃' },
       ],
       places: [
-        { id: 'be', label: 'bể', emoji: '🫧' },
+        { id: 'be', label: 'bể', emoji: '💧' },
         { id: 'song', label: 'dòng sông', emoji: '🏞️' },
         { id: 'hop', label: 'hộp', emoji: '📦' },
       ],
@@ -737,7 +737,7 @@ export const POOL_BY_TIER: ReadDoSeed[][] = [
         { id: 'oc-2', label: 'hai con ốc', emoji: '🐚' },
       ],
       places: [
-        { id: 'be', label: 'bể', emoji: '🫧' },
+        { id: 'be', label: 'bể', emoji: '💧' },
         { id: 'song', label: 'dòng sông', emoji: '🏞️' },
         { id: 'hop', label: 'hộp', emoji: '📦' },
       ],
@@ -783,8 +783,8 @@ export const POOL_BY_TIER: ReadDoSeed[][] = [
     {
       sentence: 'Đặt một chậu hoa đỏ cạnh cửa và hai chậu hoa vàng dưới gốc cây.', position: 'cạnh', scene: 'Sân nhà mát', sceneEmoji: '🏡',
       objects: [
-        { id: 'chau-do-1', label: 'một chậu hoa đỏ', emoji: '🪴' },
-        { id: 'chau-vang-2', label: 'hai chậu hoa vàng', emoji: '🪴' },
+        { id: 'chau-do-1', label: 'một chậu hoa đỏ', emoji: '🌺' },
+        { id: 'chau-vang-2', label: 'hai chậu hoa vàng', emoji: '🌺' },
         { id: 'la-1', label: 'một chiếc lá', emoji: '🍃' },
       ],
       places: [

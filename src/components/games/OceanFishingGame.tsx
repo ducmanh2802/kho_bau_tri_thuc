@@ -81,7 +81,7 @@ export const OceanFishingGame: React.FC<{ onExit: () => void }> = ({ onExit }) =
 
         {/* Fishing Line */}
         <div className="absolute top-16 left-1/3 w-0.5 h-32 bg-amber-950/60 flex flex-col items-center justify-end">
-          <span className="text-xl">🪝</span>
+          <span className="text-xl">🎣</span>
         </div>
 
         {/* Ocean Waves Decor */}
@@ -111,7 +111,7 @@ export const OceanFishingGame: React.FC<{ onExit: () => void }> = ({ onExit }) =
 
         {/* Sea floor decor */}
         <div className="w-full flex justify-between px-8 text-3xl opacity-80">
-          <span>🪸</span>
+          <span>🌺</span>
           <span>🦀</span>
           <span>🐚</span>
           <span>🌿</span>

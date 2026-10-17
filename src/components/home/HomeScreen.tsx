@@ -108,12 +108,12 @@ const SHORTCUT_CARDS: readonly ShortcutCard[] = [
     border: 'border-sky-300',
   },
   {
-    screen: 'weekly_challenge',
-    label: 'Thử Thách Tuần',
-    icon: '🌟',
-    desc: 'Nhận cúp danh dự',
-    gradient: 'from-rose-500 to-pink-600',
-    border: 'border-rose-300',
+    screen: 'chess',
+    label: 'Cờ Vua',
+    icon: '♟',
+    desc: 'Học quân cờ',
+    gradient: 'from-slate-600 to-slate-800',
+    border: 'border-slate-400',
   },
 ];
 

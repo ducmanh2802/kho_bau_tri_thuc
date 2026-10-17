@@ -7,7 +7,7 @@ import { DIR_METAS, type Cell, type CodingLevel, type Dir, type ProgToken } from
  * Tach rieng de file game chinh gon duoi 300 dong.
  */
 
-const rockEmoji = (i: number): string => (i % 2 === 0 ? '🪨' : '🌊');
+const rockEmoji = (i: number): string => (i % 2 === 0 ? '🗿' : '🌊');
 
 export const CodingGrid: React.FC<{
   level: CodingLevel;

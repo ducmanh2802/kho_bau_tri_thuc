@@ -37,7 +37,7 @@ import { weekKeyOf } from './streakEngine';
 import { evaluateNewAchievements, xpForUnlocks } from './achievementEngine';
 import { canBuyShopItem } from './shopEngine';
 import { localDateKey, diffDateKeys, parseDateKey } from './dateUtils';
-import { LearningOS, LEARNING_OS_POLICY } from './learningOS';
+import { LearningOS, LEARNING_OS_POLICY, resetStaleFatigue } from './learningOS';
 // T02C — storage (first-load chunk) must NOT import CompetitionEngine,
 // ReadingEngine or the competition/reading banks. The demo seeder lives in
 // `./demoSeed` and the default reading profile in `./readingDefaults`.
@@ -401,7 +401,11 @@ export class StorageService {
   public static getLearningOSStore(): LearningOSStore {
     const raw = readJSONObject(STORAGE_KEYS.LEARNING_OS_STORE);
     if (!raw) return createEmptyLearningOSStore();
-    return StorageService.sanitizeLearningOSStore(migrateToCurrentSchema(raw));
+    // P0-2 — opening the app after a break/new day immediately clears a
+    // latched fatigue instead of waiting for the next answered question.
+    const store = StorageService.sanitizeLearningOSStore(migrateToCurrentSchema(raw));
+    store.fatigue = resetStaleFatigue(store.fatigue, Date.now());
+    return store;
   }
 
   public static saveLearningOSStore(store: LearningOSStore) {
@@ -418,6 +422,7 @@ export class StorageService {
   public static recordLearningEvidence(evidence: LearningEvidence): boolean {
     if (!evidence || typeof evidence.id !== 'string' || evidence.id.length === 0) return false;
 
+    const now = Date.now();
     const store = StorageService.getLearningOSStore();
     if (store.processedEvidenceIds.includes(evidence.id)) return false;
 
@@ -443,6 +448,9 @@ export class StorageService {
     }
 
     // Session fatigue tracking (drives the Learning OS rest recommendation).
+    // P0-2 — a long inactivity gap or a new local day starts a fresh session,
+    // so fatigue resets instead of latching forever.
+    store.fatigue = resetStaleFatigue(store.fatigue, now);
     store.fatigue.questionsAnsweredThisSession += 1;
     if (evidence.correct) {
       store.fatigue.consecutiveErrorsInSession = 0;
@@ -453,6 +461,9 @@ export class StorageService {
     store.fatigue.isFatigued =
       store.fatigue.questionsAnsweredThisSession >= LEARNING_OS_POLICY.FATIGUE_MAX_QUESTIONS ||
       store.fatigue.consecutiveErrorsInSession >= LEARNING_OS_POLICY.FATIGUE_MAX_CONSECUTIVE_ERRORS;
+    // Keep the anchor on the latest activity so the gap measures inactivity,
+    // not total session age.
+    store.fatigue.sessionStartTime = now;
 
     StorageService.saveLearningOSStore(store);
     return true;

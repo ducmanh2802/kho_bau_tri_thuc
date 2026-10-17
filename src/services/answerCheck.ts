@@ -15,10 +15,14 @@ export function checkAnswer(
 
   switch (type) {
     case 'ordering': {
-      if (!Array.isArray(userAnswer) || !Array.isArray(correct)) return false;
-      const normUser = userAnswer.map(normalizeForCompare);
-      const normCorrect = (correct as string[]).map(normalizeForCompare);
-      return arraysEqual(normUser, normCorrect);
+      // Curriculum data stores the expected order as a pipe-string
+      // ("a|b|c") while the player submits the child's list as an array.
+      // Both sides may therefore be an array OR a pipe-string.
+      if (typeof userAnswer === 'string') {
+        return arraysEqual(parseOrderingAnswer(userAnswer), parseOrderingAnswer(toPipeText(correct)));
+      }
+      if (!Array.isArray(userAnswer)) return false;
+      return arraysEqual(userAnswer.map(normalizeForCompare), parseOrderingAnswer(toPipeText(correct)));
     }
 
     case 'matching': {
@@ -76,9 +80,15 @@ export function normalizeForCompare(value: string): string {
  * Normalise math expression: remove all whitespace, NFC.
  * Note: We don't evaluate mathematically, just compare canonical string forms.
  * The question author must provide the canonical form in correctAnswer.
+ *
+ * Curriculum data uses the typographic minus U+2212 ("9 − 4 = 5") while the
+ * on-screen keypad types ASCII '-' ("9-4=5"); both must grade identically.
  */
 export function normalizeMathExpression(value: string): string {
-  return value.normalize('NFC').replace(/\s+/g, '');
+  return value
+    .normalize('NFC')
+    .replace(/\u2212/g, '-')
+    .replace(/\s+/g, '');
 }
 
 /**
@@ -106,6 +116,14 @@ export function parseMatchingAnswer(answer: string): { left: string; right: stri
 export function parseOrderingAnswer(answer: string): string[] {
   if (!answer) return [];
   return answer.split('|').map(normalizeForCompare).filter(Boolean);
+}
+
+/**
+ * Normalise a stored ordering answer (array or pipe-string) into a pipe-string
+ * so both forms can be compared through `parseOrderingAnswer`.
+ */
+function toPipeText(value: string | string[]): string {
+  return Array.isArray(value) ? value.join('|') : value;
 }
 
 /**

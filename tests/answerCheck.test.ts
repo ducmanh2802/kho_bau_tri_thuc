@@ -269,6 +269,45 @@ describe('answerCheck - checkAnswer (ordering)', () => {
   });
 });
 
+describe('answerCheck - checkAnswer (ordering, pipe-string data)', () => {
+  // P0-1 regression — curriculum data stores the expected order as a
+  // pipe-string ("3|5|7|9") while the lesson player submits the child's list
+  // as an array. Both sides must be accepted in either form.
+  it('accepts a pipe-string correctAnswer against an array userAnswer', () => {
+    const q = makeQuestion({
+      type: 'ordering',
+      correctAnswer: '3|5|7|9',
+      orderingItems: ['3', '5', '7', '9'],
+    });
+    expect(checkAnswer(q, ['3', '5', '7', '9'])).toBe(true);
+    expect(checkAnswer(q, ['9', '7', '5', '3'])).toBe(false);
+  });
+
+  it('accepts a pipe-string userAnswer against an array correctAnswer', () => {
+    const q = makeQuestion({
+      type: 'ordering',
+      correctAnswer: ['a', 'b', 'c'],
+    });
+    expect(checkAnswer(q, 'a|b|c')).toBe(true);
+    expect(checkAnswer(q, 'a|c|b')).toBe(false);
+  });
+
+  it('accepts pipe-strings on both sides and normalizes whitespace', () => {
+    const q = makeQuestion({
+      type: 'ordering',
+      correctAnswer: ' x | y | z ',
+    });
+    expect(checkAnswer(q, ['x', 'y', 'z'])).toBe(true);
+    expect(checkAnswer(q, 'z|y|x')).toBe(false);
+  });
+
+  it('rejects empty or missing user answers', () => {
+    const q = makeQuestion({ type: 'ordering', correctAnswer: 'a|b' });
+    expect(checkAnswer(q, '')).toBe(false);
+    expect(checkAnswer(q, [])).toBe(false);
+  });
+});
+
 describe('answerCheck - checkAnswer (drag-drop)', () => {
   it('returns true for correct bucket', () => {
     const q = makeQuestion({

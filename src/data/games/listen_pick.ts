@@ -70,7 +70,7 @@ export const THEMES: PhonicsTheme[] = [
     name: 'đồ vật gia đình',
     words: [
       { word: 'Chiếc ghế', emoji: '🪑' },
-      { word: 'Cái quạt', emoji: '🪭' },
+      { word: 'Cái quạt', emoji: '🌀' },
       { word: 'Chiếc đèn', emoji: '💡' },
       { word: 'Cái nồi', emoji: '🍲' },
       { word: 'Cái chổi', emoji: '🧹' },

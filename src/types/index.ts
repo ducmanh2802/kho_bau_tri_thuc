@@ -265,7 +265,8 @@ export type ActiveScreen =
   | 'kidbox_companion'
   | 'sticker_album'
   | 'gacha_machine'
-  | 'streak_calendar';
+  | 'streak_calendar'
+  | 'chess';
 
 export * from './competition';
 export * from './reading';

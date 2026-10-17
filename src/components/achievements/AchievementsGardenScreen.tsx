@@ -51,7 +51,7 @@ export const AchievementsGardenScreen: React.FC<AchievementsGardenScreenProps> =
       : lessonCount <= 2
       ? { stage: 2, emoji: '🌿', label: 'Nảy mầm' }
       : lessonCount <= 4
-      ? { stage: 3, emoji: '🪴', label: 'Cây non' }
+      ? { stage: 3, emoji: '🌱', label: 'Cây non' }
       : lessonCount <= 7
       ? { stage: 4, emoji: '🌳', label: 'Cây lớn' }
       : { stage: 5, emoji: '🌲', label: 'Đang Nở Hoa 🌸' };

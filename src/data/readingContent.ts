@@ -38,7 +38,7 @@ const LEGACY_READING_PASSAGES: ReadingPassage[] = [
     ],
     pictureBank: [
       { emoji: '🌞', label: 'nắng sớm' },
-      { emoji: '🪥', label: 'đánh răng' },
+      { emoji: '🦷', label: 'đánh răng' },
       { emoji: '🍚', label: 'ăn cháo' },
       { emoji: '🎒', label: 'đến trường' },
     ],
@@ -59,7 +59,7 @@ const LEGACY_READING_PASSAGES: ReadingPassage[] = [
     ],
     pictureBank: [
       { emoji: '🌳', label: 'cành cây' },
-      { emoji: '🪹', label: 'tổ' },
+      { emoji: '🐦', label: 'tổ' },
       { emoji: '🌾', label: 'cỏ khô' },
       { emoji: '🐣', label: 'chim non' },
     ],
@@ -123,7 +123,7 @@ const LEGACY_READING_PASSAGES: ReadingPassage[] = [
     pictureBank: [
       { emoji: '🍅', label: 'cà chua' },
       { emoji: '🌶️', label: 'ớt' },
-      { emoji: '🫘', label: 'đậu' },
+      { emoji: '🥜', label: 'đậu' },
       { emoji: '📓', label: 'sổ tay' },
     ],
     questionIds: ['rq-05-1', 'rq-05-2', 'rq-05-3', 'rq-05-4'],

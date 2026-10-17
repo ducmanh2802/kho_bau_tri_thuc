@@ -12,6 +12,7 @@
     "lint": "tsc --noEmit",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "posttest": "node scripts/audit-snapshot.mjs",
     "check:budget": "node scripts/check-bundle-budget.mjs"
   },
   "engines": {

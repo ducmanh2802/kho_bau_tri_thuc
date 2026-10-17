@@ -127,7 +127,7 @@ export const LESSONS: Lesson[] = [
         prompt: 'Bể nước và cốc nước, vật nào đựng được nhiều nước hơn?',
         options: ['Bể nước nhiều hơn', 'Cốc nước nhiều hơn', 'Hai vật nhiều nước bằng nhau'],
         correctAnswer: 'Bể nước nhiều hơn',
-        mediaEmoji: '🪣',
+        mediaEmoji: '🛁',
         hint: 'Vật to hơn thì chứa được nhiều hơn.',
         explanation: 'Bể nước lớn hơn nên chứa được nhiều nước hơn.',
       }),
@@ -250,7 +250,7 @@ export const LESSONS: Lesson[] = [
         options: ['3 gang tay', '2 gang tay', '4 gang tay', '9 gang tay'],
         correctAnswer: '3 gang tay',
         hint: 'Lấy số gang tay của bàn trừ đi của ghế.',
-        explanation: '6 - 3 = 3 gang tay.',
+        explanation: '6 − 3 = 3 gang tay.',
         calc: { a: 6, op: '-', b: 3 },
       }),
       mathQ(TOPIC, {
@@ -383,7 +383,7 @@ export const LESSONS: Lesson[] = [
         options: ['8', '7', '9', '32'],
         correctAnswer: '8',
         hint: 'Lấy 20 trừ đi 12.',
-        explanation: '20 - 12 = 8 cm.',
+        explanation: '20 − 12 = 8 cm.',
         calc: { a: 20, op: '-', b: 12 },
       }),
       mathQ(TOPIC, {
@@ -431,7 +431,7 @@ export const LESSONS: Lesson[] = [
         options: ['80', '70', '90', '100'],
         correctAnswer: '80',
         hint: 'Lấy 90 trừ đi 10.',
-        explanation: '90 - 10 = 80 cm.',
+        explanation: '90 − 10 = 80 cm.',
         calc: { a: 90, op: '-', b: 10 },
       }),
       mathQ(TOPIC, {
@@ -443,7 +443,7 @@ export const LESSONS: Lesson[] = [
         options: ['20', '25', '50', '45'],
         correctAnswer: '20',
         hint: 'Lấy 35 trừ đi 15.',
-        explanation: '35 - 15 = 20 cm.',
+        explanation: '35 − 15 = 20 cm.',
         calc: { a: 35, op: '-', b: 15 },
       }),
       mathQ(TOPIC, {

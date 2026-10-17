@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { sound } from '../services/sound';
+import { sound, VOICE_PERSONAS, type VoicePersonaId } from '../services/sound';
 
 /**
  * useSpeak — truthful text-to-speech button state (§20–22).
@@ -58,7 +58,7 @@ export function useSpeak() {
   }, []);
 
   const speak = useCallback(
-    (text: string, lang: 'vi-VN' | 'en-US' | 'en-GB' = 'vi-VN'): boolean => {
+    (text: string, lang: 'vi-VN' | 'en-US' | 'en-GB' = 'vi-VN', personaId?: VoicePersonaId): boolean => {
       if (!synthesisAvailable()) {
         setState('unavailable');
         return false;
@@ -72,9 +72,10 @@ export function useSpeak() {
         window.speechSynthesis.cancel(); // never stack utterances
         const utterance = new SpeechSynthesisUtterance(text);
         utterance.lang = lang;
-        utterance.rate = lang === 'vi-VN' ? 0.9 : 0.85;
-        utterance.pitch = 1.1;
-        const voice = sound.pickVoice(lang);
+        const baseRate = lang === 'vi-VN' ? 0.9 : 0.85;
+        utterance.rate = Math.min(2, Math.max(0.1, baseRate * (personaId ? VOICE_PERSONAS[personaId].rate : 1)));
+        utterance.pitch = Math.min(2, Math.max(0, personaId ? VOICE_PERSONAS[personaId].pitch : 1.1));
+        const voice = personaId !== undefined ? sound.pickPersonaVoice(personaId, lang) : sound.pickVoice(lang);
         if (voice) utterance.voice = voice;
         utteranceRef.current = utterance;
         utterance.onend = () => {

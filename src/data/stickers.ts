@@ -52,7 +52,7 @@ const DO_AN_TET: readonly StickerSeed[] = [
   { name: 'Mứt Dừa Ngọt Ngào', emoji: '🥥', rarity: 'thuong' },
   { name: 'Hạt Dưa Đỏ Thắm', emoji: '🍉', rarity: 'thuong' },
   { name: 'Kẹo Lạc Giòn Tan', emoji: '🍬', rarity: 'thuong' },
-  { name: 'Mứt Gừng Ấm Bụng', emoji: '🫚', rarity: 'thuong' },
+  { name: 'Mứt Gừng Ấm Bụng', emoji: '🧄', rarity: 'thuong' },
   { name: 'Bánh Quy Bơ Thơm', emoji: '🍪', rarity: 'hiem' },
   { name: 'Ly Nước Mơ Mát Lạnh', emoji: '🧃', rarity: 'hiem' },
   { name: 'Chén Chè Đậu Xanh', emoji: '🍵', rarity: 'hiem' },
@@ -101,7 +101,7 @@ const KHUNG_LONG: readonly StickerSeed[] = [
 const NGHE_NGHIEP: readonly StickerSeed[] = [
   { name: 'Bác Sĩ Tốt Bụng', emoji: '🩺', rarity: 'thuong' },
   { name: 'Cô Giáo Hiền Hoà', emoji: '📚', rarity: 'thuong' },
-  { name: 'Chú Bộ Đội Oai Phong', emoji: '🪖', rarity: 'thuong' },
+  { name: 'Chú Bộ Đội Oai Phong', emoji: '🎖️', rarity: 'thuong' },
   { name: 'Cô Công An Tận Tuỵ', emoji: '🚓', rarity: 'thuong' },
   { name: 'Chú Lính Cứu Hoả', emoji: '🧑‍🚒', rarity: 'thuong' },
   { name: 'Bác Đầu Bếp Khéo Tay', emoji: '👨‍🍳', rarity: 'thuong' },

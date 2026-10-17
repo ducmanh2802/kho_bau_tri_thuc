@@ -117,7 +117,7 @@ const l2 = vnLesson(RHYME_TOPIC, 'vn-les-r2', 'Vần om, op, ôm, ôp, ơm, ơp'
 const s3 = 'vn_rhyme_group_em_ep';
 const l3Q: Question[] = [
   mc('vn-r3-1', s3, 1, 'Từ nào dưới đây có vần “em”?', ['kem', 'vẹt', 'nến', 'bếp'], 'kem', 'Từ “kem” có vần em.', '🍦'),
-  mc('vn-r3-2', s3, 1, 'Từ nào có vần “ep”?', ['dép', 'kem', 'nến', 'bếp'], 'dép', 'Từ “dép” có vần ep.', '🩴'),
+  mc('vn-r3-2', s3, 1, 'Từ nào có vần “ep”?', ['dép', 'kem', 'nến', 'bếp'], 'dép', 'Từ “dép” có vần ep.', '👡'),
   mc('vn-r3-3', s3, 1, 'Từ nào có vần “êm”?', ['đêm', 'kem', 'dép', 'bếp'], 'đêm', 'Từ “đêm” có vần êm.', '🌙'),
   mc('vn-r3-4', s3, 1, 'Từ nào có vần “êp”?', ['bếp', 'đêm', 'dép', 'kem'], 'bếp', 'Từ “bếp” có vần êp.', '🔥'),
   mc('vn-r3-5', s3, 2, 'Từ “xem” có vần nào?', ['em', 'ep', 'êm', 'êp'], 'em', 'Từ “xem” có vần em.'),
@@ -204,7 +204,7 @@ const l6Q: Question[] = [
   mc('vn-r6-2', s6, 1, 'Từ nào có vần “et”?', ['vẹt', 'kèn', 'nến', 'Tết'], 'vẹt', 'Từ “vẹt” có vần et.', '🦜'),
   mc('vn-r6-3', s6, 1, 'Từ nào có vần “ên”?', ['nến', 'kèn', 'vẹt', 'Tết'], 'nến', 'Từ “nến” có vần ên.', '🕯️'),
   mc('vn-r6-4', s6, 1, 'Từ nào có vần “êt”?', ['Tết', 'nến', 'kèn', 'vẹt'], 'Tết', 'Từ “Tết” có vần êt.', '🎉'),
-  mc('vn-r6-5', s6, 2, 'Từ “sen” có vần nào?', ['en', 'et', 'ên', 'êt'], 'en', 'Từ “sen” có vần en.', '🪷'),
+  mc('vn-r6-5', s6, 2, 'Từ “sen” có vần nào?', ['en', 'et', 'ên', 'êt'], 'en', 'Từ “sen” có vần en.', '💮'),
   mc('vn-r6-6', s6, 2, 'Từ “trên” có vần nào?', ['ên', 'en', 'et', 'êt'], 'ên', 'Từ “trên” có vần ên.'),
   mc('vn-r6-7', s6, 3, 'Từ “hết” có vần nào?', ['êt', 'ên', 'en', 'et'], 'êt', 'Từ “hết” có vần êt.'),
   img('vn-r6-8', s6, 1, 'Hình con vẹt 🦜 có vần gì?', '🦜', ['et', 'en', 'êt', 'ên'], 'et', 'Con vẹt có vần et.'),

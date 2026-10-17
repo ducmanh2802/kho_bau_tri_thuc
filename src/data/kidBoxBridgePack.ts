@@ -67,7 +67,7 @@ export const BRIDGE_VOCABULARY: KidBoxVocabulary[] = [
   vocab('color-blue', 'blue', 'màu xanh dương', '🔵', 'COLORS', 'EN-VOCAB-RECOGNITION', 1, 'It is blue.'),
   vocab('color-green', 'green', 'màu xanh lá', '🟢', 'COLORS', 'EN-VOCAB-RECOGNITION', 1, 'It is green.'),
   vocab('color-yellow', 'yellow', 'màu vàng', '🟡', 'COLORS', 'EN-VOCAB-RECOGNITION', 1, 'It is yellow.'),
-  vocab('color-pink', 'pink', 'màu hồng', '🩷', 'COLORS', 'EN-VOCAB-RECOGNITION', 2, 'It is pink.'),
+  vocab('color-pink', 'pink', 'màu hồng', '💗', 'COLORS', 'EN-VOCAB-RECOGNITION', 2, 'It is pink.'),
   vocab('color-purple', 'purple', 'màu tím', '🟣', 'COLORS', 'EN-VOCAB-RECOGNITION', 2, 'It is purple.'),
 
   // ANIMALS
@@ -111,7 +111,7 @@ export const BRIDGE_VOCABULARY: KidBoxVocabulary[] = [
   vocab('toy-ball', 'ball', 'quả bóng', '⚽', 'TOYS', 'EN-VOCAB-RECOGNITION', 1, 'I like my ball.'),
   vocab('toy-car', 'car', 'ô tô đồ chơi', '🚗', 'TOYS', 'EN-VOCAB-RECOGNITION', 1, 'I like my car.'),
   vocab('toy-kite', 'kite', 'con diều', '🪁', 'TOYS', 'EN-VOCAB-RECOGNITION', 1, 'I like my kite.'),
-  vocab('toy-doll', 'doll', 'búp bê', '🪆', 'TOYS', 'EN-VOCAB-RECOGNITION', 2, 'I like my doll.'),
+  vocab('toy-doll', 'doll', 'búp bê', '🎎', 'TOYS', 'EN-VOCAB-RECOGNITION', 2, 'I like my doll.'),
   vocab('toy-robot', 'robot', 'con robot', '🤖', 'TOYS', 'EN-VOCAB-RECOGNITION', 2, 'I like my robot.'),
 
   // GREETINGS

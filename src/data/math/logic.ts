@@ -389,7 +389,7 @@ export const LESSONS: Lesson[] = [
         correctAnswer: '14',
         mediaEmoji: '🔢',
         hint: 'Cộng ngược: 8 cộng 6 được mấy?',
-        explanation: '14 - 6 = 8.',
+        explanation: '14 − 6 = 8.',
       }),
       mathQ(TOPIC, {
         id: 'math-q-td-29',
