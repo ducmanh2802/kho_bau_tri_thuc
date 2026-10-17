@@ -170,13 +170,46 @@ export function isGameOver(b: Board): { over: boolean; result: string } {
   return { over: false, result: '' };
 }
 
+const PST_PAWN = [
+  [0,0,0,0,0,0,0,0],
+  [50,50,50,50,50,50,50,50],
+  [10,10,20,30,30,20,10,10],
+  [5,5,10,25,25,10,5,5],
+  [0,0,0,20,20,0,0,0],
+  [5,-5,-10,0,0,-10,-5,5],
+  [5,10,10,-20,-20,10,10,5],
+  [0,0,0,0,0,0,0,0],
+];
+const PST_KNIGHT = [
+  [-50,-40,-30,-30,-30,-30,-40,-50],
+  [-40,-20,0,0,0,0,-20,-40],
+  [-30,0,10,15,15,10,0,-30],
+  [-30,5,15,20,20,15,5,-30],
+  [-30,0,15,20,20,15,0,-30],
+  [-30,5,10,15,15,10,5,-30],
+  [-40,-20,0,5,5,0,-20,-40],
+  [-50,-40,-30,-30,-30,-30,-40,-50],
+];
+
 function evaluate(b: Board): number {
   let score = 0;
   for (let r = 0; r < 8; r++)
     for (let c = 0; c < 8; c++) {
       const p = b[r][c];
-      if (p) score += (p.color === 'w' ? 1 : -1) * VAL[p.type];
+      if (!p) continue;
+      const sign = p.color === 'w' ? 1 : -1;
+      score += sign * VAL[p.type];
+      if (p.type === 'p') {
+        const rr = p.color === 'w' ? r : 7 - r;
+        score += sign * PST_PAWN[rr][c] / 10;
+      }
+      if (p.type === 'n') {
+        const rr = p.color === 'w' ? r : 7 - r;
+        score += sign * PST_KNIGHT[rr][c] / 10;
+      }
     }
+  // mobility
+  score += (allLegalMoves(b,'w').length - allLegalMoves(b,'b').length) * 2;
   return score;
 }
 

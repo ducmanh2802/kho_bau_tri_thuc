@@ -106,3 +106,5 @@ npm run audit:snapshot          # so sánh tree hiện tại với docs/audit-st
 | 2026-10-17 20:46 | src/components/learning/chess/ChessScreen.tsx, src/App.tsx, src/components/home/HomeScreen.tsx, src/types/index.ts | 🟡 Cần audit phần liệt kê |
 | 2026-10-17 20:48 | tests/lesson-completion.test.ts, src/components/games/LittleScientistGame.tsx, src/components/games/TreasureCodingParts.tsx, src/components/learning/chess/ChessScreen.tsx, src/components/learning/chess/ChessTutorial.tsx, src/components/learning/LessonPlayerModal.tsx, src/config/navigation.ts, src/data/competitionBankTournament.ts, … | 🟡 Cần audit phần liệt kê |
 | 2026-10-17 20:58 | src/components/learning/chess/chessEngine.ts, src/components/learning/chess/ChessGame.tsx, src/components/learning/chess/ChessScreen.tsx | 🟡 Cần audit phần liệt kê |
+| 2026-10-17 20:59 | src/components/learning/chess/chessEngine.ts, src/components/learning/chess/ChessGame.tsx | 🟡 Cần audit phần liệt kê |
+| 2026-10-17 21:03 | src/components/learning/chess/chessEngine.ts, src/components/learning/chess/ChessGame.tsx | 🟡 Cần audit phần liệt kê |
