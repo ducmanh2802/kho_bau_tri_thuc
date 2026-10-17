@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { ArrowLeft, CheckCircle2, XCircle } from 'lucide-react';
 import { sound } from '../../../services/sound';
+import { ChessGame } from './ChessGame';
 
 interface PieceInfo {
   name: string;
@@ -31,7 +32,7 @@ const QUIZ: QuizItem[] = [
 ];
 
 export const ChessScreen: React.FC<{ onBack: () => void }> = ({ onBack }) => {
-  const [tab, setTab] = useState<'pieces' | 'rules' | 'quiz'>('pieces');
+  const [tab, setTab] = useState<'pieces' | 'rules' | 'illustrate' | 'quiz' | 'play'>('pieces');
   const [selected, setSelected] = useState<PieceInfo | null>(PIECES[0]);
   const [quizIndex, setQuizIndex] = useState(0);
   const [picked, setPicked] = useState<number | null>(null);
@@ -66,13 +67,13 @@ export const ChessScreen: React.FC<{ onBack: () => void }> = ({ onBack }) => {
       </div>
 
       <div className="flex gap-2">
-        {(['pieces', 'rules', 'quiz'] as const).map((t) => (
+        {(['pieces', 'rules', 'illustrate', 'quiz', 'play'] as const).map((t) => (
           <button
             key={t}
             onClick={() => { sound.playClick(); setTab(t); }}
             className={`px-4 py-2 rounded-xl font-bold ${tab === t ? 'bg-amber-500 text-white' : 'bg-slate-100 text-slate-700'}`}
           >
-            {t === 'pieces' ? 'Quân cờ' : t === 'rules' ? 'Luật chơi' : 'Câu đố'}
+            {t === 'pieces' ? 'Quân cờ' : t === 'rules' ? 'Luật chơi' : t === 'illustrate' ? 'Minh họa' : t === 'quiz' ? 'Câu đố' : 'Chơi với máy'}
           </button>
         ))}
       </div>
@@ -115,6 +116,33 @@ export const ChessScreen: React.FC<{ onBack: () => void }> = ({ onBack }) => {
           </ul>
         </div>
       )}
+
+      {tab === 'illustrate' && (
+        <div className="p-4 rounded-2xl bg-white border-2 border-slate-200 space-y-4">
+          <h3 className="font-black text-lg">Minh họa: Xe (Rook) đi được những ô nào?</h3>
+          <div className="grid grid-cols-8 gap-1 max-w-xs mx-auto">
+            {Array.from({ length: 64 }).map((_, i) => {
+              const r = Math.floor(i / 8), c = i % 8;
+              const isRook = r === 3 && c === 3;
+              const sameRow = r === 3 && c !== 3;
+              const sameCol = c === 3 && r !== 3;
+              return (
+                <div key={i} className={`aspect-square rounded flex items-center justify-center text-lg ${isRook ? 'bg-amber-500 text-white' : sameRow || sameCol ? 'bg-emerald-200' : 'bg-slate-100'}`}>
+                  {isRook ? '♜' : ''}
+                </div>
+              );
+            })}
+          </div>
+          <p className="text-sm text-slate-600">Xe ở ô giữa (vàng) có thể đi tới các ô xanh cùng hàng/cột.</p>
+
+          <h3 className="font-black text-lg mt-4">Gợi ý nước đi tiếp theo</h3>
+          <p className="text-sm text-slate-600">
+            Nếu bạn đang có Hậu ở vị trí an toàn và đối thủ Vua ở trung tâm, hãy ưu tiên chiếu Vua hoặc bắt quân giá trị cao, đồng thời giữ an toàn cho Vua của mình.
+          </p>
+        </div>
+      )}
+
+      {tab === 'play' && <ChessGame onBack={() => setTab('pieces')} />}
 
       {tab === 'quiz' && (
         <div className="p-4 rounded-2xl bg-white border-2 border-slate-200 space-y-4">
