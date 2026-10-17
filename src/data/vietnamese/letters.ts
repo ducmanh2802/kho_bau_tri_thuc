@@ -250,7 +250,7 @@ const LETTER_GROUP_SPECS: LetterGroupSpec[] = [
     examples: [
       { letter: 'a', word: 'áo', emoji: '🧥' },
       { letter: 'ă', word: 'ăn', emoji: '🍚' },
-      { letter: 'â', word: 'ấm', emoji: '🫖' },
+      { letter: 'â', word: 'ấm', emoji: '🍵' },
       { letter: 'b', word: 'bò', emoji: '🐄' },
       { letter: 'c', word: 'cá', emoji: '🐟' },
     ],
@@ -304,7 +304,7 @@ const LETTER_GROUP_SPECS: LetterGroupSpec[] = [
       { letter: 'ô', word: 'ốc', emoji: '🐌' },
       { letter: 'ơ', word: 'ớt', emoji: '🌶️' },
       { letter: 'p', word: 'pin', emoji: '🔋' },
-      { letter: 'q', word: 'quạt', emoji: '🪭' },
+      { letter: 'q', word: 'quạt', emoji: '🌀' },
     ],
   },
   {

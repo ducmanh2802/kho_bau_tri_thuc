@@ -65,7 +65,10 @@ export default async function run(page, ui) {
       .locator('[data-testid=answer-option]')
       .allInnerTexts();
     const count = optionTexts.length;
-    if (count > 0) optionCounts.push(count);
+    // True/false renders exactly 2 options by design; other wired question
+    // types must offer at least 3 (guard against option-loss data rot).
+    const isTrueFalse = (await page.locator('[data-testid=true-false-question]').count()) > 0;
+    if (count > 0) optionCounts.push({ count, isTrueFalse });
 
     await page.locator('[data-testid=answer-option]').first().click(CLICK);
     await checkBtn.click(CLICK);
@@ -82,20 +85,33 @@ export default async function run(page, ui) {
     const next = page.getByRole('button', { name: /Câu tiếp theo|Xem kết quả bài học/ });
     if (await next.count()) await next.first().click(CLICK);
     await page.waitForTimeout(120);
-    if (await page.getByText('CHÚC MỪNG BÉ HOÀN THÀNH!').count()) break;
+    if (!(await page.getByRole('button', { name: /Kiểm tra câu trả lời/ }).count())) break;
   }
 
-  const completed = (await page.getByText('CHÚC MỪNG BÉ HOÀN THÀNH!').count()) > 0;
-  const minOptions = optionCounts.length ? Math.min(...optionCounts) : 0;
+  // T20B contract: finishing the last question auto-closes the player. This is
+  // a save/persist gate — no in-modal "CHÚC MỪNG" screen exists any more.
+  const completion = await page.evaluate(() => {
+    const profile = JSON.parse(localStorage.getItem('kho_bau_child_profile') || '{}');
+    return {
+      completedLessons: (profile.completedLessons || []).length,
+      lessonModalOpen: !!document.querySelector('[data-testid="lesson-close"]'),
+    };
+  });
+  const completed = completion.completedLessons >= 1 && !completion.lessonModalOpen;
+  const minOptions = optionCounts.length
+    ? Math.min(...optionCounts.filter((o) => !o.isTrueFalse).map((o) => o.count))
+    : 0;
   const distinctPositions = new Set(correctPositions).size;
 
   log('lessonPlay', {
     answered,
-    optionCounts,
+    optionCounts: optionCounts.map((o) => o.count),
+    trueFalseSeen: optionCounts.some((o) => o.isTrueFalse),
     minOptions,
     correctPositions,
     distinctCorrectPositions: distinctPositions,
     completed,
+    ...completion,
   });
 
   if (answered < 3) fail('answered fewer than 3 lesson items');

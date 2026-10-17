@@ -82,7 +82,7 @@ describe('Vietnamese Curriculum Quality & Deterministic Invariants', () => {
     expect(q4).toBeDefined();
     const bWords = q4!.options!.filter((opt) => opt.startsWith('B'));
     expect(bWords.length).toBe(1);
-    expect(bWords[0]).toBe('Búp bê 🪆');
+    expect(bWords[0]).toBe('Búp bê 🎎');
   });
 
   // --- T10A: chữ cái, dấu thanh, chữ ghép, dấu câu + "nâng bài cũ" ----------

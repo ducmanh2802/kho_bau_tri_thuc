@@ -31,7 +31,7 @@ export const SCI_RULES: Record<SciRuleId, SciRule> = {
   sinkfloat: {
     id: 'sinkfloat', name: 'Chìm hay nổi?',
     prompt: 'Thả vật vào chậu nước: vật này CHÌM hay NỔI?',
-    basketA: 'Chìm xuống', emojiA: '🪨', basketB: 'Nổi lên', emojiB: '🫧',
+    basketA: 'Chìm xuống', emojiA: '🗿', basketB: 'Nổi lên', emojiB: '🎈',
   },
   alive: {
     id: 'alive', name: 'Sống hay không sống?',
@@ -72,12 +72,12 @@ function it(name: string, emoji: string, rule: SciRuleId, bucket: SciBucket, why
 export const POOL_BY_TIER: SciItem[][] = [
   // T1 — chìm / nổi
   [
-    it('Hòn đá', '🪨', 'sinkfloat', 'A', 'Đá nặng nên chìm xuống đáy chậu.'),
+    it('Hòn đá', '🗿', 'sinkfloat', 'A', 'Đá nặng nên chìm xuống đáy chậu.'),
     it('Chiếc lá khô', '🍂', 'sinkfloat', 'B', 'Lá nhẹ nên nổi trên mặt nước.'),
     it('Thìa sắt', '🥄', 'sinkfloat', 'A', 'Thìa làm bằng sắt nặng nên chìm.'),
     it('Quả bóng nhựa', '⚽', 'sinkfloat', 'B', 'Bóng rỗng và nhẹ nên nổi lên.'),
-    it('Khúc gỗ', '🪵', 'sinkfloat', 'B', 'Gỗ nhẹ nên nổi, thuyền gỗ cũng nổi.'),
-    it('Đồng xu', '🪙', 'sinkfloat', 'A', 'Đồng xu nhỏ mà nặng nên chìm.'),
+    it('Khúc gỗ', '🌳', 'sinkfloat', 'B', 'Gỗ nhẹ nên nổi, thuyền gỗ cũng nổi.'),
+    it('Đồng xu', '💰', 'sinkfloat', 'A', 'Đồng xu nhỏ mà nặng nên chìm.'),
     it('Thuyền giấy', '⛵', 'sinkfloat', 'B', 'Thuyền rỗng chứa không khí nên nổi.'),
     it('Chai nhựa đậy nắp', '🍶', 'sinkfloat', 'B', 'Chai đậy nắp chứa không khí nên nổi.'),
   ],
@@ -87,7 +87,7 @@ export const POOL_BY_TIER: SciItem[][] = [
     it('Chậu cây xanh', '🌱', 'alive', 'A', 'Cây lớn lên khi được tưới nước.'),
     it('Chú chim', '🐦', 'alive', 'A', 'Chim biết bay và cần ăn thóc.'),
     it('Bông hoa', '🌸', 'alive', 'A', 'Hoa nở ra từ cây đang sống.'),
-    it('Hòn đá', '🪨', 'alive', 'B', 'Đá không lớn lên, không cần ăn.'),
+    it('Hòn đá', '🗿', 'alive', 'B', 'Đá không lớn lên, không cần ăn.'),
     it('Cái bàn', '🪑', 'alive', 'B', 'Bàn do người đóng, không phải vật sống.'),
     it('Xe đạp', '🚲', 'alive', 'B', 'Xe đạp chạy nhờ sức bé, không tự sống.'),
     it('Búp bê vải', '🧸', 'alive', 'B', 'Búp bê là đồ chơi, không cần ăn uống.'),
@@ -132,7 +132,7 @@ export const POOL_BY_TIER: SciItem[][] = [
     it('Mặt Trăng', '🌙', 'daynight', 'B', 'Ban đêm bé thấy Mặt Trăng trên trời.'),
     it('Que kem dâu', '🍦', 'hotcold', 'B', 'Kem lạnh và ngọt, ăn chậm thôi nhé.'),
     it('Cây đinh sắt', '🔩', 'magnet', 'A', 'Đinh làm bằng sắt nên nam châm hút.'),
-    it('Hòn đá cuội', '🪨', 'alive', 'B', 'Đá không lớn lên, không cần ăn.'),
+    it('Hòn đá cuội', '🗿', 'alive', 'B', 'Đá không lớn lên, không cần ăn.'),
     it('Cầu vồng sau mưa', '🌈', 'daynight', 'A', 'Cầu vồng hiện sau mưa vào ban ngày.'),
     it('Bát canh nóng hổi', '🍲', 'hotcold', 'A', 'Canh mới nấu còn nóng, bé thổi nguội rồi ăn.'),
   ],

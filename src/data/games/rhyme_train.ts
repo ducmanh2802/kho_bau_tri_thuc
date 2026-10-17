@@ -76,7 +76,7 @@ export const POOL_BY_TIER: RhymeTrainTarget[][] = [
     { head: 'kh', tail: 'oẻ', decoys: ['ưỡi', 'ạo', 'iển'], word: 'khoẻ', emoji: '💪' },
     { head: 'l', tail: 'ưỡi', decoys: ['oẻ', 'ạo', 'iển'], word: 'lưỡi', emoji: '👅' },
     { head: 'g', tail: 'ạo', decoys: ['oẻ', 'ưỡi', 'iển'], word: 'gạo', emoji: '🍚' },
-    { head: 'k', tail: 'éo', decoys: ['oẻ', 'ạo', 'iển'], word: 'kéo', emoji: '🪢' },
+    { head: 'k', tail: 'éo', decoys: ['oẻ', 'ạo', 'iển'], word: 'kéo', emoji: '🧶' },
     { head: 'ch', tail: 'ào', decoys: ['oẻ', 'ưỡi', 'iển'], word: 'chào', emoji: '👋' },
     { head: 'gh', tail: 'ế', decoys: ['oẻ', 'ạo', 'ưỡi'], word: 'ghế', emoji: '🪑' },
     { head: 'b', tail: 'iển', decoys: ['oẻ', 'ạo', 'éo'], word: 'biển', emoji: '🏖️' },

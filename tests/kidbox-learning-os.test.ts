@@ -163,25 +163,29 @@ describe("Kid's Box Companion — evidence into the shared Learning OS (§17, §
 
   it('tracks game taps as evidence while never treating a game score as mastery', () => {
     const game = activities.find((a) => a.kind === 'MINI_GAME')!;
-    const targets = game.items.filter((i) => i.isCorrect).map((i) => i.id);
+    // P0-3 — exactly one picture matches the word the child hears, so the
+    // game is winnable; tapping only that picture counts as correct.
+    const targets = game.items.filter((i) => i.isCorrect);
+    expect(targets).toHaveLength(1);
 
     const win = submitActivityResponse({
       activity: game,
-      response: { type: 'TAPS', itemIds: targets },
+      response: { type: 'TAPS', itemIds: targets.map((t) => t.id) },
       responseKey: 'game-win',
       startedAt: Date.now(),
       childProfileId: 'child_1',
     });
     expect(win.outcome).toBe('CORRECT');
 
-    const partial = submitActivityResponse({
+    const decoy = game.items.find((i) => !i.isCorrect)!;
+    const miss = submitActivityResponse({
       activity: game,
-      response: { type: 'TAPS', itemIds: targets.slice(0, 1) },
-      responseKey: 'game-partial',
+      response: { type: 'TAPS', itemIds: [decoy.id] },
+      responseKey: 'game-miss',
       startedAt: Date.now(),
       childProfileId: 'child_1',
     });
-    expect(partial.outcome).toBe('INCORRECT');
+    expect(miss.outcome).toBe('INCORRECT');
 
     // §17 — the game is a source, but the Learning OS still owns mastery.
     const state = StorageService.getKnowledgeStates()[game.skillId];

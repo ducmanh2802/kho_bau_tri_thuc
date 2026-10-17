@@ -43,7 +43,7 @@ export const SHAPE_POOL: ShapeItem[] = [
   { name: 'Mái nhà', emoji: '🏠', category: 'tam-giac', hint: 'Mái nhà 3 cạnh' },
   // Hình chữ nhật
   { name: 'Cuốn sách bài tập', emoji: '📘', category: 'chu-nhat', hint: 'Sách hai cạnh dài hai cạnh ngắn' },
-  { name: 'Cửa sổ lớp học', emoji: '🪟', category: 'chu-nhat', hint: 'Cửa sổ khung dài' },
+  { name: 'Cửa sổ lớp học', emoji: '🖼️', category: 'chu-nhat', hint: 'Cửa sổ khung dài' },
   { name: 'Cái bảng lớp', emoji: '📋', category: 'chu-nhat', hint: 'Bảng hai cạnh dài' },
   { name: 'Cánh cửa tủ', emoji: '🚪', category: 'chu-nhat', hint: 'Cánh cửa dài đứng' },
   { name: 'Quyển vở', emoji: '📓', category: 'chu-nhat', hint: 'Quyển vở dài' },

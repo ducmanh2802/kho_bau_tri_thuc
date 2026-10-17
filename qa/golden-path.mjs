@@ -92,7 +92,7 @@ async function body(page, ui) {
   await page.waitForSelector('[data-testid="nav-home"]:visible', { timeout: 20000 });
 
   const homeText = await page.evaluate(() => document.body.innerText);
-  const nextBestAction = /Hôm Nay Bé Nên Học Gì|Bé Nên Làm Gì Tiếp Theo/.test(homeText);
+  const nextBestAction = /Hôm Nay Bé Học Gì|Hôm Nay Bé Nên Học Gì|Bé Nên Làm Gì Tiếp Theo/.test(homeText);
   log('home', {
     readingCard: homeText.includes('Luyện Đọc'),
     competitionCard: homeText.includes('Đấu Trường'),
@@ -129,12 +129,28 @@ async function body(page, ui) {
     const next = page.getByRole('button', { name: /Câu tiếp theo|Xem kết quả bài học/ });
     if (await next.count()) await next.first().click(CLICK);
     await page.waitForTimeout(100);
-    if (await page.getByText('CHÚC MỪNG BÉ HOÀN THÀNH!').count()) break;
+    // T20B contract: on the last question the player auto-closes; completion is
+    // proven by persisted state (completedLessons + Learning OS evidence), not
+    // by an in-modal "CHÚC MỪNG" screen (that screen was removed in T20B).
+    if (!(await page.getByRole('button', { name: /Kiểm tra câu trả lời/ }).count())) break;
   }
 
-  const lessonDone = await page.getByText('CHÚC MỪNG BÉ HOÀN THÀNH!').count();
-  log('lessonCompleted', { questionsAnswered: answered, completed: lessonDone > 0 });
-  if (!lessonDone) fail('lesson did not reach the completion screen');
+  const lessonState = await page.evaluate(() => {
+    const profile = JSON.parse(localStorage.getItem('kho_bau_child_profile') || '{}');
+    const os = JSON.parse(localStorage.getItem('kho_bau_learning_os_store') || 'null');
+    return {
+      completedLessons: (profile.completedLessons || []).length,
+      xp: profile.xp || 0,
+      lessonModalOpen: !!document.querySelector('[data-testid="lesson-close"]'),
+      evidenceCount: os ? (os.recentEvidences || []).length : 0,
+    };
+  });
+  const lessonDone = lessonState.completedLessons >= 1 && !lessonState.lessonModalOpen;
+  log('lessonCompleted', { questionsAnswered: answered, completed: lessonDone, ...lessonState });
+  if (!lessonDone)
+    fail(
+      `lesson did not complete cleanly (completedLessons=${lessonState.completedLessons}, modalOpen=${lessonState.lessonModalOpen})`
+    );
 
   const osAfterLesson = await page.evaluate(() => {
     const raw = JSON.parse(localStorage.getItem('kho_bau_learning_os_store') || 'null');
@@ -149,24 +165,19 @@ async function body(page, ui) {
   if (!osAfterLesson || osAfterLesson.skillCount === 0)
     fail('Learning OS evidence was not persisted after the lesson');
 
-  // T20A / B-03 (fixed in T20A): the lesson's own completion screen (rewards +
-  // "Về bản đồ") must stay on screen so the child sees what they earned.
-  // A claimed level stacks the celebration on top of it — dismiss it first.
+  // T20A / B-03 → superseded by T20B: on the last question the lesson player
+  // auto-closes back to the subject map (rewards are already recorded, and a
+  // claimed level stacks a celebration modal on top). The child must land back
+  // on the map with no blocking dialog left behind.
   const celebrated = await dismissLevelUpCelebration(page);
   if (celebrated) log('levelUpCelebrationDismissed', { ok: true });
-  const backToMap = page.getByRole('button', { name: 'Về bản đồ' });
-  if (await backToMap.count()) {
-    try {
-      await backToMap.click(CLICK);
-    } catch (e) {
-      const blocker = await describeBlocker(page, '[role="dialog"] button');
-      log('backToMapBlocked', { blocker });
-      fail(`"Về bản đồ" click failed: ${e.message.split('\n')[0]}`);
-      throw e;
-    }
-  } else {
-    fail('lesson result screen skipped (B-03) — no "Về bản đồ" button after the last question');
+  const backOnMap = page.getByText('Vương Quốc Tiếng Việt').count();
+  log('autoClosedToMap', { backOnMap: (await backOnMap) > 0 });
+  if ((await backOnMap) === 0) {
     const lessonClose = page.locator('[data-testid="lesson-close"]');
+    const blocker = await describeBlocker(page, '[role="dialog"]');
+    log('autoCloseBlocked', { modalStillOpen: (await lessonClose.count()) > 0, blocker });
+    fail('lesson did not auto-close back to the subject map after the last question');
     if (await lessonClose.count()) await lessonClose.first().click(CLICK).catch(() => {});
   }
   await page.waitForTimeout(300);
@@ -251,7 +262,22 @@ async function body(page, ui) {
   // has the 4 subjects + games + review, and the main nav has no "Đấu Trường"
   // item. The only entry left is the Parent Dashboard, so the probe reaches the
   // hub the same way a grown-up does (see openCompetitionHub in qa/lib.mjs).
-  await openCompetitionHub(page);
+  // Leave the reading screen first (its result view covers the page), then go
+  // through the parent gate. A claimed level can stack a celebration modal.
+  await dismissLevelUpCelebration(page);
+  const homeNav = page.locator('[data-testid="nav-home"]:visible');
+  if (await homeNav.count()) {
+    await homeNav.first().click(CLICK);
+    await page.waitForSelector('[data-testid="nav-home"]:visible', { timeout: 12000 });
+  }
+  try {
+    await openCompetitionHub(page);
+  } catch (e) {
+    const blocker = await describeBlocker(page, 'button');
+    log('competitionEntryBlocked', { blocker });
+    fail(`competition hub entry failed: ${e.message.split('\n')[0]}`);
+    throw e;
+  }
   log('competitionHub', { ok: true });
 
   await page.getByRole('button', { name: /Vào Thi Thử/ }).first().click(CLICK);

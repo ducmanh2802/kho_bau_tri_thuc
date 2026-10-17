@@ -492,7 +492,22 @@ function buildGameActivity(unit: KidBoxUnit): KidBoxActivity | null {
   if (pool.length < 2) return null;
 
   const targets = rotate(pool, Math.min(KIDBOX_POLICY.MAX_ITEMS_PER_ACTIVITY, pool.length), `game-${unit.id}`);
-  const items = targets.map((v) => ({ ...vocabToItem(v, true), skillId: 'EN-VOCAB-RECOGNITION' as const }));
+  // P0-3 fix — the child hears ONE word and must tap its picture, so exactly
+  // one item is correct. (The old code marked every item correct, which made
+  // the TAPS grader require catching the whole grid — the game could never be
+  // won, and a correct tap was recorded as a learning-OS error.)
+  const targetId = targets[0].id;
+  const targetItem: KidBoxActivityItem = {
+    ...vocabToItem(targets[0], true),
+    skillId: 'EN-VOCAB-RECOGNITION' as const,
+  };
+  const decoys = targets
+    .slice(1)
+    .map((v) => ({ ...vocabToItem(v, false), skillId: 'EN-VOCAB-RECOGNITION' as const }));
+  // Deterministic but varied grid slot — the answer never sits in one fixed
+  // position the child could memorise.
+  const targetSlot = hashSeed(`${unit.id}-safari-target`) % targets.length;
+  const items = [...decoys.slice(0, targetSlot), targetItem, ...decoys.slice(targetSlot)];
 
   return baseActivity({
     unit,

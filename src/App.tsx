@@ -3,6 +3,7 @@ import { ActiveScreen, ChildProfile, SubjectType } from './types';
 import { StorageService } from './services/storage';
 import { Header } from './components/common/Header';
 import { HomeScreen } from './components/home/HomeScreen';
+import { ChessScreen } from './components/learning/chess/ChessScreen';
 import { NAVIGATION } from './config/navigation';
 
 /**
@@ -324,6 +325,10 @@ export default function App() {
               onProfileUpdate={refreshProfile}
             />
           </Suspense>
+        )}
+
+        {currentScreen === 'chess' && (
+          <ChessScreen onBack={() => setCurrentScreen('home')} />
         )}
       </main>
 

@@ -79,7 +79,7 @@ describe('T02/A spelling duel content', () => {
     }
     expect(byEmoji.get('🙇')).toContain('ngh'); // …iêng đầu chào (was ng; T02B: 🙏→🙇 cho đúng nghĩa)
     expect(byEmoji.get('🐣')).toContain('n'); // …on nớt (was ng)
-    expect(byEmoji.get('🪿')).toContain('ng'); // ngỗng (was g)
+    expect(byEmoji.get('🦢')).toContain('ng'); // ngỗng (was g; 🦢 thay 🪿 thiếu glyph)
     expect(byEmoji.get('🍎')).toContain('tr'); // trái cây (was …ái bàn)
   });
 

@@ -87,7 +87,7 @@ describe('T02D/2 shape sorting: ro tam giac khong dung mu tron', () => {
       tron: ['⚽', '🍪', '🏀', '⏰', '🍊', '🔮'],
       vuong: ['🎁', '🎲', '⬜', '🟩', '📦', '🍱'],
       'tam-giac': ['🍉', '⚠️', '🍕', '📐', '⛰️', '🏠'],
-      'chu-nhat': ['📘', '🪟', '📋', '🚪', '📓', '🧱'],
+      'chu-nhat': ['📘', '🖼️', '📋', '🚪', '📓', '🧱'],
     };
     for (const s of SHAPE_POOL) {
       expect(allowed[s.category], `${s.name} ${s.emoji}`).toContain(s.emoji);

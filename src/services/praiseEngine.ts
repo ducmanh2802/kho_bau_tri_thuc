@@ -24,7 +24,13 @@
  * All phrases below are original product content (no textbook copying).
  */
 
-import { sound } from './sound';
+import {
+  sound,
+  VOICE_PERSONAS,
+  PRAISE_PERSONA_ROTATION,
+  type VoicePersona,
+  type VoicePersonaId,
+} from './sound';
 
 /* ------------------------------------------------------------------ */
 /* Types                                                               */
@@ -98,6 +104,8 @@ export interface PraiseResult {
   ttsText: string;
   /** TTS locale: 'en-GB' for English praise, 'vi-VN' for Vietnamese. */
   locale: PraiseLanguage;
+  /** Voice persona rotated per event (adult teachers/uncle/grandma + kids). */
+  personaId?: VoicePersonaId;
   audioState: PraiseAudioState;
 }
 
@@ -109,6 +117,7 @@ export interface PraiseLogEntry {
   displayText: string;
   ttsText: string;
   ttsLocale: PraiseLanguage;
+  personaId?: VoicePersonaId;
   textTtsParity: 'PASS' | 'FAIL';
   languageParity: 'PASS' | 'FAIL';
   at: number;
@@ -572,6 +581,36 @@ export function resolveContextualPraise(
 /* Speech routing (P38 §14–15) — Praise → Speech Service, nothing else */
 /* ------------------------------------------------------------------ */
 
+const PRAISE_PERSONA_HISTORY_CAP = 2;
+const praisePersonaHistory: VoicePersonaId[] = [];
+
+/**
+ * Rotates the praising voice across the PRAISE_PERSONA_ROTATION pool
+ * (adult + child personas). Without a seed it never repeats a persona within
+ * the last two praise events; with a seed it is deterministic.
+ */
+export function pickPraisePersona(seed?: string): VoicePersonaId {
+  if (seed !== undefined) {
+    return PRAISE_PERSONA_ROTATION[hashSeed(seed) % PRAISE_PERSONA_ROTATION.length];
+  }
+  const fresh = PRAISE_PERSONA_ROTATION.filter((p) => !praisePersonaHistory.includes(p));
+  const pool = fresh.length > 0 ? fresh : PRAISE_PERSONA_ROTATION;
+  const chosen = pool[Math.floor(Math.random() * pool.length)];
+  praisePersonaHistory.push(chosen);
+  if (praisePersonaHistory.length > PRAISE_PERSONA_HISTORY_CAP) {
+    praisePersonaHistory.splice(0, praisePersonaHistory.length - PRAISE_PERSONA_HISTORY_CAP);
+  }
+  return chosen;
+}
+
+export function listPraisePersonas(): VoicePersona[] {
+  return PRAISE_PERSONA_ROTATION.map((id) => VOICE_PERSONAS[id]);
+}
+
+export function resetPraisePersonasForTests(): void {
+  praisePersonaHistory.length = 0;
+}
+
 function speechAvailable(): boolean {
   if (typeof window === 'undefined') return false;
   if (!('speechSynthesis' in window)) return false;
@@ -595,7 +634,9 @@ export function speakPraise(praise: PraiseResult): 'SPOKEN' | 'UNAVAILABLE' {
   try {
     if (sound.getMuted() || !sound.getVoiceEnabled()) return 'UNAVAILABLE';
     if (!speechAvailable()) return 'UNAVAILABLE';
-    sound.speak(praise.ttsText, praise.locale);
+    const personaId = pickPraisePersona();
+    praise.personaId = personaId;
+    sound.speak(praise.ttsText, praise.locale, { personaId });
     praise.audioState = 'SPOKEN';
     return 'SPOKEN';
   } catch {
@@ -622,6 +663,7 @@ export function logPraiseEvent(praise: PraiseResult): void {
       displayText: praise.text,
       ttsText: praise.ttsText,
       ttsLocale: praise.locale,
+      personaId: praise.personaId,
       textTtsParity: praise.text === praise.ttsText ? 'PASS' : 'FAIL',
       languageParity:
         praise.language === 'en-GB'
@@ -651,6 +693,7 @@ export function formatPraiseEvidence(praise: PraiseResult): string {
     `DISPLAY_TEXT=${JSON.stringify(praise.text)}`,
     `TTS_TEXT=${JSON.stringify(praise.ttsText)}`,
     `TTS_LOCALE=${JSON.stringify(praise.locale)}`,
+    `TTS_PERSONA=${JSON.stringify(praise.personaId ?? 'narrator')}`,
     '',
     `TEXT_TTS_PARITY=${praise.text === praise.ttsText ? 'PASS' : 'FAIL'}`,
     `LANGUAGE_PARITY=${

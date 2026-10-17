@@ -73,7 +73,7 @@ export const POOL_BY_TIER: WordTrainTarget[][] = [
     w('SUN', 'mặt trời', '☀️', ['S', 'U', 'N']),
     w('BUS', 'xe buýt', '🚌', ['B', 'U', 'S']),
     w('CUP', 'cái cốc', '☕', ['C', 'U', 'P']),
-    w('HUT', 'túp lều', '🛖', ['H', 'U', 'T']),
+    w('HUT', 'túp lều', '⛺', ['H', 'U', 'T']),
     w('POT', 'cái nồi', '🍲', ['P', 'O', 'T']),
   ],
   // T4 — từ 4 chữ cái
@@ -84,7 +84,7 @@ export const POOL_BY_TIER: WordTrainTarget[][] = [
     w('FISH', 'con cá', '🐟', ['F', 'I', 'S', 'H']),
     w('STAR', 'ngôi sao', '⭐', ['S', 'T', 'A', 'R']),
     w('MOON', 'mặt trăng', '🌙', ['M', 'O', 'O', 'N']),
-    w('NEST', 'tổ chim', '🪹', ['N', 'E', 'S', 'T']),
+    w('NEST', 'tổ chim', '🐦', ['N', 'E', 'S', 'T']),
     w('DRUM', 'cái trống', '🥁', ['D', 'R', 'U', 'M']),
   ],
   // T5 — digraph sh/ch (+ ck) theo Kid's Box

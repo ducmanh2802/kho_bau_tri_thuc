@@ -28,6 +28,13 @@ export const LEARNING_OS_POLICY = {
   RECENCY_WINDOW: 5,
   FATIGUE_MAX_QUESTIONS: 25,
   FATIGUE_MAX_CONSECUTIVE_ERRORS: 4,
+  /**
+   * P0-2 — a child who comes back after a long break must not inherit the
+   * previous session's fatigue. Any inactivity gap longer than this starts a
+   * fresh session (counters and isFatigued reset). 30 minutes ≈ one school
+   * period plus a short rest; shorter gaps keep the session continuous.
+   */
+  FATIGUE_SESSION_GAP_MS: 30 * 60 * 1000,
   OVERPRACTICE_THRESHOLD: 15,
   MASTERY_HIGH_THRESHOLD: 85,
   MASTERY_LOW_THRESHOLD: 60,
@@ -36,6 +43,27 @@ export const LEARNING_OS_POLICY = {
   /** Consecutive successful reviews that pull the ladder index forward. */
   RETENTION_STRENGTHEN_AFTER: 2,
 };
+
+/**
+ * P0-2 fix — fatigue auto-resets so the rest recommendation can never latch
+ * forever. A session is stale when either:
+ *  - the child was inactive for FATIGUE_SESSION_GAP_MS (e.g. came back after
+ *    school / a nap / the next morning), or
+ *  - the device-local calendar day changed (Vietnam time, see dateUtils).
+ * Returns the SAME object when still active (identity keeps callers simple).
+ */
+export function resetStaleFatigue(fatigue: SessionFatigueState, now: number): SessionFatigueState {
+  const gapExceeded = now - fatigue.sessionStartTime >= LEARNING_OS_POLICY.FATIGUE_SESSION_GAP_MS;
+  const dayChanged = localDateKey(new Date(now)) !== localDateKey(new Date(fatigue.sessionStartTime));
+  if (!gapExceeded && !dayChanged) return fatigue;
+  return {
+    sessionStartTime: now,
+    questionsAnsweredThisSession: 0,
+    sessionErrorsCount: 0,
+    consecutiveErrorsInSession: 0,
+    isFatigued: false,
+  };
+}
 
 const DAY_MS = 24 * 3600 * 1000;
 

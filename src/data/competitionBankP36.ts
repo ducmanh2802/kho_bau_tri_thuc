@@ -1714,7 +1714,7 @@ export const P36_QUESTIONS: CompetitionQuestion[] = [
   ),
   bool(
     'cq-p36-e027', 'english', 'EN-COLORS', 'MEDIUM',
-    'True or false: Mix Red and White to get Pink. 🩷', '🩷',
+    'True or false: Mix Red and White to get Pink. 💗', '💗',
     'Đúng',
     'Red mixed with White makes Pink.',
     20

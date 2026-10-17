@@ -397,11 +397,90 @@ function validateReadingQuestion(q: (typeof READING_QUESTIONS)[number]): Validat
   return issues;
 }
 
+/**
+ * P41 — cp1258/CP1252 double-encoding (mojibake) detector, tuned so it never
+ * flags legitimate content. Always corrupt: U+FFFD, U+00C4..U+00C6, U+00D0,
+ * U+00D1, U+00D8, U+00DE, U+00DF, U+20AC, and the symbol leftovers U+00A1,
+ * U+00A6, U+00A8..U+00AA, U+00AC, U+00AE, U+00AF, U+00B2, U+00B3, U+00B9,
+ * U+00BA, U+00BC..U+00BF. U+00C2/U+00C3 (valid Vietnamese capitals) and
+ * U+00BB (closing guillemet, e.g. `Man «Ten»`) only count when directly
+ * followed by a mojibake continuation char. U+00B4, U+00B7, U+00B1, U+00A7,
+ * U+00B0, U+00D7, U+00F7 and all precomposed Vietnamese letters stay allowed.
+ */
+const MOJIBAKE_RE =
+  /[\uFFFD\u00C4-\u00C6\u00D0\u00D1\u00D8\u00DE\u00DF\u20AC]|[\u00C2\u00C3\u00BB][\u0080-\u00BF\u2018-\u201F\u2020-\u2027\u2122\u02C6\u02DC\u2039\u203A]|[\u00A1\u00A6\u00A8\u00A9\u00AA\u00AC\u00AE\u00AF\u00B2\u00B3\u00B9\u00BA\u00BC\u00BD\u00BE\u00BF]/u;
+
+/** Emoji used by the app as images (mediaEmoji / image-choice options). */
+const EMOJI_RE = /\p{Extended_Pictographic}/u;
+
+/** Every human-readable string a curriculum question can carry. */
+function collectQuestionStrings(q: Question): string[] {
+  const out: string[] = [];
+  const add = (v: unknown) => {
+    if (typeof v === 'string' && v) out.push(v);
+  };
+  add(q.prompt);
+  add(q.audioPrompt);
+  add(q.mediaEmoji);
+  add(q.hint);
+  add(q.explanation);
+  for (const opt of q.options ?? []) add(opt);
+  if (Array.isArray(q.correctAnswer)) {
+    for (const ans of q.correctAnswer) add(ans);
+  } else {
+    add(q.correctAnswer);
+  }
+  for (const pair of [...(q.pairs ?? []), ...(q.matchingPairs ?? [])]) {
+    add(pair.left);
+    add(pair.right);
+  }
+  for (const item of q.orderingItems ?? []) add(item);
+  for (const bucket of q.categoryBuckets ?? []) add(bucket);
+  return out;
+}
+
 function validateCurriculumQuestion(q: Question): ValidationIssue[] {
   const issues: ValidationIssue[] = [];
   const scope = `curriculum:${q.id}`;
   const push = (code: string, message: string, severity: ValidationSeverity = 'ERROR') =>
     issues.push({ severity, scope, code, message });
+
+  // P41 / §2 — encoding & font safety: no replacement char, no double-encoded
+  // (mojibake) text, and NFC so Vietnamese precomposed glyphs are used.
+  for (const text of collectQuestionStrings(q)) {
+    if (text.includes('\uFFFD')) {
+      push('CORRUPTED_TEXT', `Chuỗi chứa ký tự hỏng U+FFFD: "${text.slice(0, 60)}".`);
+    } else if (MOJIBAKE_RE.test(text)) {
+      push('MOJIBAKE_TEXT', `Chuỗi bị mã hóa sai (mojibake): "${text.slice(0, 60)}".`);
+    }
+    if (text !== text.normalize('NFC')) {
+      push('NON_NFC_TEXT', `Chuỗi chưa ở dạng Unicode NFC: "${text.slice(0, 60)}".`, 'WARNING');
+    }
+  }
+
+  // P41 / §3 — an image-choice question MUST carry its image (inline emoji in
+  // prompt/options, mediaEmoji, or a structured visual); otherwise the pupil
+  // is asked to identify a picture that never renders.
+  if (q.type === 'image-choice') {
+    const hasImage =
+      (q.mediaEmoji ? EMOJI_RE.test(q.mediaEmoji) : false) ||
+      !!q.visual ||
+      EMOJI_RE.test(q.prompt ?? '') ||
+      (q.options ?? []).some((opt) => EMOJI_RE.test(opt));
+    if (!hasImage) {
+      push('IMAGE_MISSING', 'Câu hỏi image-choice không có hình minh họa (emoji/visual).');
+    }
+  }
+
+  // P41 / §3 — audio questions without their TTS text would silently fall
+  // back to the prompt (or stay mute); keep it explicit.
+  if (q.type === 'audio-choice' && !q.audioPrompt?.trim()) {
+    push(
+      'AUDIO_PROMPT_MISSING',
+      'Câu hỏi audio-choice thiếu audioPrompt (phải có nội dung đọc cho TTS).',
+      'WARNING'
+    );
+  }
 
   if (!q.prompt?.trim()) push('EMPTY_PROMPT', 'Câu hỏi thiếu nội dung.');
   if (!q.skillId) push('MISSING_SKILL', 'Câu hỏi thiếu skillId.');

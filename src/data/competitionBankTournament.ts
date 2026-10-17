@@ -181,7 +181,7 @@ export const TOURNAMENT_QUESTIONS: CompetitionQuestion[] = [
   tf('cq-tn-vn07', 'tieng-viet', 'TV-TONES', 'Ngữ âm', 'EASY', 'Vòng Hương 7: Tiếng "ngã" mang dấu ngã (~).', 'Đúng', 'Tiếng ngã có dấu ngã đặt trên a. Bé nói ngã là té đó.', 12, '🤸'),
   tf('cq-tn-vn08', 'tieng-viet', 'TV-WORD', 'Từ vựng', 'EASY', 'Vòng Hương 8: "Quả bóng" là từ chỉ con vật.', 'Sai', 'Quả bóng là đồ chơi, không phải con vật. Bé nhớ nhé.', 12, '⚽'),
   fill('cq-tn-vn09', 'tieng-viet', 'TV-SYLLABLE', 'Cấu tạo từ', 'EASY', 'Vòng Hương 9: Điền tiếng còn thiếu: "Bé ... sữa mỗi sáng."', ['uống', 'uốn', 'úng', 'uông'], 'uống', 'Câu đúng là bé uống sữa mỗi sáng. Uống có vần uông.', 18, '🥛'),
-  fill('cq-tn-vn10', 'tieng-viet', 'TV-SPELLING', 'Chính tả', 'EASY', 'Vòng Hương 10: Điền chữ còn thiếu: "...im khâu"', ['k', 'c', 'q', 'h'], 'k', 'Trước i ta viết k. Kim khâu dùng k nhé bé.', 15, '🪡'),
+  fill('cq-tn-vn10', 'tieng-viet', 'TV-SPELLING', 'Chính tả', 'EASY', 'Vòng Hương 10: Điền chữ còn thiếu: "...im khâu"', ['k', 'c', 'q', 'h'], 'k', 'Trước i ta viết k. Kim khâu dùng k nhé bé.', 15, '🧵'),
 
   // ================= TIẾNG VIỆT — VÒNG HUYỆN (MEDIUM) =================
   mc('cq-tn-vn11', 'tieng-viet', 'TV-SPELLING', 'Chính tả', 'MEDIUM', 'Vòng Huyện 1: Chọn từ viết đúng quy tắc g/gh?', ['ghế gỗ', 'gế gỗ', 'ghế gổ', 'gé gỗ'], 'ghế gỗ', 'Trước e ta viết gh. Ghế gỗ là đáp án đúng.', 20, '🪑'),

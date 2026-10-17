@@ -10,6 +10,17 @@ interface ImageChoiceQuestionProps {
   correctAnswer: string;
 }
 
+const EMOJI_IN_OPTION = /\p{Extended_Pictographic}[\uFE0F\u200D\p{Extended_Pictographic}\u{1F3FB}-\u{1F3FF}]*/u;
+
+function splitOptionEmoji(opt: string): { emoji: string | null; label: string } {
+  const match = opt.match(EMOJI_IN_OPTION);
+  if (!match || match.index === undefined) {
+    return { emoji: null, label: opt.trim() };
+  }
+  const label = (opt.slice(0, match.index) + opt.slice(match.index + match[0].length)).trim();
+  return { emoji: match[0], label };
+}
+
 export const ImageChoiceQuestion: React.FC<ImageChoiceQuestionProps> = ({
   question,
   selectedAnswer,
@@ -24,6 +35,7 @@ export const ImageChoiceQuestion: React.FC<ImageChoiceQuestionProps> = ({
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3" data-testid="image-choice-question">
       {options.map((opt, i) => {
         const isSelected = selectedAnswer === opt;
+        const { emoji, label } = splitOptionEmoji(opt);
         let stateStyle = 'bg-white border-slate-200 hover:border-amber-400 hover:bg-amber-50/50';
 
         if (isAnswerChecked) {
@@ -46,8 +58,14 @@ export const ImageChoiceQuestion: React.FC<ImageChoiceQuestionProps> = ({
             disabled={isAnswerChecked}
             className={`p-4 rounded-2xl border-3 font-bold text-base md:text-lg flex items-center justify-center transition-all cursor-pointer text-center ${stateStyle}`}
           >
-            <span className="text-2xl mr-2" aria-hidden="true">{opt.split(' ')[0]}</span>
-            <span>{opt}</span>
+            {emoji ? (
+              <>
+                <span className="text-2xl mr-2" aria-hidden="true">{emoji}</span>
+                <span>{label || <span className="sr-only">{opt}</span>}</span>
+              </>
+            ) : (
+              <span>{label}</span>
+            )}
           </button>
         );
       })}

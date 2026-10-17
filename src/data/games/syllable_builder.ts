@@ -90,7 +90,7 @@ export const POOL_BY_TIER: SyllableSeed[][] = [
   [
     { w: 'bé', i: 'b', v: 'e', t: 'sắc', sym: '´', emoji: '👶' },
     { w: 'bè', i: 'b', v: 'e', t: 'huyền', sym: '`', emoji: '🛶' },
-    { w: 'me', i: 'm', v: 'e', t: 'ngang', sym: '-', emoji: '🫛' },
+    { w: 'me', i: 'm', v: 'e', t: 'ngang', sym: '-', emoji: '🌳' },
     { w: 'mè', i: 'm', v: 'e', t: 'huyền', sym: '`', emoji: '🐟' },
     { w: 'thẻ', i: 'th', v: 'e', t: 'hỏi', sym: '?', emoji: '🎫' },
     { w: 'lè', i: 'l', v: 'e', t: 'huyền', sym: '`', emoji: '😛' },
@@ -109,7 +109,7 @@ export const POOL_BY_TIER: SyllableSeed[][] = [
     { w: 'cọ', i: 'c', v: 'o', t: 'nặng', sym: '.', emoji: '🖌️' },
     { w: 'bò', i: 'b', v: 'o', t: 'huyền', sym: '`', emoji: '🐮' },
     { w: 'bỏ', i: 'b', v: 'o', t: 'hỏi', sym: '?', emoji: '🗑️' },
-    { w: 'bọ', i: 'b', v: 'o', t: 'nặng', sym: '.', emoji: '🪲' },
+    { w: 'bọ', i: 'b', v: 'o', t: 'nặng', sym: '.', emoji: '🐛' },
     { w: 'bó', i: 'b', v: 'o', t: 'sắc', sym: '´', emoji: '💐' },
     { w: 'gò', i: 'g', v: 'o', t: 'huyền', sym: '`', emoji: '⛰️' },
     { w: 'gõ', i: 'g', v: 'o', t: 'ngã', sym: '~', emoji: '🚪' },

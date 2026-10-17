@@ -41,7 +41,7 @@ export const T13_TRUONG_LOP_PASSAGES: ReadingPassage[] = [
     title: 'Giờ Ra Chơi',
     level: 2,
     subject: 'tieng-viet',
-    mediaEmoji: '🪢',
+    mediaEmoji: '🧶',
     paragraphs: [
       'Trống trường vang lên báo giờ ra chơi.',
       'Các bạn ùa ra sân như đàn chim non.',
@@ -52,7 +52,7 @@ export const T13_TRUONG_LOP_PASSAGES: ReadingPassage[] = [
     pictureBank: [
       { emoji: '🥁', label: 'trống trường' },
       { emoji: '🏫', label: 'sân trường' },
-      { emoji: '🪢', label: 'nhảy dây' },
+      { emoji: '🧶', label: 'nhảy dây' },
       { emoji: '👏', label: 'vỗ tay' },
     ],
     questionIds: [

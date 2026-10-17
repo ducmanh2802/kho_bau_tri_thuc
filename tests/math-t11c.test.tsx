@@ -107,7 +107,7 @@ describe('T11C — machine-checked arithmetic (calc)', () => {
       // (4) missing minuend, e.g. "... - 3 = 7" → answer is a
       const missingMinuend = ans === String(a);
       // (5) answer is itself an arithmetic expression, e.g. "6 + 3" or "2+5=7"
-      const expr = ans.match(/^(\d+)\s*([+\-])\s*(\d+)(?:\s*=\s*(\d+))?$/);
+      const expr = ans.match(/^(\d+)\s*([+\-\u2212])\s*(\d+)(?:\s*=\s*(\d+))?$/);
       const lhs = expr
         ? expr[2] === '+'
           ? Number(expr[1]) + Number(expr[3])
@@ -127,7 +127,7 @@ describe('T11C — machine-checked arithmetic (calc)', () => {
     const problems: string[] = [];
     for (const q of ALL) {
       const add = q.prompt.match(/(\d+)\s*\+\s*(\d+)\s*=\s*\?/);
-      const sub = q.prompt.match(/(\d+)\s*-\s*(\d+)\s*=\s*\?/);
+      const sub = q.prompt.match(/(\d+)\s*[-\u2212]\s*(\d+)\s*=\s*\?/);
       if (add) {
         const expected = String(Number(add[1]) + Number(add[2]));
         if (q.correctAnswer !== expected) problems.push(`${q.id}: ${q.correctAnswer} ≠ ${expected}`);

@@ -65,7 +65,7 @@ export const LittleScientistGame: React.FC<{ onExit: () => void }> = ({ onExit }
             Bé bỏ vật vào đúng giỏ 🧺, Gấu sẽ kể vì sao lại thế!
           </p>
           <div className="flex items-center gap-2 text-3xl" aria-hidden="true">
-            <span className="px-4 py-2 bg-sky-100 rounded-2xl border-2 border-sky-300">🫧</span>
+            <span className="px-4 py-2 bg-sky-100 rounded-2xl border-2 border-sky-300">🎈</span>
             <span className="text-slate-400">+</span>
             <span className="px-4 py-2 bg-amber-100 rounded-2xl border-2 border-amber-300">🧸</span>
             <span className="text-slate-400">=</span>

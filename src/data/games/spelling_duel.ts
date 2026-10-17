@@ -22,8 +22,8 @@ export const POOLS: SpellingItem[][] = [
   [
     { prompt: 'Điền chữ còn thiếu: ...on cá', emoji: '🐟', options: ['c', 'k', 'q'], answer: 'c', hint: 'Loài bơi dưới nước' },
     { prompt: 'Điền chữ còn thiếu: ...ẹo', emoji: '🍬', options: ['k', 'c', 'q'], answer: 'k', hint: 'Món ngọt ngào bé thích' },
-    { prompt: 'Điền chữ còn thiếu: ...im', emoji: '🪡', options: ['k', 'c', 'h'], answer: 'k', hint: 'Dụng cụ may vá của mẹ' },
-    { prompt: 'Điền chữ còn thiếu: ...ửa sổ', emoji: '🪟', options: ['c', 'k', 't'], answer: 'c', hint: 'Nhà nào cũng có để đón nắng' },
+    { prompt: 'Điền chữ còn thiếu: ...im', emoji: '🧵', options: ['k', 'c', 'h'], answer: 'k', hint: 'Dụng cụ may vá của mẹ' },
+    { prompt: 'Điền chữ còn thiếu: ...ửa sổ', emoji: '🏠', options: ['c', 'k', 't'], answer: 'c', hint: 'Nhà nào cũng có để đón nắng' },
     { prompt: 'Điền chữ còn thiếu: ...ính', emoji: '👓', options: ['k', 'c', 'g'], answer: 'k', hint: 'Đeo lên mắt để nhìn rõ' },
     { prompt: 'Chọn từ viết đúng:', emoji: '✂️', options: ['cái kéo', 'kái kéo', 'qái kéo'], answer: 'cái kéo', hint: 'Dụng cụ cắt giấy' },
     { prompt: 'Chọn từ viết đúng:', emoji: '🐱', options: ['con mèo', 'kon mèo', 'con mẻo'], answer: 'con mèo', hint: 'Kêu meo meo, thích bắt chuột' },
@@ -36,7 +36,7 @@ export const POOLS: SpellingItem[][] = [
     { prompt: 'Điền chữ còn thiếu: ...i nhớ', emoji: '📝', options: ['gh', 'g', 'h'], answer: 'gh', hint: 'Viết bài để thuộc lâu' },
     { prompt: 'Chọn từ viết đúng:', emoji: '🧸', options: ['gấu bông', 'ghấu bông', 'gấu bung'], answer: 'gấu bông', hint: 'Bạn ôm đi ngủ êm mềm' },
     { prompt: 'Điền chữ còn thiếu: ...e đánh cá', emoji: '⛵', options: ['gh', 'g', 'k'], answer: 'gh', hint: 'Chiếc thuyền nhỏ đi trên sông' },
-    { prompt: 'Điền chữ còn thiếu: ...ỗng', emoji: '🪿', options: ['ng', 'ngh', 'g'], answer: 'ng', hint: 'Con vật cổ dài kêu to' },
+    { prompt: 'Điền chữ còn thiếu: ...ỗng', emoji: '🦢', options: ['ng', 'ngh', 'g'], answer: 'ng', hint: 'Con vật cổ dài kêu to' },
     { prompt: 'Chọn từ viết đúng:', emoji: '🎁', options: ['quà tặng', 'qùa tặng', 'quà tăng'], answer: 'quà tặng', hint: 'Bé nhận vào sinh nhật' },
     { prompt: 'Điền chữ còn thiếu: ...i chép', emoji: '📒', options: ['gh', 'g', 'k'], answer: 'gh', hint: 'Vở viết bài hằng ngày' },
   ],
@@ -54,7 +54,7 @@ export const POOLS: SpellingItem[][] = [
   // T4: ôn tập c/k, g/gh, ng/ngh (không có ch/tr, s/x, d/gi/r)
   [
     { prompt: 'Điền chữ còn thiếu: ...ua', emoji: '🦀', options: ['c', 'k', 'q'], answer: 'c', hint: 'Con vật có càng' },
-    { prompt: 'Điền chữ còn thiếu: ...ỗ', emoji: '🪵', options: ['g', 'gh', 'k'], answer: 'g', hint: 'Bàn ghế làm từ gì' },
+    { prompt: 'Điền chữ còn thiếu: ...ỗ', emoji: '🌳', options: ['g', 'gh', 'k'], answer: 'g', hint: 'Bàn ghế làm từ gì' },
     { prompt: 'Điền chữ còn thiếu: ...e', emoji: '👂', options: ['ngh', 'ng', 'nh'], answer: 'ngh', hint: 'Dùng tai để làm gì' },
     { prompt: 'Chọn từ viết đúng:', emoji: '🐓', options: ['con gà', 'con ghà', 'kon gà'], answer: 'con gà', hint: 'Gáy ò ó o mỗi sáng' },
     { prompt: 'Điền chữ còn thiếu: ...áy', emoji: '💤', options: ['ng', 'ngh', 'nh'], answer: 'ng', hint: 'Điều bé phát ra khi say giấc' },

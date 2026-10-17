@@ -72,7 +72,7 @@ export const LESSONS: Lesson[] = [
         difficulty: 1,
         type: 'image-choice',
         prompt: 'Trong các đồ vật sau, đồ nào có dạng hình tròn?',
-        options: ['Bánh xe đạp 🚲', 'Quyển vở 📕', 'Cửa sổ 🪟', 'Viên gạch 🧱'],
+        options: ['Bánh xe đạp 🚲', 'Quyển vở 📕', 'Cửa sổ 🖼️', 'Viên gạch 🧱'],
         correctAnswer: 'Bánh xe đạp 🚲',
         hint: HINT_SHAPE,
         explanation: 'Bánh xe có dạng hình tròn.',
@@ -240,7 +240,7 @@ export const LESSONS: Lesson[] = [
         options: ['4', '5', '3', '2'],
         correctAnswer: '4',
         hint: 'Lấy 6 trừ đi 2.',
-        explanation: '6 - 2 = 4 hình.',
+        explanation: '6 − 2 = 4 hình.',
         calc: { a: 6, op: '-', b: 2 },
       }),
       mathQ(TOPIC, {

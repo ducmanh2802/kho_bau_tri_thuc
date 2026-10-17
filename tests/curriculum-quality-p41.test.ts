@@ -104,7 +104,7 @@ describe('P41 — curriculum quality gate (§4, §5, §6)', () => {
     const byId = new Map(questions.map((q) => [q.id, q]));
     expect(byId.get('math-q3-5')?.correctAnswer).toBe('8');
     expect(byId.get('math-q4-5')?.correctAnswer).toBe('5 + 5');
-    expect(byId.get('math-q5-4')?.correctAnswer).toBe('9 - 4');
+    expect(byId.get('math-q5-4')?.correctAnswer).toBe('9 − 4');
     expect(new Set(byId.get('vn-q7-4')?.options ?? []).size).toBe(
       byId.get('vn-q7-4')?.options?.length
     );

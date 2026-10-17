@@ -158,7 +158,7 @@ export const WORD_BANK: WordBankEntry[] = [
 
   // Topic: đồ vật gia đình (household items)
   { word: 'chiếc ghế', onset: 'gh', rhyme: 'ế', tone: 'sắc', emoji: '🪑', topic: 'đồ vật gia đình' },
-  { word: 'cái quạt', onset: 'qu', rhyme: 'ạt', tone: 'nặng', emoji: '🪭', topic: 'đồ vật gia đình' },
+  { word: 'cái quạt', onset: 'qu', rhyme: 'ạt', tone: 'nặng', emoji: '🌀', topic: 'đồ vật gia đình' },
   { word: 'chiếc đèn', onset: 'đ', rhyme: 'èn', tone: 'ngang', emoji: '💡', topic: 'đồ vật gia đình' },
   { word: 'cái nồi', onset: 'n', rhyme: 'ồi', tone: 'ngang', emoji: '🍲', topic: 'đồ vật gia đình' },
   { word: 'cái chổi', onset: 'ch', rhyme: 'ổi', tone: 'sắc', emoji: '🧹', topic: 'đồ vật gia đình' },
@@ -166,7 +166,7 @@ export const WORD_BANK: WordBankEntry[] = [
   { word: 'cái giường', onset: 'gi', rhyme: 'ường', tone: 'ngang', emoji: '🛏️', topic: 'đồ vật gia đình' },
   { word: 'cái bàn', onset: 'b', rhyme: 'àn', tone: 'huyền', emoji: '🪑', topic: 'đồ vật gia đình' },
   { word: 'chiếc kệ', onset: 'k', rhyme: 'ệ', tone: 'nặng', emoji: '📚', topic: 'đồ vật gia đình' },
-  { word: 'cái gương', onset: 'g', rhyme: 'ương', tone: 'ngang', emoji: '🪞', topic: 'đồ vật gia đình' },
+  { word: 'cái gương', onset: 'g', rhyme: 'ương', tone: 'ngang', emoji: '🖼️', topic: 'đồ vật gia đình' },
 
   // Topic: đồ ăn (food)
   { word: 'bánh mì', onset: 'm', rhyme: 'ì', tone: 'huyền', emoji: '🍞', topic: 'đồ ăn' },
@@ -194,7 +194,7 @@ export const WORD_BANK: WordBankEntry[] = [
   { word: 'bàn ghế', onset: 'gh', rhyme: 'ế', tone: 'sắc', emoji: '🪑', topic: 'vần am' },
   { word: 'cái râm', onset: 'r', rhyme: 'âm', tone: 'ngang', emoji: '🌳', topic: 'vần am' },
   { word: 'xe đạp', onset: 'đ', rhyme: 'ạp', tone: 'nặng', emoji: '🚲', topic: 'vần ap' },
-  { word: 'cái nắp', onset: 'n', rhyme: 'ắp', tone: 'sắc', emoji: '🫖', topic: 'vần ap' },
+  { word: 'cái nắp', onset: 'n', rhyme: 'ắp', tone: 'sắc', emoji: '🥫', topic: 'vần ap' },
   { word: 'băng keo', onset: 'k', rhyme: 'eo', tone: 'ngang', emoji: '📦', topic: 'vần ap' },
   { word: 'cái bếp', onset: 'b', rhyme: 'ếp', tone: 'nặng', emoji: '🍳', topic: 'vần ap' },
 
@@ -215,7 +215,7 @@ export const WORD_BANK: WordBankEntry[] = [
   // Vần ach / anh / ay
   { word: 'quyển sách', onset: 's', rhyme: 'ách', tone: 'sắc', emoji: '📖', topic: 'vần ach' },
   { word: 'tách trà', onset: 't', rhyme: 'ách', tone: 'sắc', emoji: '🍵', topic: 'vần ach' },
-  { word: 'vá rách', onset: 'r', rhyme: 'ách', tone: 'sắc', emoji: '🪡', topic: 'vần ach' },
+  { word: 'vá rách', onset: 'r', rhyme: 'ách', tone: 'sắc', emoji: '🧵', topic: 'vần ach' },
   { word: 'viên gạch', onset: 'g', rhyme: 'ách', tone: 'sắc', emoji: '🧱', topic: 'vần ach' },
   { word: 'cây xanh', onset: 'x', rhyme: 'anh', tone: 'ngang', emoji: '🌳', topic: 'vần anh' },
   { word: 'anh trai', onset: '', rhyme: 'anh', tone: 'ngang', emoji: '👦', topic: 'vần anh' },
