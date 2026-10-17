@@ -4,6 +4,7 @@ import { StorageService } from './services/storage';
 import { Header } from './components/common/Header';
 import { HomeScreen } from './components/home/HomeScreen';
 import { ChessScreen } from './components/learning/chess/ChessScreen';
+import { EnglishIoeScreen } from './components/learning/englishIoe/EnglishIoeScreen';
 import { NAVIGATION } from './config/navigation';
 
 /**
@@ -329,6 +330,10 @@ export default function App() {
 
         {currentScreen === 'chess' && (
           <ChessScreen onBack={() => setCurrentScreen('home')} />
+        )}
+
+        {currentScreen === 'english_ioe' && (
+          <EnglishIoeScreen onBack={() => setCurrentScreen('home')} />
         )}
       </main>
 

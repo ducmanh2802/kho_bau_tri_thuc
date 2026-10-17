@@ -1,594 +1,537 @@
-# MASTER PROMPT — XÂY DỰNG PHÂN HỆ HỌC CỜ VUA TỪ CƠ BẢN ĐẾN NÂNG CAO
-## Dự án: Kho Báu Tri Thức — Lớp 1
+# MASTER PROMPT — CHESS KINGDOM
+## Xây dựng game cờ vua giáo dục từ cơ bản đến siêu khó
+### Tích hợp vào Kho Báu Tri Thức — Lớp 1
 
-Bạn là chuyên gia giáo dục trẻ 5–8 tuổi, huấn luyện viên cờ vua thiếu nhi, chuyên gia thiết kế game giáo dục và kỹ sư phần mềm cấp cao.
+Bạn là một đội ngũ chuyên gia gồm:
+- Kiến trúc sư phần mềm cấp cao.
+- Nhà phát triển game cờ vua.
+- Chuyên gia luật cờ vua FIDE.
+- Chuyên gia engine cờ vua Stockfish.
+- Huấn luyện viên cờ vua thiếu nhi.
+- Chuyên gia UI/UX game giáo dục cao cấp.
 
-Hãy kiểm tra toàn bộ source code hiện tại của ứng dụng **Kho Báu Tri Thức — Lớp 1**, sau đó trực tiếp thiết kế, lập trình và tích hợp một phân hệ học cờ vua hoàn chỉnh có tên:
+Nhiệm vụ: kiểm tra source code hiện tại của **Kho Báu Tri Thức — Lớp 1**, sau đó trực tiếp xây dựng một phân hệ cờ vua hoàn chỉnh, có thể chơi được, có bài học từ cơ bản đến nâng cao, giải thích nước đi, luyện chiến thuật và đấu với máy từ dễ đến siêu khó.
 
-**VƯƠNG QUỐC CỜ VUA — CHIẾN BINH NHÍ**
+Tên sản phẩm:
 
-Mục tiêu là giúp một em bé mới bắt đầu từ con số 0 có thể nhận biết quân cờ, hiểu luật, tự chơi một ván cờ hợp lệ, biết chiếu bí và từng bước tiếp cận chiến thuật nâng cao.
+**CHESS KINGDOM — VƯƠNG QUỐC CỜ VUA**
 
-Đây là yêu cầu BUILD TÍNH NĂNG THỰC TẾ, không phải chỉ viết kế hoạch, mockup hay tạo một trang giới thiệu.
+Khẩu hiệu: “Học từng nước cờ — Rèn tư duy — Chinh phục Đại kiện tướng.”
 
----
-
-# PHẦN 1 — NGUYÊN TẮC BẮT BUỘC
-
-1. Đọc kiến trúc, công nghệ, giao diện, hệ thống điều hướng, lưu tiến độ và các component hiện có trước khi sửa.
-2. Giữ nguyên các chức năng Toán, Tiếng Việt, Chính tả và các phân hệ đang hoạt động.
-3. Không viết lại toàn bộ ứng dụng nếu chỉ cần thêm một phân hệ.
-4. Tái sử dụng component, design system, hệ thống điểm thưởng và lưu tiến độ hiện có khi phù hợp.
-5. Giao diện ưu tiên tiếng Việt chuẩn Unicode, hiển thị đúng dấu, font dễ đọc, đặc biệt trên điện thoại.
-6. Nội dung và luật cờ phải chính xác. Không tạo câu hỏi có đáp án sai, nước đi bất hợp lệ hoặc tình huống cờ không thể xảy ra.
-7. Không dùng nút bấm giả, dữ liệu tiến độ giả, AI đối thủ chỉ đứng yên hoặc bàn cờ chỉ để trang trí.
-8. Mọi nước đi trên bàn cờ phải được kiểm tra bằng bộ luật cờ vua thực sự.
-9. Nếu dự án đã có thư viện cờ vua phù hợp, hãy đánh giá và tái sử dụng. Nếu chưa có, cân nhắc chess.js hoặc thư viện tương đương để xác thực nước đi, chiếu, chiếu bí, hòa và các luật đặc biệt. Kiểm tra khả năng tương thích với cấu hình hiện tại trước khi cài đặt.
-10. Nếu có chế độ đấu với máy, sử dụng engine cờ vua thực sự nếu môi trường cho phép. Ưu tiên Stockfish qua Web Worker khi tương thích; phải có phương án dự phòng nếu engine không tải được hoặc thiết bị yếu. Không tuyên bố có AI cờ vua thật nếu thực tế chỉ là các nước đi ngẫu nhiên.
-11. Không làm lộ API key, không thêm dịch vụ trả phí bắt buộc và không tự ý triển khai production.
-12. Bảo toàn dữ liệu người dùng, thay đổi hiện có và khả năng chạy ứng dụng trên mobile.
-13. Nếu thiếu một tài nguyên, hãy kiểm tra các tài nguyên sẵn có trước khi tạo mới. Không để đường dẫn hình ảnh bị hỏng.
-14. Sau khi hoàn thành, chạy typecheck, lint nếu có, test và build theo các script thực tế của dự án. Không tuyên bố PASS nếu chưa chạy hoặc chưa xác minh.
+Đây là yêu cầu lập trình và tích hợp thực tế. Không chỉ viết kế hoạch, tạo mockup hoặc dựng bàn cờ trang trí.
 
 ---
 
-# PHẦN 2 — THIẾT KẾ TRẢI NGHIỆM CHO TRẺ
+# PHẦN 1. KIỂM TRA DỰ ÁN VÀ BẢO TOÀN CODE
 
-Tạo một thế giới phiêu lưu cờ vua có cốt truyện đơn giản:
+Trước khi sửa code:
 
-“Vương quốc Cờ Vua đang cần một chiến binh nhí. Con hãy thu thập 6 viên ngọc sức mạnh bằng cách học các quân cờ, vượt qua thử thách, giải cứu nhà vua và trở thành Đại kiện tướng nhí.”
+1. Đọc kiến trúc dự án hiện tại.
+2. Xác định công nghệ frontend, router, UI components, hệ thống lưu tiến độ và cấu hình build.
+3. Kiểm tra xem dự án đã có thư viện bàn cờ, luật cờ hoặc engine cờ vua chưa.
+4. Tận dụng component hiện có nếu phù hợp.
+5. Chỉ sửa những file cần thiết.
+6. Không tạo dự án mới bên ngoài ứng dụng hiện tại.
+7. Không phá hỏng Toán, Tiếng Việt, Chính tả, English IOE và các phân hệ khác.
+8. Không xóa dữ liệu hoặc ghi đè các thay đổi sẵn có của người dùng.
+9. Không tự động triển khai production.
+10. Sau mỗi giai đoạn, chạy kiểm thử và sửa lỗi.
 
-Mỗi bài học gồm:
+Nếu chưa có thư viện phù hợp, đánh giá `chess.js` cho luật cờ và `react-chessboard` hoặc giải pháp tương thích với framework hiện tại cho bàn cờ. Chọn phiên bản tương thích trước khi thêm dependency.
 
-- Một nhân vật hướng dẫn thân thiện.
-- Một mục tiêu học duy nhất, rõ ràng.
-- Hình minh họa quân cờ lớn, dễ nhận biết.
-- Giải thích ngắn, dùng ngôn ngữ phù hợp trẻ lớp 1.
-- Bàn cờ tương tác hoặc bài tập kéo thả.
-- Ví dụ đúng và ví dụ sai.
-- 3–8 câu hỏi thực hành tùy độ khó.
-- Phản hồi ngay khi con trả lời.
-- Giải thích tại sao đúng hoặc sai.
-- Phần thưởng, huy hiệu và tiến độ.
-- Nút “Học tiếp”, “Luyện lại” và “Về bản đồ”.
+Đối với AI chơi cờ, ưu tiên Stockfish thực sự chạy trong Web Worker nếu môi trường hỗ trợ. Kiểm tra giấy phép, nguồn tải, khả năng tương thích trình duyệt và giới hạn tài nguyên.
 
-Không sử dụng các đoạn văn quá dài. Mỗi màn hình chỉ nên tập trung vào một kiến thức chính.
-
-Thiết kế hình ảnh vui tươi, cao cấp, nhất quán với ứng dụng hiện tại. Có thể dùng chủ đề lâu đài, bản đồ kho báu, các hiệp sĩ và linh vật. Không để hoạt ảnh che bàn cờ hoặc gây khó đọc.
-
-## Trang bản đồ học tập
-
-Hiển thị lộ trình theo các vùng đất:
-
-1. Làng Quân Cờ.
-2. Con Đường Nước Đi.
-3. Thành Phố Phòng Thủ.
-4. Rừng Chiến Thuật.
-5. Lâu Đài Chiếu Bí.
-6. Đấu Trường Đại Kiện Tướng.
-
-Mỗi vùng có bài học, số sao, phần trăm hoàn thành và trạng thái khóa/mở khóa. Trẻ vẫn có thể ôn bài cũ bất cứ lúc nào.
+Không sử dụng các nước đi ngẫu nhiên để giả làm AI cờ vua.
 
 ---
 
-# PHẦN 3 — CHƯƠNG TRÌNH HỌC TỪ CƠ BẢN ĐẾN NÂNG CAO
+# PHẦN 2. THIẾT KẾ GAME ĐẸP MẮT
 
-Xây dựng hệ thống bài học theo các cấp độ sau. Mỗi bài phải có nội dung giải thích, ví dụ trên bàn cờ, bài tập và đáp án được kiểm tra.
+Tạo giao diện có chất lượng như một game cờ vua thương mại cao cấp nhưng vẫn thân thiện với trẻ em.
 
-## Cấp độ 0 — Làm quen với cờ vua
+## Phong cách hình ảnh
 
-### Bài 1. Đây là trò chơi gì?
-- Cờ vua có hai người chơi.
-- Một bên Trắng, một bên Đen.
-- Mục tiêu là chiếu bí vua đối phương.
-- Hai bên lần lượt đi từng nước.
+Chủ đề: lâu đài, vương quốc, hiệp sĩ, kho báu và hành trình trở thành đại kiện tướng.
+
+Yêu cầu:
+- Bàn cờ 8×8 rõ nét.
+- Quân cờ đẹp, đồng nhất, dễ phân biệt.
+- Có thể chọn phong cách quân cờ cổ điển hoặc hoạt hình.
+- Hiệu ứng di chuyển quân mượt mà.
+- Hiệu ứng đánh dấu nước đi trước.
+- Hiệu ứng chiếu vua, chiếu bí và hoàn thành nhiệm vụ.
+- Âm thanh di chuyển quân có thể bật/tắt.
+- Giao diện tối và sáng nếu phù hợp design system hiện tại.
+- Hỗ trợ tiếng Việt.
+- Responsive trên điện thoại, tablet và desktop.
+- Không để hiệu ứng làm giảm khả năng đọc bàn cờ.
+- Không dùng quá nhiều animation gây mất tập trung.
+
+## Trang chủ
+
+Tạo các khu vực:
+
+1. Học cờ vua.
+2. Chơi với máy.
+3. Luyện chiến thuật.
+4. Giải thế cờ.
+5. Xem lại ván đấu.
+6. Bài học chiếu bí.
+7. Lịch sử và thành tích.
+8. Hành trình chinh phục các cấp độ.
+
+Hiển thị cấp độ hiện tại, bài học tiếp theo, số trận thắng, kỹ năng đã hoàn thành và những kỹ năng cần luyện.
+
+---
+
+# PHẦN 3. CHƯƠNG TRÌNH HỌC TỪ SỐ 0
+
+Xây dựng các bài học có bàn cờ tương tác. Mỗi bài gồm giải thích ngắn, minh họa trực quan, bài tập, phản hồi và đáp án được kiểm tra bằng luật cờ thực.
+
+## Cấp 0 — Làm quen
+
+- Cờ vua là gì?
+- Mục tiêu của ván cờ.
+- Hai bên Trắng và Đen.
+- Bàn cờ có 64 ô.
+- Hàng, cột, đường chéo.
+- Tọa độ a–h và 1–8.
+- Cách đặt bàn cờ.
+- Cách xếp đủ 32 quân.
+
+## Cấp 1 — Học sáu loại quân
+
+Dạy riêng từng quân:
+
+- Vua.
+- Hậu.
+- Xe.
+- Tượng.
+- Mã.
+- Tốt.
+
+Mỗi quân có:
+- Hình minh họa lớn.
+- Tên tiếng Việt.
+- Ký hiệu hoặc tên tiếng Anh nếu hữu ích.
+- Các hướng di chuyển.
+- Những ô có thể đến.
+- Quân có thể bắt.
+- Ví dụ đi đúng và đi sai.
+- Bài tập tương tác.
+- Trò chơi nhận diện quân.
+
+Đặc biệt:
+- Mã đi hình chữ L và có thể nhảy qua quân khác.
+- Xe, tượng, hậu không thể nhảy qua quân cản.
+- Tốt đi thẳng nhưng bắt chéo về phía trước.
+- Vua không được đi vào ô bị tấn công.
+
+## Cấp 2 — Đi quân và ăn quân
+
+- Chọn quân và xem nước đi hợp lệ.
+- Chạm ô đích để di chuyển.
+- Kéo thả quân nếu hỗ trợ tốt.
+- Nhận biết ô bị chiếm.
+- Nhận biết quân đang bị tấn công.
+- Tìm quân được bảo vệ.
+- Phân biệt nước đi hợp lệ và bất hợp lệ.
+- Tính giá trị tương đối của quân.
+- Thực hành đổi quân có lợi.
+
+## Cấp 3 — Luật cờ hoàn chỉnh
+
+- Luân phiên lượt.
 - Trắng đi trước.
-- Giới thiệu bàn cờ, ô cờ, hàng, cột và đường chéo.
+- Chiếu vua.
+- Ba cách thoát chiếu khi hợp lệ.
+- Chiếu đôi.
+- Chiếu bí.
+- Hòa do hết nước đi.
+- Nhập thành cánh vua và cánh hậu.
+- Phong cấp tốt.
+- Bắt tốt qua đường.
+- Lặp lại vị trí.
+- Quy tắc 50 nước và các trường hợp hòa.
+- Các quy tắc kết thúc ván đấu.
 
-### Bài 2. Bàn cờ có bao nhiêu ô?
-- Bàn cờ có 8 hàng và 8 cột, tổng cộng 64 ô.
-- Hai màu ô sáng và tối xen kẽ.
-- Cách đặt bàn cờ đúng: ô sáng ở góc dưới bên phải của mỗi người chơi.
-- Làm quen tọa độ a–h và 1–8 bằng bài tập đơn giản.
+Mọi luật phải được thực thi trong bàn cờ, không chỉ mô tả bằng văn bản.
 
-### Bài 3. Đội quân của con
-Giới thiệu tổng cộng 32 quân:
-- 1 vua mỗi bên.
-- 1 hậu mỗi bên.
-- 2 xe mỗi bên.
-- 2 tượng mỗi bên.
-- 2 mã mỗi bên.
-- 8 tốt mỗi bên.
+## Cấp 4 — Chiến thuật cơ bản
 
-Cho trẻ đếm quân, ghép tên với hình và phân biệt quân Trắng/Đen.
+- Quân bị treo.
+- Bắt quân miễn phí.
+- Đòn đôi.
+- Ghim quân.
+- Xiên quân.
+- Tấn công mở.
+- Chiếu mở.
+- Nhử quân.
+- Đánh lạc hướng.
+- Phòng thủ quân.
+- Trao đổi quân có lợi.
+- Nhận diện đe dọa của đối phương.
 
-## Cấp độ 1 — Nhận biết sáu loại quân
+Mỗi chiến thuật phải có thế cờ hợp lệ, câu hỏi, gợi ý từng bước và lời giải.
 
-Mỗi loại quân phải có một chuỗi bài học riêng:
+## Cấp 5 — Khai cuộc
 
-### Bài 4. Vua — Người quan trọng nhất
-- Vua đi một ô theo bất kỳ hướng nào.
-- Vua không được đi vào ô bị quân đối phương tấn công.
-- Hai vua không được đứng cạnh nhau.
-- Vua không bị bắt theo cách thông thường; ván cờ kết thúc khi vua bị chiếu bí.
+Dạy nguyên tắc trước khi học thuộc nước đi:
 
-### Bài 5. Hậu — Nữ hoàng quyền lực
-- Hậu đi ngang, dọc và chéo.
-- Hậu có thể đi nhiều ô nếu đường đi thông thoáng.
-- Hậu không được nhảy qua quân khác.
-
-### Bài 6. Xe — Chiến xa
-- Xe đi ngang hoặc dọc.
-- Đi nhiều ô nếu không bị cản.
-- Không đi chéo và không nhảy qua quân.
-
-### Bài 7. Tượng — Người bảo vệ đường chéo
-- Tượng đi chéo.
-- Không nhảy qua quân.
-- Tượng bắt quân đối phương trên đường chéo hợp lệ.
-- Tượng xuất phát trên ô sáng sẽ luôn ở ô sáng; tượng xuất phát trên ô tối sẽ luôn ở ô tối.
-
-### Bài 8. Mã — Kỵ sĩ nhảy xa
-- Mã đi theo hình chữ L: hai ô theo một hướng rồi một ô vuông góc.
-- Mã là quân duy nhất có thể nhảy qua các quân khác.
-- Cho trẻ nhận diện các ô mã có thể tới từ một vị trí.
-
-### Bài 9. Tốt — Người lính dũng cảm
-- Tốt đi thẳng một ô khi phía trước trống.
-- Tốt có thể đi hai ô từ vị trí ban đầu nếu cả hai ô phía trước đều trống.
-- Tốt ăn chéo một ô về phía trước.
-- Tốt không đi lùi.
-- Khi tới hàng cuối của đối phương, tốt được phong cấp thành hậu, xe, tượng hoặc mã.
-- Giải thích bắt tốt qua đường ở mức đơn giản, sau đó có bài thực hành riêng.
-
-### Bài 10. Ai đi kiểu gì?
-- Bài tập phân loại nước đi của cả sáu loại quân.
-- Chọn đúng hướng đi.
-- Tìm các ô đến hợp lệ.
-- Tìm quân có thể bị ăn.
-- Phân biệt đi quân và ăn quân.
-- Sử dụng bàn cờ để trẻ chạm vào các ô đáp án.
-
-**Yêu cầu quan trọng:** Không chỉ hiển thị hình minh họa và câu hỏi chữ. Bàn cờ phải phản ánh chính xác vị trí, nước đi và quân bị bắt.
-
-## Cấp độ 2 — Di chuyển, bắt quân và bảo vệ quân
-
-### Bài 11. Đi đến ô nào?
-Trẻ chọn quân rồi chọn một ô đích. Hệ thống tô các ô hợp lệ và giải thích.
-
-### Bài 12. Ăn quân nào?
-Cho các tình huống có quân đối phương. Trẻ chọn quân có thể bị bắt hợp lệ.
-
-### Bài 13. Đường đi bị chặn
-- Quân nào không thể nhảy qua quân khác?
-- Vì sao xe không thể đi xuyên qua tốt?
-- Mã có gì đặc biệt?
-
-### Bài 14. Quân nào đang được bảo vệ?
-- Nhận biết quân được đồng minh bảo vệ.
-- Tìm quân đối phương đang tấn công.
-- Tránh để mất quân miễn phí.
-
-### Bài 15. Quân nào có giá trị cao hơn?
-Dùng giá trị quy ước để giúp trẻ tư duy:
-- Tốt = 1.
-- Mã = 3.
-- Tượng = 3.
-- Xe = 5.
-- Hậu = 9.
-- Vua = vô giá, không được đem đổi theo cách thông thường.
-
-Giải thích đây là giá trị tương đối để học chiến thuật, không phải luật bắt buộc của cờ vua.
-
-### Bài 16. Đổi quân có lợi không?
-Cho trẻ chọn giữa các phương án ăn quân khác nhau và giải thích đơn giản vì sao một nước đi có lợi hoặc bất lợi.
-
-## Cấp độ 3 — Bắt đầu một ván cờ hoàn chỉnh
-
-### Bài 17. Xếp quân đúng vị trí
-- Bàn cờ được định hướng đúng.
-- Hậu Trắng ở ô trắng, hậu Đen ở ô đen.
-- Xe ở góc, mã cạnh xe, tượng cạnh mã.
-- Hậu và vua ở hai ô còn lại của hàng cuối.
-- Tốt đứng ở hàng phía trước.
-- Kiểm tra đầy đủ bố trí chuẩn.
-
-### Bài 18. Luật chơi một ván cờ
-- Trắng đi trước.
-- Hai bên luân phiên.
-- Mỗi lượt chỉ thực hiện một nước hợp lệ, trừ các luật đặc biệt.
-- Không được đi nước khiến vua của mình vẫn bị chiếu hoặc bị chiếu.
-- Giới thiệu kết thúc ván cờ.
-
-### Bài 19. Nhập thành
-- Điều kiện nhập thành cánh vua và cánh hậu.
-- Vua và xe liên quan chưa từng di chuyển.
-- Các ô ở giữa phải trống.
-- Vua không đang bị chiếu, không đi qua ô bị tấn công và không kết thúc ở ô bị tấn công.
-- Không cho nhập thành xuyên qua quân hoặc trong tình huống không hợp lệ.
-
-### Bài 20. Phong cấp tốt
-- Tốt tới hàng cuối phải phong cấp.
-- Có thể chọn hậu, xe, tượng hoặc mã.
-- Hướng dẫn chọn quân phù hợp trong các tình huống đơn giản.
-
-### Bài 21. Bắt tốt qua đường
-- Giải thích điều kiện xảy ra.
-- Chỉ hợp lệ ngay ở nước đi kế tiếp.
-- Có minh họa từng bước và bài tập thực hành.
-
-### Bài 22. Thế nào là hòa?
-Dạy các trường hợp cơ bản:
-- Hết nước đi hợp lệ nhưng vua không bị chiếu: hòa do hết nước đi (stalemate).
-- Hai bên đồng ý hòa.
-- Vị trí không thể dẫn đến chiếu bí theo luật.
-- Quy tắc lặp lại vị trí và quy tắc 50 nước ở cấp nâng cao hơn.
-- Những quy tắc đòi hỏi yêu cầu hòa hoặc cách đếm nước phải được triển khai theo đúng luật cờ thực tế.
-
-## Cấp độ 4 — Chiếu vua và chiếu bí
-
-### Bài 23. Chiếu vua là gì?
-- Vua đang bị một quân đối phương tấn công.
-- Phải xử lý tình trạng chiếu.
-- Không được bỏ qua chiếu để đi một nước không liên quan.
-
-### Bài 24. Ba cách thoát chiếu
-1. Di chuyển vua tới ô an toàn.
-2. Bắt quân đang chiếu nếu nước bắt hợp lệ.
-3. Chặn đường chiếu nếu loại quân và vị trí cho phép.
-
-Giải thích chặn chiếu không áp dụng với mã hoặc các tình huống không có đường đi để chặn.
-
-### Bài 25. Nước đi nào không thể thoát chiếu?
-Cho trẻ thử các phương án. Hệ thống phải kiểm tra bằng luật cờ thực, không dùng câu trả lời viết sẵn không khớp vị trí.
-
-### Bài 26. Chiếu đôi
-Giới thiệu khi vua bị hai quân tấn công cùng lúc và thường phải di chuyển vua để thoát chiếu.
-
-### Bài 27. Chiếu bí là gì?
-- Vua đang bị chiếu và không có nước đi hợp lệ nào để thoát.
-- Phân biệt chiếu bí với hòa do hết nước đi.
-- Bài tập nhận diện các vị trí chiếu bí.
-
-### Bài 28. Chiếu bí bằng hậu và vua
-- Hạn chế vùng di chuyển của vua đối phương.
-- Đưa vua đối phương về mép bàn.
-- Phối hợp hậu và vua để chiếu bí.
-- Dùng vị trí bài tập được xác thực bằng engine hoặc kiểm tra luật.
-
-### Bài 29. Chiếu bí bằng xe và vua
-- Học nguyên tắc đẩy vua về mép bàn.
-- Dùng vua hỗ trợ xe.
-- Tránh để vua đối phương thoát ra.
-- Thực hành theo từng bước.
-
-### Bài 30. Những mẫu chiếu bí cơ bản
-- Chiếu bí hàng cuối.
-- Chiếu bí bằng hai xe khi vị trí cho phép.
-- Chiếu bí bằng hậu và vua.
-- Chiếu bí bằng xe và vua.
-- Nhận biết các mẫu chiếu bí đơn giản từ những thế cờ hợp lệ.
-
-## Cấp độ 5 — Chiến thuật thông minh
-
-### Bài 31. Quân bị treo
-Tìm quân của mình đang bị tấn công mà chưa được bảo vệ đủ.
-
-### Bài 32. Đòn đôi
-Một quân tấn công hai mục tiêu cùng lúc.
-
-### Bài 33. Ghim quân
-Giải thích ghim tuyệt đối và ghim tương đối bằng bàn cờ trực quan.
-
-### Bài 34. Xiên quân
-Tấn công quân giá trị cao phía trước để có thể lấy quân phía sau.
-
-### Bài 35. Tấn công mở và chiếu mở
-Cho trẻ thấy việc di chuyển một quân có thể mở đường cho quân khác tấn công.
-
-### Bài 36. Đòn nhử và đánh lạc hướng
-Tạo các thế cờ nhỏ, có đáp án xác thực.
-
-### Bài 37. Phòng thủ trước đòn tấn công
-- Di chuyển quân.
-- Bảo vệ quân.
-- Đổi quân.
-- Chặn đường tấn công khi hợp lệ.
-- Tìm nước đi tốt nhất trong các lựa chọn.
-
-### Bài 38. Chiến thuật ăn quân miễn phí
-Tìm nước đi có thể thắng quân hoặc tránh mất quân.
-
-### Bài 39. Tính trước một đến ba nước
-Dạy trẻ hỏi:
-- Nếu con đi nước này, đối thủ có thể làm gì?
-- Sau nước đáp trả, con sẽ làm gì?
-- Quân nào đang bị đe dọa?
-
-## Cấp độ 6 — Khai cuộc, trung cuộc và tàn cuộc
-
-### Bài 40. Ba mục tiêu khi khai cuộc
 - Kiểm soát trung tâm.
 - Phát triển mã và tượng.
-- Đưa vua vào an toàn, thường bằng nhập thành khi phù hợp.
+- Đưa vua đến vị trí an toàn.
+- Nhập thành khi phù hợp.
+- Kết nối các quân.
+- Không đưa hậu ra quá sớm khi không cần thiết.
+- Không di chuyển cùng một quân quá nhiều lần mà không có mục đích.
+- Không tham ăn tốt mà bỏ quên an toàn của vua.
 
-### Bài 41. Những sai lầm khai cuộc phổ biến
-- Di chuyển cùng một quân quá nhiều lần mà không có lý do.
-- Đưa hậu ra quá sớm khi dễ bị tấn công.
-- Bỏ quên vua.
-- Chỉ chăm chăm ăn tốt mà bỏ qua phát triển quân.
+Sau đó giới thiệu một số khai cuộc cơ bản với biến thể đã kiểm tra bằng engine.
 
-### Bài 42. Phát triển quân và phối hợp
-Học cách để các quân hỗ trợ nhau thay vì hoạt động riêng lẻ.
+Không dạy trẻ học thuộc các chuỗi nước dài mà không hiểu mục đích.
 
-### Bài 43. Tấn công vua an toàn
-Nhận biết khi nào nên tấn công và khi nào cần phòng thủ.
+## Cấp 6 — Trung cuộc
 
-### Bài 44. Tàn cuộc vua và tốt
-- Vua là quân chủ động trong tàn cuộc.
-- Tạo tốt thông.
-- Hộ tống tốt phong cấp.
-- Học đối vua và ô vuông của tốt bằng ví dụ trực quan.
+- Lập kế hoạch.
+- Cải thiện vị trí quân.
+- Tấn công vua.
+- Phòng thủ vua.
+- Chiếm cột mở.
+- Tạo điểm yếu.
+- Tốt thông.
+- Cấu trúc tốt.
+- Tìm nước đi ứng viên.
+- Tính toán biến thể.
+- So sánh các phương án.
 
-### Bài 45. Đối vua và zugzwang
-Giới thiệu ở mức phù hợp, mở rộng cho trẻ đã hoàn thành các bài cơ bản.
+## Cấp 7 — Tàn cuộc
 
-### Bài 46. Luật 50 nước, lặp lại vị trí và quy tắc nâng cao
-Dạy chính xác các điều kiện hòa theo luật cờ, phân biệt những trường hợp tự động hòa và trường hợp phải yêu cầu hòa.
+- Vua và tốt.
+- Đối vua.
+- Ô vuông của tốt.
+- Tốt thông.
+- Phong cấp.
+- Chiếu bí bằng hậu và vua.
+- Chiếu bí bằng xe và vua.
+- Một số thế chiếu bí cơ bản.
+- Tàn cuộc xe căn bản.
+- Quy tắc hòa trong tàn cuộc.
+- Tránh sai lầm khiến thế thắng thành hòa.
 
-## Cấp độ 7 — Đấu luyện và tư duy nâng cao
+## Cấp 8 — Tư duy nâng cao
 
-### Bài 47. Chơi với máy theo cấp độ
-- Cấp 1: đi chậm, gợi ý rõ.
-- Cấp 2: biết bắt quân miễn phí.
-- Cấp 3: biết tránh nước đi mất quân.
-- Cấp 4: biết tìm chiến thuật cơ bản.
-- Cấp 5: thử thách nâng cao.
+- Tính toán nhiều nước.
+- Phòng thủ chính xác.
+- Tìm nước duy nhất để cứu ván.
+- Hy sinh quân có cơ sở.
+- Đánh giá vị trí.
+- Lợi thế vật chất.
+- Lợi thế không gian.
+- Hoạt động của quân.
+- An toàn vua.
+- Tạo kế hoạch dài hạn.
+- Phân tích sai lầm sau ván đấu.
+- Thực hành các thế cờ chiến thuật và chiến lược nâng cao.
 
-Độ khó phải dựa trên engine thật hoặc phương pháp giới hạn sức chơi có giải thích rõ. Không được khẳng định mức Elo chính xác nếu chưa được đo kiểm.
-
-### Bài 48. Giải đố chiến thuật
-- Chiếu trong một nước.
-- Chiếu bí trong một nước.
-- Bắt quân có lợi.
-- Tìm cách thoát chiếu.
-- Bảo vệ quân đang bị tấn công.
-
-### Bài 49. Phân tích ván cờ của con
-- Xem lại từng nước.
-- Phát hiện quân bị mất.
-- Giải thích một nước tốt hơn theo ngôn ngữ thiếu nhi.
-- Không dùng đánh giá “nước đi tốt nhất” nếu chưa có engine hoặc phương pháp xác thực đáng tin cậy.
-
-### Bài 50. Giải đấu Đại kiện tướng nhí
-- Đấu với máy hoặc đối thủ khác nếu dự án hỗ trợ.
-- Chơi ván hoàn chỉnh.
-- Lưu lịch sử ván.
-- Chấm điểm theo kỹ năng, không chỉ thắng thua.
-- Trao huy hiệu theo thành tích thực tế.
-
-Có thể mở rộng thành bài 51 trở đi khi phù hợp. Không cần nhồi tất cả bài vào một màn hình; phải tổ chức thành chương trình có thể phát triển lâu dài.
+Mỗi bài phải mở khóa theo tiến độ hoặc cho phép phụ huynh mở thủ công.
 
 ---
 
-# PHẦN 4 — BÀN CỜ TƯƠNG TÁC THỰC SỰ
+# PHẦN 4. HỆ THỐNG ĐỐI THỦ AI TỪ DỄ ĐẾN SIÊU KHÓ
 
-Xây dựng bàn cờ 8×8 với các yêu cầu:
+Đây là một trong những tính năng quan trọng nhất.
 
-1. Hiển thị đủ 64 ô, quân cờ rõ ràng và có thể chọn bằng chuột hoặc chạm.
-2. Có thể kéo thả quân nếu giao diện hiện tại hỗ trợ tốt; luôn cung cấp phương án chạm quân rồi chạm ô đích.
-3. Hiển thị các nước đi hợp lệ.
-4. Tô màu ô quân đang chọn, nước đi trước đó và ô vua đang bị chiếu.
-5. Hiển thị quân đã bị bắt.
-6. Có thể hoàn tác trong chế độ luyện tập nếu phù hợp.
-7. Có nút khởi động lại bài, gợi ý và kiểm tra đáp án.
-8. Có chế độ hướng dẫn theo từng bước.
-9. Bàn cờ thích ứng với màn hình 320px, 375px, 390px, tablet và desktop.
-10. Không để quân cờ bị méo, ô bàn cờ bị lệch hoặc các nút điều khiển tràn màn hình.
-11. Tôn trọng thao tác bàn phím và khả năng tiếp cận cơ bản.
-12. Cập nhật trạng thái sau mỗi nước đi hợp lệ.
+Xây dựng màn hình “Chọn đối thủ” với các cấp độ sau:
 
-## Quy tắc kỹ thuật
+### Cấp 1 — Tập sự
+Dành cho người vừa học xong cách đi quân.
 
-- Tất cả nước đi trong chế độ chơi thật phải qua bộ luật cờ vua.
-- Không cho phép di chuyển khiến vua của người đi vẫn bị chiếu.
-- Phân biệt chiếu, chiếu bí, hòa do hết nước đi và các trường hợp hòa khác.
-- Hỗ trợ nhập thành, phong cấp và bắt tốt qua đường.
-- Đặt quân ban đầu theo đúng tiêu chuẩn.
-- Nếu có chế độ hai người chơi trên cùng thiết bị, luân phiên lượt chính xác.
-- Nếu engine hoặc thư viện luật không tải được, báo lỗi rõ ràng và không cho chơi theo trạng thái giả.
+- Chơi chậm.
+- Cho phép gợi ý.
+- Ưu tiên nước đi đơn giản.
+- Giải thích lỗi cơ bản sau ván.
+
+### Cấp 2 — Học việc
+- Biết bắt quân khi thuận lợi.
+- Có thể bỏ sót một số chiến thuật.
+- Hạn chế tính toán sâu.
+
+### Cấp 3 — Tân binh
+- Biết phát triển quân.
+- Biết nhập thành khi thích hợp.
+- Tránh một số nước đi mất quân trực tiếp.
+
+### Cấp 4 — Chiến binh
+- Tìm chiến thuật cơ bản.
+- Biết phối hợp các quân.
+- Phòng thủ các đe dọa rõ ràng.
+
+### Cấp 5 — Hiệp sĩ
+- Tính toán sâu hơn.
+- Biết khai cuộc và tàn cuộc cơ bản.
+- Khó bị bắt quân miễn phí.
+
+### Cấp 6 — Kỵ sĩ tinh nhuệ
+- Chơi chắc chắn.
+- Phát hiện đòn đôi, ghim và xiên.
+- Biết xử lý các vị trí chiến thuật thông thường.
+
+### Cấp 7 — Chỉ huy
+- Tính toán nhiều biến thể.
+- Tìm kế hoạch trung cuộc.
+- Phòng thủ tốt hơn.
+
+### Cấp 8 — Đại kiện tướng
+- Sử dụng engine với cấu hình sức chơi mạnh.
+- Hạn chế gợi ý trong ván đấu nếu người chơi chọn.
+- Có phân tích ván đấu sau khi kết thúc.
+
+### Cấp 9 — Thử thách chuyên gia
+- Tăng tài nguyên tính toán và giới hạn tìm kiếm phù hợp.
+- Phân tích sâu hơn.
+- Hỗ trợ các thế cờ khó.
+
+### Cấp 10 — SIÊU KHÓ
+- Sử dụng Stockfish thực sự với cấu hình engine mạnh nhất mà thiết bị và môi trường cho phép.
+- Tăng giới hạn tìm kiếm, thời gian hoặc tài nguyên tính toán.
+- Hạn chế hoặc tắt gợi ý trong khi chơi.
+- Cho phép phân tích hậu kiểm sâu hơn sau trận.
+
+## Quy tắc kỹ thuật quan trọng
+
+1. Ưu tiên Stockfish chạy trong Web Worker để không khóa giao diện.
+2. Dùng thư viện luật cờ đáng tin cậy để xác thực nước đi.
+3. Không dùng danh sách nước đi ngẫu nhiên để giả làm đối thủ AI.
+4. Nếu engine có hỗ trợ cấu hình Skill Level, UCI Elo hoặc giới hạn tìm kiếm, hãy kiểm tra phiên bản thực tế trước khi dùng.
+5. Nếu giới hạn sức chơi bằng cách giảm Skill Level hoặc độ sâu, phải ghi rõ cách vận hành.
+6. Không tuyên bố cấp độ có Elo cụ thể nếu chưa đo kiểm đáng tin cậy.
+7. Cấp “siêu khó” phải thực sự dùng engine và cấu hình mạnh hơn các cấp dễ.
+8. Tôn trọng giới hạn bộ nhớ, CPU và pin trên điện thoại.
+9. Có nút dừng suy nghĩ, hủy phân tích và bắt đầu ván mới.
+10. Nếu engine không tải được, thông báo rõ và không giả vờ rằng máy đã suy nghĩ.
+11. Hiển thị trạng thái “Máy đang tính toán” khi engine hoạt động.
+12. Không để engine chiếm dụng toàn bộ CPU hoặc làm treo trang.
+
+Nếu thiết bị không đủ sức chạy cấu hình mạnh, tự giảm tài nguyên một cách minh bạch và giải thích rằng sức chơi thực tế phụ thuộc cấu hình.
 
 ---
 
-# PHẦN 5 — HỆ THỐNG SƯ PHẠM VÀ CÁ NHÂN HÓA
+# PHẦN 5. CHẾ ĐỘ HƯỚNG DẪN NƯỚC ĐI
 
-Xây dựng một vòng lặp học tập:
+Xây dựng chế độ “Huấn luyện viên cờ vua”.
 
-Dạy ngắn → Xem ví dụ → Tự thử → Nhận phản hồi → Làm lại → Ôn tập → Mở bài mới.
+Khi con chơi:
+- Cho phép yêu cầu gợi ý.
+- Làm nổi bật các nước đi hợp lệ.
+- Hiển thị mối đe dọa của đối phương.
+- Cảnh báo quân đang bị tấn công nếu người chơi bật trợ giúp.
+- Giải thích tại sao một nước đi có thể tốt hoặc nguy hiểm.
+- Cho phép xem ví dụ trên bàn cờ.
+- Cho phép hoàn tác trong chế độ luyện tập.
+- Có thể tắt gợi ý khi đấu thử thách.
 
-## Phân biệt ba trạng thái
+Ví dụ phản hồi:
 
-- Chưa học.
-- Đang học.
-- Đã thành thạo.
+“Con đang định di chuyển hậu. Hãy kiểm tra xem vua của con có an toàn không nhé.”
 
-Không đánh dấu thành thạo chỉ vì trẻ mở bài hoặc bấm qua màn hình.
+“Quân mã của con đang bị tấn công. Con có thể di chuyển nó, bảo vệ nó hoặc đổi quân nếu hợp lý.”
 
-## Cách đánh giá
+“Đối thủ vừa chiếu vua. Con phải chọn một nước đi hợp lệ để thoát chiếu.”
 
-Mỗi bài có:
-- Số câu đã làm.
-- Số câu đúng.
-- Số lần dùng gợi ý.
-- Kỹ năng đã nắm vững.
-- Kỹ năng cần luyện thêm.
+Không chỉ nói “Sai rồi”. Phải chỉ ra vấn đề và hướng dẫn con suy nghĩ.
 
-Khi trẻ sai:
-- Giải thích thân thiện.
-- Cho thử lại.
-- Gợi ý theo từng bước.
-- Không trừ điểm nặng hoặc làm trẻ xấu hổ.
+## Giải thích sau nước đi
 
-Khi trẻ làm đúng:
-- Khen cụ thể: “Con đã tìm được đường đi của mã!”
-- Cấp sao hoặc huy hiệu theo kết quả thật.
+Nếu engine hỗ trợ phân tích:
+- Xác định vị trí trước và sau nước đi.
+- Phân tích nước đi bằng engine.
+- Giải thích bằng ngôn ngữ phù hợp cấp độ.
+- Phân biệt sai lầm nghiêm trọng với nước đi chưa tối ưu.
+- Không bịa ra biến thể nếu chưa được tính toán.
 
-Tạo hệ thống ôn tập các câu từng làm sai. Ưu tiên luyện lại kỹ năng yếu thay vì liên tục đưa câu mới.
-
-Nếu ứng dụng đã có hệ thống lưu tiến độ, tích hợp vào đó. Nếu chưa có, xây dựng giải pháp phù hợp kiến trúc hiện tại. Không làm mất tiến độ khi tải lại trang; xử lý lỗi lưu dữ liệu và phiên bản dữ liệu an toàn.
+Nếu chưa có engine phân tích, chỉ đưa ra phản hồi dựa trên luật hoặc quy tắc đơn giản đã xác minh. Không tuyên bố đó là nước đi tốt nhất.
 
 ---
 
-# PHẦN 6 — CHẤT LƯỢNG DỮ LIỆU VÀ TÍNH ĐÚNG ĐẮN
+# PHẦN 6. GAME CHIẾN THUẬT VÀ GIẢI ĐỐ
 
-Tổ chức dữ liệu bài học theo cấu trúc ổn định. Mỗi bài tập nên có:
+Tạo nhiều chế độ chơi:
+
+1. Tìm nước đi hợp lệ.
+2. Tìm quân có thể bắt.
+3. Thoát chiếu.
+4. Chiếu trong một nước.
+5. Chiếu bí trong một nước.
+6. Chiếu bí trong hai nước.
+7. Tìm đòn đôi.
+8. Tìm ghim quân.
+9. Tìm xiên quân.
+10. Tìm nước đi thắng quân.
+11. Tìm nước phòng thủ.
+12. Giải thế cờ tàn cuộc.
+13. Tìm nước đi duy nhất để cứu ván.
+14. Thử thách tính toán ba nước.
+15. Thử thách chiến thuật nâng cao.
+
+Mỗi câu đố phải có:
 - ID duy nhất.
-- Mã bài học.
-- Mục tiêu kiến thức.
-- Vị trí bàn cờ ban đầu.
-- Lượt đi.
-- Nhiệm vụ của trẻ.
-- Đáp án hoặc tập hợp nước đi hợp lệ.
+- Vị trí FEN hợp lệ.
+- Bên đi.
+- Nhiệm vụ.
+- Đáp án.
+- Các biến thể hợp lệ nếu có.
+- Gợi ý.
 - Giải thích.
-- Gợi ý.
-- Độ khó.
-- Tài nguyên hình ảnh nếu cần.
+- Mức độ.
+- Nguồn hoặc phương pháp kiểm tra.
 
-Có thể dùng FEN để biểu diễn vị trí cờ và UCI/SAN hoặc định dạng tương đương để lưu nước đi, nhưng phải xác minh tính hợp lệ bằng thư viện luật cờ.
-
-## Validator bắt buộc
-
-Tạo kiểm tra tự động để phát hiện:
-- ID trùng lặp.
-- Bài học thiếu tiêu đề hoặc nội dung.
-- FEN không hợp lệ.
-- Nước đi đáp án không hợp lệ.
-- Bài chiếu bí không thực sự chiếu bí.
-- Bài thoát chiếu có đáp án không thoát chiếu.
-- Hình minh họa không tồn tại.
-- Câu hỏi không khớp với vị trí bàn cờ.
-- Câu trả lời mẫu mâu thuẫn với giải thích.
-- Liên kết bài học hoặc tài nguyên bị hỏng.
-- Tiến độ tham chiếu đến bài không còn tồn tại.
-
-Không chỉ kiểm tra hình thức JSON; cần kiểm tra ngữ nghĩa bằng bộ luật cờ thực.
-
-Tất cả dữ liệu bài tập phải được rà soát tự động và kiểm tra các trường hợp đặc biệt. Không tự bịa vị trí hoặc đáp án rồi đánh dấu đã kiểm chứng.
+Dùng thư viện luật cờ để xác minh nước đi hợp lệ. Dùng engine hoặc quy trình kiểm chứng đáng tin cậy để xác nhận các câu đố chiến thuật. Không đánh dấu một bài là chiếu bí nếu vẫn tồn tại nước đi thoát chiếu.
 
 ---
 
-# PHẦN 7 — GIAO DIỆN VÀ TÍCH HỢP
+# PHẦN 7. PHÂN TÍCH VÁN CỜ SAU KHI CHƠI
 
-Thêm mục “Cờ vua” vào điều hướng hiện có của Kho Báu Tri Thức.
+Sau khi ván đấu kết thúc, cung cấp:
+- Kết quả thắng, thua hoặc hòa.
+- Số nước đã đi.
+- Các nước đi đáng chú ý.
+- Các lỗi chiến thuật lớn nếu xác định được.
+- Các cơ hội bắt quân bị bỏ lỡ nếu có cơ sở.
+- Thời điểm vua bị nguy hiểm.
+- Nước đi nên xem lại.
+- Bài học tương ứng để luyện thêm.
 
-Trang chính nên có:
-- Nút “Học tiếp”.
-- Bản đồ hành trình.
-- Tiến độ học.
-- Các kỹ năng đã thành thạo.
-- Khu vực luyện tập nhanh.
-- Khu vực đấu với máy nếu đã triển khai thành công.
+Nếu Stockfish được tích hợp:
+- Cho phép phân tích từng nước.
+- Hiển thị đánh giá vị trí nếu cấu hình hỗ trợ.
+- Có thể so sánh nước đã đi với phương án engine đề xuất.
+- Giải thích khác biệt theo trình độ người học.
 
-Mỗi bài học phải có:
-- Phần giải thích.
-- Bàn cờ hoặc hình minh họa phù hợp.
-- Nhiệm vụ rõ ràng.
-- Phản hồi.
-- Gợi ý.
-- Nút làm lại và học tiếp.
+Không gọi mọi nước không trùng với lựa chọn engine là sai. Phải phân biệt nước sai rõ ràng, nước chưa tối ưu và các phương án hợp lý.
 
-Không thay đổi các phân hệ khác ngoài phạm vi cần thiết để tích hợp.
+Không bịa số liệu về độ chính xác hoặc Elo.
 
-Không thêm các component UI mới nếu đã có component tương đương trong dự án. Dùng thống nhất font, khoảng cách, màu sắc, trạng thái loading/error/empty.
+Cho phép lưu lịch sử ván đấu theo định dạng PGN nếu có thể triển khai an toàn.
 
 ---
 
-# PHẦN 8 — KIỂM THỬ VÀ RÀ SOÁT TOÀN DỰ ÁN
+# PHẦN 8. LƯU TIẾN ĐỘ VÀ HỆ THỐNG THÀNH TÍCH
 
-Kiểm tra ít nhất:
+Lưu:
+- Bài học đã hoàn thành.
+- Kỹ năng đã nắm vững.
+- Câu đố đã giải.
+- Lịch sử đấu với máy.
+- Kết quả thắng/thua/hòa.
+- Cấp độ đối thủ đã thử.
+- Các lỗi lặp lại.
+- Mục tiêu học tiếp theo.
 
-### Kiểm thử luật cờ
-- Đủ 32 quân ở vị trí bắt đầu.
+Tạo huy hiệu:
+- Nhận diện quân cờ.
+- Bậc thầy mã.
+- Chuyên gia thoát chiếu.
+- Thợ săn chiến thuật.
+- Vua khai cuộc.
+- Nhà chiến lược.
+- Bậc thầy tàn cuộc.
+- Nhà vô địch vương quốc.
+
+Chỉ cấp huy hiệu khi điều kiện thực tế được thỏa mãn. Không cấp thưởng giả khi chỉ mở màn hình.
+
+Tạo chế độ phụ huynh để xem tiến độ và điều chỉnh độ khó. Không yêu cầu tài khoản ngoài nếu kiến trúc hiện tại không cần.
+
+---
+
+# PHẦN 9. KIỂM THỬ LUẬT CỜ
+
+Viết test cho:
+- Vị trí bắt đầu có 32 quân.
 - Trắng đi trước.
-- Các loại quân đi đúng quy tắc.
-- Xe, tượng, hậu không nhảy qua quân.
-- Mã nhảy qua quân được.
-- Tốt đi và ăn đúng hướng.
-- Không cho đi nước bất hợp lệ.
-- Không để vua tự đi vào ô bị tấn công.
+- Nước đi hợp lệ của sáu loại quân.
+- Quân cản đường.
+- Mã nhảy qua quân.
+- Tốt đi hai ô từ vị trí ban đầu.
+- Tốt bắt chéo.
 - Nhập thành đúng và sai điều kiện.
 - Phong cấp.
 - Bắt tốt qua đường.
+- Không để vua tự đi vào ô bị tấn công.
 - Chiếu và thoát chiếu.
 - Chiếu bí.
 - Hòa do hết nước đi.
-- Hoàn tác, khởi động lại và đổi lượt.
-- Không bị sai trạng thái sau nhiều nước đi liên tiếp.
+- Hòa theo các quy tắc được hỗ trợ.
+- Đổi lượt.
+- Hoàn tác.
+- Khởi động lại.
+- Không để trạng thái bàn cờ sai sau nhiều nước đi.
 
-### Kiểm thử giáo dục
-- Câu hỏi đúng với vị trí trên bàn cờ.
-- Đáp án được xác thực.
-- Gợi ý không tiết lộ sai đáp án.
-- Điểm số và huy hiệu được tính đúng.
-- Bài học khóa/mở theo đúng tiến độ.
-- Lưu và khôi phục tiến độ hoạt động.
+Kiểm tra bàn cờ và engine không bị lệch trạng thái sau mỗi nước đi.
 
-### Kiểm thử giao diện
-Kiểm tra tại các viewport:
-- 320×568.
-- 375×667.
-- 390×844.
+# PHẦN 10. HIỆU NĂNG VÀ TƯƠNG THÍCH
+
+Kiểm tra:
+- Điện thoại 320×568.
+- Điện thoại 375×667.
+- Điện thoại 390×844.
 - Tablet.
 - Desktop.
 
-Kiểm tra font tiếng Việt, dấu câu, quân cờ, nút bấm, bàn cờ, cuộn trang, lỗi console, tài nguyên ảnh, loading và trạng thái lỗi.
+Đảm bảo:
+- Bàn cờ không bị méo.
+- Quân cờ không tràn ô.
+- Không có lỗi khi chạm.
+- Không bị treo khi engine suy nghĩ.
+- Có thể dừng tìm kiếm.
+- Không phát âm thanh nếu người chơi đã tắt âm thanh.
+- Không làm hỏng các phân hệ hiện có.
+- Không có lỗi typecheck, lint, test hoặc build mới.
 
-### Kiểm thử hồi quy
-- Toán học vẫn hoạt động.
-- Tiếng Việt và Chính tả vẫn hoạt động.
-- Điều hướng chung vẫn hoạt động.
-- Lưu tiến độ các phân hệ cũ không bị ảnh hưởng.
-- Không có lỗi typecheck, lint hoặc build mới.
+# PHẦN 11. THỨ TỰ TRIỂN KHAI
 
----
+Thực hiện theo từng giai đoạn:
 
-# PHẦN 9 — CÁCH TRIỂN KHAI
+Giai đoạn 1:
+- Trang chủ Chess Kingdom.
+- Bàn cờ thật.
+- Sáu loại quân.
+- Luật đi và bắt quân.
+- Bài học tương tác.
 
-Thực hiện theo thứ tự:
+Giai đoạn 2:
+- Chiếu, thoát chiếu, chiếu bí.
+- Luật đặc biệt.
+- Câu đố chiến thuật.
+- Lưu tiến độ.
 
-1. Kiểm tra cấu trúc và kiến trúc dự án.
-2. Báo cáo ngắn các component, router, hệ thống lưu tiến độ và thư viện cờ có thể tái sử dụng.
-3. Lập kế hoạch file sẽ tạo/sửa.
-4. Triển khai bản MVP có chất lượng trước:
-   - Trang chính.
-   - Nhận biết quân.
-   - Nước đi hợp lệ.
-   - Bài tập tương tác.
-   - Chiếu và chiếu bí cơ bản.
-   - Tiến độ.
-5. Mở rộng các chương nâng cao theo cùng cấu trúc.
-6. Chạy validator dữ liệu và kiểm thử luật.
-7. Chạy typecheck, lint, test và build theo dự án.
-8. Mở Preview thực tế, kiểm tra thao tác bàn cờ và giao diện trên mobile nếu môi trường hỗ trợ.
-9. Sửa các lỗi phát hiện được rồi kiểm thử lại.
-10. Báo cáo kết quả cuối cùng.
+Giai đoạn 3:
+- Tích hợp Stockfish.
+- Đấu với máy từ dễ đến siêu khó.
+- Tùy chọn gợi ý.
+- Điều chỉnh sức chơi theo tài nguyên.
 
-Nếu toàn bộ 50 bài vượt quá khả năng triển khai an toàn trong một lượt, hãy hoàn thiện MVP có thể sử dụng thật trước, rồi xây dựng các bài còn lại theo từng nhóm. Không tạo 50 bài chỉ có nội dung sơ sài để tuyên bố đã hoàn thành.
+Giai đoạn 4:
+- Phân tích ván cờ.
+- Hệ thống bài học cá nhân hóa.
+- Khai cuộc, trung cuộc và tàn cuộc.
+- Thành tích và báo cáo phụ huynh.
 
-# PHẦN 10 — BÁO CÁO CUỐI CÙNG
+Nếu không thể hoàn thành toàn bộ trong một lượt, hoàn thiện một giai đoạn có thể sử dụng thật trước khi tiếp tục. Không tạo 15 màn hình rỗng và tuyên bố đã xong.
 
-Sau khi thực hiện, hãy báo cáo:
+# PHẦN 12. BÁO CÁO CUỐI CÙNG
 
-1. Các tính năng đã xây dựng thực sự.
-2. Danh sách bài học đã hoàn thành, bài nào mới có nội dung và bài nào có tương tác đầy đủ.
-3. Bộ luật cờ và engine nào đã được tích hợp.
-4. Số bài tập đã được validator kiểm tra.
-5. Kết quả typecheck, lint, test và build.
-6. Kết quả kiểm tra giao diện trên mobile và desktop.
-7. Các lỗi phát hiện và cách sửa.
-8. Các vấn đề chưa hoàn thành hoặc chưa xác minh.
-9. Các file chính đã tạo hoặc sửa.
+Báo cáo rõ:
+1. Các tính năng đã hoạt động.
+2. Các bài học đã triển khai.
+3. Thư viện luật cờ được sử dụng.
+4. Engine thực tế được tích hợp và cách chạy.
+5. Các cấp độ đối thủ hoạt động như thế nào.
+6. Các test đã chạy và kết quả.
+7. Kết quả build.
+8. Tình trạng Preview.
+9. Các giới hạn thiết bị và tính năng chưa hoàn thành.
 
-Không được ghi PASS nếu chưa chạy kiểm thử. Không được ghi “AI chơi được”, “chiếu bí chính xác” hoặc “toàn bộ 50 bài hoàn thành” nếu chưa có bằng chứng thực tế.
+Không tuyên bố AI siêu mạnh nếu engine chưa chạy. Không tuyên bố luật cờ chính xác nếu chưa kiểm thử.
 
-**Bắt đầu bằng việc kiểm tra source code hiện tại, sau đó trực tiếp xây dựng và kiểm thử phân hệ Vương Quốc Cờ Vua trong ứng dụng Kho Báu Tri Thức — Lớp 1.**
+**Bắt đầu bằng việc kiểm tra source code hiện tại, sau đó trực tiếp xây dựng Chess Kingdom — Vương Quốc Cờ Vua trong Kho Báu Tri Thức — Lớp 1. Ưu tiên game đẹp, bàn cờ đúng luật, giải thích dễ hiểu và đối thủ AI thực sự có nhiều cấp độ từ dễ đến siêu khó.**

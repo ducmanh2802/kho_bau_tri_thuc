@@ -266,7 +266,8 @@ export type ActiveScreen =
   | 'sticker_album'
   | 'gacha_machine'
   | 'streak_calendar'
-  | 'chess';
+  | 'chess'
+  | 'english_ioe';
 
 export * from './competition';
 export * from './reading';

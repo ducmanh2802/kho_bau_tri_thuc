@@ -109,3 +109,4 @@ npm run audit:snapshot          # so sánh tree hiện tại với docs/audit-st
 | 2026-10-17 20:59 | src/components/learning/chess/chessEngine.ts, src/components/learning/chess/ChessGame.tsx | 🟡 Cần audit phần liệt kê |
 | 2026-10-17 21:03 | src/components/learning/chess/chessEngine.ts, src/components/learning/chess/ChessGame.tsx | 🟡 Cần audit phần liệt kê |
 | 2026-10-17 21:24 | src/components/learning/chess/ChessMoveDemo.tsx, src/components/learning/chess/ChessGame.tsx, src/components/learning/chess/ChessScreen.tsx | 🟡 Cần audit phần liệt kê |
+| 2026-10-17 21:44 | src/components/learning/englishIoe/EnglishIoeScreen.tsx, src/data/englishIoe/index.ts, src/App.tsx, src/components/home/HomeScreen.tsx, src/components/learning/chess/ChessMoveDemo.tsx, src/types/index.ts | 🟡 Cần audit phần liệt kê |

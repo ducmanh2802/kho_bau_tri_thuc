@@ -108,12 +108,12 @@ const SHORTCUT_CARDS: readonly ShortcutCard[] = [
     border: 'border-sky-300',
   },
   {
-    screen: 'chess',
-    label: 'Cờ Vua',
-    icon: '♟',
-    desc: 'Học quân cờ',
-    gradient: 'from-slate-600 to-slate-800',
-    border: 'border-slate-400',
+    screen: 'english_ioe',
+    label: 'Tiếng Anh IOE',
+    icon: '🇬🇧',
+    desc: 'Luyện IOE lớp 1',
+    gradient: 'from-emerald-500 to-teal-600',
+    border: 'border-emerald-300',
   },
 ];
 
