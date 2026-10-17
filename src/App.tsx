@@ -4,6 +4,7 @@ import { StorageService } from './services/storage';
 import { Header } from './components/common/Header';
 import { HomeScreen } from './components/home/HomeScreen';
 import { ChessScreen } from './components/learning/chess/ChessScreen';
+import { CotuongScreen } from './components/learning/cotuong/CotuongScreen';
 import { EnglishIoeScreen } from './components/learning/englishIoe/EnglishIoeScreen';
 import { NAVIGATION } from './config/navigation';
 
@@ -330,6 +331,10 @@ export default function App() {
 
         {currentScreen === 'chess' && (
           <ChessScreen onBack={() => setCurrentScreen('home')} />
+        )}
+
+        {currentScreen === 'cotuong' && (
+          <CotuongScreen onBack={() => setCurrentScreen('home')} />
         )}
 
         {currentScreen === 'english_ioe' && (

@@ -115,6 +115,14 @@ const SHORTCUT_CARDS: readonly ShortcutCard[] = [
     gradient: 'from-emerald-500 to-teal-600',
     border: 'border-emerald-300',
   },
+  {
+    screen: 'cotuong',
+    label: 'Cờ Tướng',
+    icon: '♟️',
+    desc: 'Vương quốc cờ tướng',
+    gradient: 'from-amber-500 to-orange-600',
+    border: 'border-amber-300',
+  },
 ];
 
 export const HomeScreen: React.FC<HomeScreenProps> = ({
