@@ -1,5 +1,5 @@
 {
-  "lastAuditAt": "2026-10-17 21:03",
+  "lastAuditAt": "2026-10-17 21:24",
   "files": {
     "src/App.tsx": "7edbd1fb0c321f46d2f19a023197f508472a355747dccb2c4b15affc09d92e16",
     "src/components/achievements/AchievementsGardenScreen.tsx": "12a5b6f5822f1e109c6bd6d53e68b3eefca1214238dd17fb99b454a4ae2077f2",
@@ -46,8 +46,9 @@
     "src/components/games/WordTrainGame.tsx": "536ed0888dd3fc1bcf7332660f0f1a66e3d9b71b2d5a1f081525d2f3777925e7",
     "src/components/home/HomeScreen.tsx": "2f7323d729ef7855393d24ccfc700872a1e0db5dff63d12fe34b3d63c408e1dc",
     "src/components/learning/chess/chessEngine.ts": "476338d3228ec6ca856bd7c4831ceb353d3c95852fff109050923fff7765403d",
-    "src/components/learning/chess/ChessGame.tsx": "aae38862e7ed67c1531f053d7ae9119ac11062513b961c8c48c18f74a8a4fa17",
-    "src/components/learning/chess/ChessScreen.tsx": "8591e8772ee01828d96b79031150c78db488d8c969e54541066c968fc4d5fe43",
+    "src/components/learning/chess/ChessGame.tsx": "ee2aec5553b1b7e0259d64ea2a1c22df7650ae5ab3958f3a7a219d730cc15de1",
+    "src/components/learning/chess/ChessMoveDemo.tsx": "e7c9a771e5db1b69d95089bcd7000032bd666f0a9387fb938420c8bc89f82779",
+    "src/components/learning/chess/ChessScreen.tsx": "233bea1d7ccdf562ce49ba7b2b6ea67dc951c6e17772862563cad89c114161b9",
     "src/components/learning/chess/ChessTutorial.tsx": "f82af35ef6a081a613bae5aaf0f9d0de624ae2a855f340f015653a0a866faf1a",
     "src/components/learning/LessonPlayerModal.tsx": "97c848d01bf8e65c89f8b2e8a09cca5c83372e150337ab83843b8a9f80a7dc69",
     "src/components/learning/NextBestActionCard.tsx": "335d29cbb3815f5386fa20187641aeb5bed98827c25a5c1c29a82ef84aa763d7",

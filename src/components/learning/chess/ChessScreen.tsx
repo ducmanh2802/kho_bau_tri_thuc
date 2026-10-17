@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { ArrowLeft, CheckCircle2, XCircle } from 'lucide-react';
 import { sound } from '../../../services/sound';
 import { ChessGame } from './ChessGame';
+import { ChessMoveDemo } from './ChessMoveDemo';
 
 interface PieceInfo {
   name: string;
@@ -32,7 +33,7 @@ const QUIZ: QuizItem[] = [
 ];
 
 export const ChessScreen: React.FC<{ onBack: () => void }> = ({ onBack }) => {
-  const [tab, setTab] = useState<'pieces' | 'rules' | 'illustrate' | 'quiz' | 'play'>('pieces');
+  const [tab, setTab] = useState<'pieces' | 'rules' | 'illustrate' | 'demo' | 'quiz' | 'play'>('pieces');
   const [selected, setSelected] = useState<PieceInfo | null>(PIECES[0]);
   const [quizIndex, setQuizIndex] = useState(0);
   const [picked, setPicked] = useState<number | null>(null);
@@ -67,13 +68,13 @@ export const ChessScreen: React.FC<{ onBack: () => void }> = ({ onBack }) => {
       </div>
 
       <div className="flex gap-2">
-        {(['pieces', 'rules', 'illustrate', 'quiz', 'play'] as const).map((t) => (
+        {(['pieces', 'rules', 'illustrate', 'demo', 'quiz', 'play'] as const).map((t) => (
           <button
             key={t}
             onClick={() => { sound.playClick(); setTab(t); }}
             className={`px-4 py-2 rounded-xl font-bold ${tab === t ? 'bg-amber-500 text-white' : 'bg-slate-100 text-slate-700'}`}
           >
-            {t === 'pieces' ? 'Quân cờ' : t === 'rules' ? 'Luật chơi' : t === 'illustrate' ? 'Minh họa' : t === 'quiz' ? 'Câu đố' : 'Chơi với máy'}
+            {t === 'pieces' ? 'Quân cờ' : t === 'rules' ? 'Luật chơi' : t === 'illustrate' ? 'Minh họa' : t === 'demo' ? 'Demo' : t === 'quiz' ? 'Câu đố' : 'Chơi với máy'}
           </button>
         ))}
       </div>
@@ -141,6 +142,8 @@ export const ChessScreen: React.FC<{ onBack: () => void }> = ({ onBack }) => {
           </p>
         </div>
       )}
+
+      {tab === 'demo' && <ChessMoveDemo />}
 
       {tab === 'play' && <ChessGame onBack={() => setTab('pieces')} />}
 
